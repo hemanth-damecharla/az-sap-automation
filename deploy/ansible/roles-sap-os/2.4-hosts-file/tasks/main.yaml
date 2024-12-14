@@ -19,7 +19,7 @@
 # Validate IP configuration
 - name:                                "2.4 Hosts: - Validate IP configuration from playbook"
   ansible.builtin.assert:
-    that:                                
+    that:
                                        - ipadd is defined
                                        - ipadd | type_debug != 'NoneType'
                                        - ipadd | length > 0
@@ -62,8 +62,6 @@
     mode:                              "0644"
     backup:                            true
 
-
-
 # Clean up duplicate entries
 - name:                                "2.4 Hosts: - Remove duplicate entries from hosts file"
   ansible.builtin.include_tasks:       "tasks/cleanup_hosts.yaml"
@@ -89,7 +87,9 @@
 
 # Display final host entry count
 - name:                                "2.4 Hosts: - Display host entry statistics"
-  ansible.builtin.shell:               "grep -v '^#' /etc/hosts | grep -v '^$' | wc -l"
+  ansible.builtin.shell: |
+                                       set -o pipefail
+                                       grep -v '^#' /etc/hosts | grep -v '^$' | wc -l
   register:                            host_entry_count
   changed_when:                        false
 
@@ -99,4 +99,5 @@
       - "Total host entries: {{ host_entry_count.stdout }}"
       - "Host file validation: {{ 'Passed' if hosts_validation.rc == 0 else 'Failed' }}"
     verbosity:                         1
+
 ...

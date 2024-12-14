@@ -6,7 +6,7 @@
     component_hosts:                   "{{ component_hosts | default({}) | combine({
                                             item: groups[sap_sid | upper + '_' + item] | default([])
                                           }) }}"
-  loop:                               
+  loop:
                                        - "SCS"
                                        - "PAS"
                                        - "APP"
@@ -32,4 +32,4 @@
     loop_var:                          component
   vars:
     component_type:                    "{{ component.key }}"
-    hosts:                            "{{ component.value }}"
+    hosts:                             "{{ component.value }}"
