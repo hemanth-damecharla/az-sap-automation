@@ -1,0 +1,35 @@
+---
+# tasks/sid_hosts.yaml
+
+- name:                                "2.4 Hosts: - Get host lists for each component"
+  ansible.builtin.set_fact:
+    component_hosts:                   "{{ component_hosts | default({}) | combine({
+                                            item: groups[sap_sid | upper + '_' + item] | default([])
+                                          }) }}"
+  loop:                               
+                                       - "SCS"
+                                       - "PAS"
+                                       - "APP"
+                                       - "DB"
+                                       - "WEB"
+
+- name:                                "2.4 Hosts: - Generate host entries for each component"
+  ansible.builtin.blockinfile:
+    path:                              "/etc/hosts"
+    marker:                            "# {mark} ANSIBLE MANAGED BLOCK - {{ sap_sid | upper }} {{ component_type }}"
+    block: |
+                                       {% for host in hosts %}
+                                       {% if hostvars[host].ipadd is defined and hostvars[host].ipadd | length > 0 %}
+                                       {{ hostvars[host].ipadd[0] | format_host_entry(host, sap_fqdn) }}
+                                       {% if 'pas' in hostvars[host].supported_tiers %}
+                                       {{ hostvars[host].ipadd[0] | format_host_entry(hostvars[host].pas_virtual_hostname | default(host), sap_fqdn) }}
+                                       {% endif %}
+                                       {% endif %}
+                                       {% endfor %}
+    state:                             present
+  loop:                                "{{ component_hosts | dict2items }}"
+  loop_control:
+    loop_var:                          component
+  vars:
+    component_type:                    "{{ component.key }}"
+    hosts:                            "{{ component.value }}"

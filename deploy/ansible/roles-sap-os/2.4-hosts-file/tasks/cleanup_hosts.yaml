@@ -1,0 +1,33 @@
+---
+# tasks/cleanup_hosts.yaml
+# Removes duplicate entries and validates hosts file
+
+- name:                                "2.4 Hosts: - Read current hosts file"
+  ansible.builtin.slurp:
+    src:                               "/etc/hosts"
+  register:                            hosts_content
+
+- name:                                "2.4 Hosts: - Get unique lines"
+  ansible.builtin.set_fact:
+    unique_lines:                      "{{ (hosts_content['content'] | b64decode).split('\n') | unique | list }}"
+
+- name:                                "2.4 Hosts: - Count original and unique lines"
+  ansible.builtin.set_fact:
+    original_count:                    "{{ (hosts_content['content'] | b64decode).split('\n') | length }}"
+    unique_count:                      "{{ unique_lines | length }}"
+
+- name:                                "2.4 Hosts: - Update hosts file if duplicates found"
+  ansible.builtin.copy:
+    dest:                              "/etc/hosts"
+    content:                           "{{ unique_lines | join('\n') }}"
+    mode:                              "0644"
+    backup:                            true
+  when:                                original_count != unique_count
+
+- name:                                "2.4 Hosts: - Report cleanup results"
+  ansible.builtin.debug:
+    msg: 
+                                       - "Original lines: {{ original_count }}"
+                                       - "After deduplication: {{ unique_count }}"
+                                       - "Duplicates removed: {{ original_count - unique_count }}"
+  when:                                original_count != unique_count

@@ -1,0 +1,32 @@
+---
+# tasks/db_scale_out.yaml
+
+- name:                                "2.4 Hosts: - Set scale-out hostname"
+  ansible.builtin.set_fact:
+    db_so_virtual_hostname:            "{{ custom_db_virtual_hostname | default(sap_sid | generate_hostname('db_so', db_instance_number)) }}"
+
+- name:                                "2.4 Hosts: - Get primary DB node"
+  ansible.builtin.set_fact:
+    primary_db_host:                   "{{ groups[sap_sid | upper + '_DB'][0] }}"
+    primary_db_ip:                     "{{ hostvars[groups[sap_sid | upper + '_DB'][0]].ipadd[0] }}"
+
+- name:                                "2.4 Hosts: - Create scale-out entries"
+  ansible.builtin.blockinfile:
+    path:                              "/etc/hosts"
+    marker:                            "# {mark} ANSIBLE MANAGED BLOCK - DB SCALE-OUT {{ sap_sid | upper }}"
+    block: |
+                                       {{ primary_db_ip | format_host_entry(db_so_virtual_hostname, sap_fqdn) }}
+                                       {% for host in groups[sap_sid | upper + '_DB'] %}
+                                       {% set host_ips = hostvars[host].ipadd %}
+                                       {% if host_ips | length > 1 %}
+                                       {% for ip in host_ips[1:] %}
+                                       {% if subnet_cidr_storage | ansible.utils.network_in_usable(ip) %}
+                                       {{ ip | format_host_entry(host + '-storage', sap_fqdn) }}
+                                       {% elif subnet_cidr_db | ansible.utils.network_in_usable(ip) %}
+                                       {{ ip | format_host_entry(host + '-db', sap_fqdn) }}
+                                       {% endif %}
+                                       {% endfor %}
+                                       {% endif %}
+                                       {% endfor %}
+    state:                             present
+  when:                                not database_high_availability
