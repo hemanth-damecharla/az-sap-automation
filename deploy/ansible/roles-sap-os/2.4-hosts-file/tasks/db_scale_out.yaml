@@ -1,40 +1,82 @@
 ---
 # tasks/db_scale_out.yaml
+# Handles database scale-out scenarios for SAP HANA systems
 
-- name: "Set scale-out hostname"
+- name: "Validate scale-out variables"
+  ansible.builtin.assert:
+    that:
+      - sap_sid is defined
+      - sap_fqdn is defined
+      - db_instance_number is defined
+      - platform == 'HANA'
+      - subnet_cidr_storage is defined
+      - subnet_cidr_db is defined
+    fail_msg: "Missing required variables for database scale-out configuration"
+
+- name: "Generate scale-out hostname"
   ansible.builtin.set_fact:
-    db_so_virtual_hostname: "{{ custom_db_virtual_hostname | default(sap_sid | generate_hostname('db_so', db_instance_number)) }}"
+    db_so_virtual_hostname: "{{ custom_db_virtual_hostname | default(sap_sid | lower + db_sid | lower + 'db' + (db_instance_number | string) + 'so') }}"
 
-- name: "Get primary DB node"
+- name: "Get DB group hosts"
   ansible.builtin.set_fact:
-    primary_db_host: "{{ groups[sap_sid | upper + '_DB'][0] }}"
+    db_hosts: "{{ groups[sap_sid | upper + '_DB'] | default([]) }}"
 
-- name: "Get primary DB IP"
-  ansible.builtin.set_fact:
-    primary_db_ip: "{{ hostvars[primary_db_host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_client) | default(hostvars[primary_db_host].ipadd | get_tier_ip(0)) }}"
+- name: "Validate DB hosts"
+  ansible.builtin.assert:
+    that:
+      - db_hosts | length > 0
+    fail_msg: "No database hosts found for SID {{ sap_sid | upper }}"
 
+- name: "Debug scale-out configuration"
+  ansible.builtin.debug:
+    msg:
+      - "DB Scale-out Virtual Hostname: {{ db_so_virtual_hostname }}"
+      - "Number of DB Hosts: {{ db_hosts | length }}"
+      - "Storage Subnet: {{ subnet_cidr_storage }}"
+      - "DB Subnet: {{ subnet_cidr_db }}"
+
+# Create host entries for each DB node
 - name: "Create scale-out entries"
   ansible.builtin.blockinfile:
     path: "/etc/hosts"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - DB SCALE-OUT {{ sap_sid | upper }}"
     block: |
-      {{ primary_db_ip | format_host_entry(db_so_virtual_hostname, sap_fqdn) }}
-      
-      {% for host in groups[sap_sid | upper + '_DB'] %}
-      {% set host_ips = hostvars[host].ipadd %}
-      {% if host_ips | length > 1 %}
+      {% for host in db_hosts %}
+      {% if hostvars[host].ipadd is defined and hostvars[host].ipadd | length > 1 %}
       {# Get storage network IP #}
-      {% set storage_ip = host_ips | get_tier_ip(subnet_cidr=subnet_cidr_storage) %}
+      {% set storage_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_storage) %}
       {% if storage_ip %}
-      {{ storage_ip | format_host_entry(host + '-storage', sap_fqdn) }}
+      {{ storage_ip }} {{ host }}-inter.{{ sap_fqdn }} {{ host }}-inter
       {% endif %}
       
       {# Get DB network IP #}
-      {% set db_ip = host_ips | get_tier_ip(subnet_cidr=subnet_cidr_db) %}
+      {% set db_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_db) %}
       {% if db_ip %}
-      {{ db_ip | format_host_entry(host + '-db', sap_fqdn) }}
+      {{ db_ip }} {{ host }}-hsr.{{ sap_fqdn }} {{ host }}-hsr
       {% endif %}
       {% endif %}
       {% endfor %}
     state: present
+    backup: true
   when: not database_high_availability
+
+- name: "Verify scale-out entries"
+  ansible.builtin.shell: |
+    set -e
+    {% for host in db_hosts %}
+    grep -E "{{ host }}-hsr|{{ host }}-inter" /etc/hosts || exit 1
+    {% endfor %}
+  register: scale_out_verify
+  changed_when: false
+  failed_when: scale_out_verify.rc != 0
+  when: 
+    - not database_high_availability
+    - db_hosts | length > 0
+
+- name: "Report scale-out configuration"
+  ansible.builtin.debug:
+    msg:
+      - "Scale-out configuration completed"
+      - "Verified entries for {{ db_hosts | length }} database nodes"
+      - "Configuration type: {{ 'High Availability' if database_high_availability else 'Scale-out' }}"
+  when: db_hosts | length > 0
