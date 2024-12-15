@@ -9,40 +9,47 @@
       - sap_fqdn is defined
       - scs_instance_number is defined
       - ers_instance_number is defined
-    fail_msg: "Missing required base variables for HA configuration"
+      - scs_instance_number | string is match("[0-9]+")
+      - ers_instance_number | string is match("[0-9]+")
+    fail_msg: "Missing or invalid required variables for HA configuration"
 
 - name: "Validate HA specific variables"
   ansible.builtin.assert:
     that:
       - scs_lb_ip is defined
       - ers_lb_ip is defined
-    fail_msg: "Missing load balancer IPs for HA configuration"
+      - scs_lb_ip | ansible.utils.ipaddr
+      - ers_lb_ip | ansible.utils.ipaddr
+    fail_msg: "Missing or invalid load balancer IPs for HA configuration"
   when: scs_high_availability
 
-- name: "Generate ASCS/ERS virtual hostnames"
+# Generate virtual hostnames with proper naming
+- name: "Generate virtual hostnames"
   ansible.builtin.set_fact:
     ha_hostnames: "{{ ha_hostnames | default({}) | combine({
-      'scs': custom_scs_virtual_hostname | default(sap_sid | lower + 'ascs' + scs_instance_number + 'cl1'),
-      'ers': custom_ers_virtual_hostname | default(sap_sid | lower + 'ers' + ers_instance_number + 'cl2')
+      'scs': custom_scs_virtual_hostname | default(sap_sid | lower + 'scs' + (scs_instance_number | string) + 'cl1'),
+      'ers': custom_ers_virtual_hostname | default(sap_sid | lower + 'ers' + (ers_instance_number | string) + 'cl2')
     }) }}"
   when: scs_high_availability
 
 - name: "Generate DB virtual hostname"
   ansible.builtin.set_fact:
     ha_hostnames: "{{ ha_hostnames | default({}) | combine({
-      'db': custom_db_virtual_hostname | default(sap_sid | lower + db_sid | lower + 'db' + db_instance_number + 'cl')
+      'db': custom_db_virtual_hostname | default(sap_sid | lower + db_sid | lower + 'db' + (db_instance_number | string) + 'cl')
     }) }}"
   when: database_high_availability
 
-- name: "Debug generated hostnames"
+- name: "Debug HA configuration"
   ansible.builtin.debug:
     msg:
-      - "ASCS Virtual Hostname: {{ ha_hostnames.scs | default('NOT SET') }}"
+      - "SCS LoadBalancer IP: {{ scs_lb_ip | default('NOT SET') }}"
+      - "ERS LoadBalancer IP: {{ ers_lb_ip | default('NOT SET') }}"
+      - "SCS Virtual Hostname: {{ ha_hostnames.scs | default('NOT SET') }}"
       - "ERS Virtual Hostname: {{ ha_hostnames.ers | default('NOT SET') }}"
       - "DB Virtual Hostname: {{ ha_hostnames.db | default('NOT SET') }}"
   when: scs_high_availability or database_high_availability
 
-# Create host entries using format_host_entry filter
+# Create HA host entries
 - name: "Create HA ASCS/ERS entries"
   ansible.builtin.blockinfile:
     path: "/etc/hosts"
@@ -54,8 +61,8 @@
     backup: true
   when: 
     - scs_high_availability
-    - ha_hostnames.scs is defined
-    - ha_hostnames.ers is defined
+    - ha_hostnames.scs is defined and ha_hostnames.scs != ''
+    - ha_hostnames.ers is defined and ha_hostnames.ers != ''
 
 - name: "Create HA DB entries"
   ansible.builtin.blockinfile:
@@ -68,16 +75,14 @@
   when: 
     - database_high_availability
     - database_loadbalancer_ip is defined
-    - ha_hostnames.db is defined
+    - ha_hostnames.db is defined and ha_hostnames.db != ''
 
 # Verify entries
-- name: "Verify HA entries existence"
-  ansible.builtin.shell: "grep -E '{{ item }}' /etc/hosts"
-  register: ha_verify
+- name: "Verify HA entries"
+  ansible.builtin.shell: |
+    set -e
+    {% for hostname in [ha_hostnames.scs, ha_hostnames.ers, ha_hostnames.db] | select('defined') | select('string') | select('length') %}
+    grep -q "{{ hostname }}" /etc/hosts || exit 1
+    {% endfor %}
   changed_when: false
-  failed_when: ha_verify.rc != 0
-  with_items:
-    - "{{ ha_hostnames.scs | default('') }}"
-    - "{{ ha_hostnames.ers | default('') }}"
-    - "{{ ha_hostnames.db | default('') }}"
-  when: item != ''
+  when: ha_hostnames is defined

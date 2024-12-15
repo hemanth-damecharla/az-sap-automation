@@ -11,11 +11,8 @@
       - platform == 'HANA'
       - subnet_cidr_storage is defined
       - subnet_cidr_db is defined
-    fail_msg: "Missing required variables for database scale-out configuration"
-
-- name: "Generate scale-out virtual hostname"
-  ansible.builtin.set_fact:
-    db_so_virtual_hostname: "{{ custom_db_virtual_hostname | default(sap_sid | lower + db_sid | lower + 'db' + db_instance_number + 'so') }}"
+      - db_instance_number | string is match("[0-9]+")
+    fail_msg: "Missing or invalid required variables for database scale-out configuration"
 
 - name: "Get DB group hosts"
   ansible.builtin.set_fact:
@@ -27,33 +24,36 @@
       - db_hosts | length > 0
     fail_msg: "No database hosts found for SID {{ sap_sid | upper }}"
 
-- name: "Debug scale-out configuration"
+- name: "Set subnet information"
+  ansible.builtin.set_fact:
+    subnet_info:
+      hsr: "{{ subnet_cidr_db }}"        # System replication network
+      internal: "{{ subnet_cidr_storage }}"  # Internal communication network
+
+- name: "Debug network configuration"
   ansible.builtin.debug:
     msg:
-      - "DB Scale-out Virtual Hostname: {{ db_so_virtual_hostname }}"
-      - "Number of DB Hosts: {{ db_hosts | length }}"
-      - "Storage Subnet: {{ subnet_cidr_storage }}"
-      - "DB Subnet: {{ subnet_cidr_db }}"
+      - "Network configuration for {{ sap_sid | upper }} database nodes:"
+      - "  - HSR network: {{ subnet_info.hsr }}"
+      - "  - Internal network: {{ subnet_info.internal }}"
+      - "  - Number of DB hosts: {{ db_hosts | length }}"
 
-# Create host entries for each DB node
-- name: "Create scale-out entries"
+# Create network-specific host entries for each DB node
+- name: "Create DB network entries"
   ansible.builtin.blockinfile:
     path: "/etc/hosts"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - DB SCALE-OUT {{ sap_sid | upper }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - DB NETWORK {{ sap_sid | upper }}"
     block: |
       {% for host in db_hosts %}
       {% if hostvars[host].ipadd is defined and hostvars[host].ipadd | length > 1 %}
-      {# Primary host entry #}
-      {{ hostvars[host].ipadd[0] | format_host_entry(host, sap_fqdn) }}
-      
-      {# HSR network IP for system replication #}
-      {% set hsr_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_db) %}
+      {# System Replication Network - HSR #}
+      {% set hsr_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_info.hsr) %}
       {% if hsr_ip %}
       {{ hsr_ip | format_host_entry(host + '-hsr', sap_fqdn) }}
       {% endif %}
       
-      {# Internal network IP for inter-node communication #}
-      {% set inter_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_storage) %}
+      {# Internal Communication Network #}
+      {% set inter_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_info.internal) %}
       {% if inter_ip %}
       {{ inter_ip | format_host_entry(host + '-inter', sap_fqdn) }}
       {% endif %}
@@ -63,16 +63,19 @@
     backup: true
   when: not database_high_availability
 
-# Verify entries
-- name: "Verify scale-out entries"
+# Verify network entries
+- name: "Verify DB network entries"
   ansible.builtin.shell: |
     set -e
     {% for host in db_hosts %}
-    grep -E "{{ host }}-hsr|{{ host }}-inter" /etc/hosts || exit 1
+    # Check HSR entry
+    grep -q "{{ host }}-hsr" /etc/hosts || echo "Missing HSR entry for {{ host }}"
+    # Check internal network entry
+    grep -q "{{ host }}-inter" /etc/hosts || echo "Missing internal network entry for {{ host }}"
     {% endfor %}
-  register: scale_out_verify
+  register: verify_result
   changed_when: false
-  failed_when: scale_out_verify.rc != 0
+  failed_when: verify_result.stdout != ""
   when: 
     - not database_high_availability
     - db_hosts | length > 0
@@ -80,7 +83,33 @@
 - name: "Report scale-out configuration"
   ansible.builtin.debug:
     msg:
-      - "Scale-out configuration completed"
-      - "Verified entries for {{ db_hosts | length }} database nodes"
+      - "Database network configuration completed:"
+      - "  - System Replication (HSR) network configured"
+      - "  - Internal communication network configured"
+      - "  - Entries created for {{ db_hosts | length }} database nodes"
       - "Configuration type: {{ 'High Availability' if database_high_availability else 'Scale-out' }}"
   when: db_hosts | length > 0
+
+# Add validation that entries were created correctly
+- name: "Validate network entries"
+  ansible.builtin.shell: |
+    set -e
+    declare -i hsr_count=0
+    declare -i inter_count=0
+    
+    while IFS= read -r line; do
+      [[ $line =~ -hsr ]] && ((hsr_count++))
+      [[ $line =~ -inter ]] && ((inter_count++))
+    done < /etc/hosts
+    
+    # Each DB host should have both entries
+    expected_count={{ db_hosts | length }}
+    
+    if [ $hsr_count -ne $expected_count ] || [ $inter_count -ne $expected_count ]; then
+      echo "Missing entries: Expected $expected_count of each, found HSR: $hsr_count, Internal: $inter_count"
+      exit 1
+    fi
+  changed_when: false
+  when: 
+    - not database_high_availability
+    - db_hosts | length > 0

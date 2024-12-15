@@ -11,14 +11,24 @@
   ansible.builtin.set_fact:
     unique_lines: "{{ (hosts_content['content'] | b64decode).split('\n') | unique | list }}"
 
-- name: "Convert line counts to integers"
+- name: "Get line counts"
   ansible.builtin.set_fact:
-    original_line_count: "{{ (hosts_content['content'] | b64decode).split('\n') | length | int }}"
-    unique_line_count: "{{ unique_lines | length | int }}"
+    line_counts:
+      original: "{{ (hosts_content['content'] | b64decode).split('\n') | length | int }}"
+      unique: "{{ unique_lines | length | int }}"
 
-- name: "Calculate difference"
+- name: "Calculate removed entries"
   ansible.builtin.set_fact:
-    removed_count: "{{ original_line_count - unique_line_count }}"
+    removed_count: "{{ line_counts.original - line_counts.unique }}"
+
+- name: "Debug cleanup details"
+  ansible.builtin.debug:
+    msg:
+      - "Processing /etc/hosts file:"
+      - "  - Original line count: {{ line_counts.original }}"
+      - "  - Unique line count: {{ line_counts.unique }}"
+      - "  - Duplicate lines found: {{ removed_count }}"
+  when: removed_count > 0
 
 - name: "Update hosts file if duplicates found"
   ansible.builtin.copy:
@@ -26,12 +36,14 @@
     content: "{{ unique_lines | join('\n') }}"
     mode: "0644"
     backup: true
+    validate: "/usr/sbin/getent hosts %s"
   when: removed_count > 0
 
 - name: "Report cleanup results"
   ansible.builtin.debug:
-    msg: 
-      - "Original lines: {{ original_line_count }}"
-      - "After deduplication: {{ unique_line_count }}"
-      - "Duplicates removed: {{ removed_count }}"
+    msg:
+      - "Hosts file cleanup completed:"
+      - "  - Original entries: {{ line_counts.original }}"
+      - "  - Final entries: {{ line_counts.unique }}"
+      - "  - Duplicates removed: {{ removed_count }}"
   when: removed_count > 0
