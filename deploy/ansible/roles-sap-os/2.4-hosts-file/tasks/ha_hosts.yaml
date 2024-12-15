@@ -9,28 +9,90 @@
                                         }) }}"
   when:                                scs_high_availability
 
-- name:                                "2.4 Hosts: - Add DB virtual hostname for HA"
+---
+# tasks/ha_hosts.yaml
+
+- name: "Debug HA variables"
+  ansible.builtin.debug:
+    msg:
+      - "SCS LB IP: {{ scs_lb_ip | default('NOT DEFINED') }}"
+      - "ERS LB IP: {{ ers_lb_ip | default('NOT DEFINED') }}"
+      - "HA Hostnames: {{ ha_hostnames | default('NOT DEFINED') }}"
+      - "SAP FQDN: {{ sap_fqdn | default('NOT DEFINED') }}"
+  when: scs_high_availability
+
+- name: "Validate HA variables"
+  ansible.builtin.assert:
+    that:
+      - scs_lb_ip is defined
+      - ers_lb_ip is defined
+      - ha_hostnames is defined
+      - ha_hostnames.scs is defined
+      - ha_hostnames.ers is defined
+      - sap_fqdn is defined
+    fail_msg: "Missing required variables for HA configuration"
+  when: scs_high_availability
+
+- name: "Create virtual hostnames for HA components"
   ansible.builtin.set_fact:
-    ha_hostnames:                      "{{ ha_hostnames | default({}) | combine({
-                                          'db': custom_db_virtual_hostname | default(sap_sid | generate_hostname('db', db_instance_number, ha_enabled=true))
-                                        }) }}"
-  when:                                database_high_availability
+    ha_hostnames: "{{ ha_hostnames | default({}) | combine({
+      'scs': custom_scs_virtual_hostname | default(sap_sid | generate_hostname('scs', scs_instance_number, ha_enabled=true)),
+      'ers': custom_ers_virtual_hostname | default(sap_sid | generate_hostname('ers', ers_instance_number, ha_enabled=true))
+    }) }}"
+  when: scs_high_availability
 
-- name:                                "2.4 Hosts: - Create HA SCS/ERS entries"
-  ansible.builtin.blockinfile:
-    path:                              "/etc/hosts"
-    marker:                            "# {mark} ANSIBLE MANAGED BLOCK - HA {{ sap_sid | upper }}"
-    block: |
-                                       {{ scs_lb_ip | format_host_entry(ha_hostnames.scs, sap_fqdn) }}
-                                       {{ ers_lb_ip | format_host_entry(ha_hostnames.ers, sap_fqdn) }}
-    state:                             present
-  when:                                scs_high_availability
+- name: "Add DB virtual hostname for HA"
+  ansible.builtin.set_fact:
+    ha_hostnames: "{{ ha_hostnames | default({}) | combine({
+      'db': custom_db_virtual_hostname | default(sap_sid | generate_hostname('db', db_instance_number, ha_enabled=true))
+    }) }}"
+  when: database_high_availability
 
-- name:                                "2.4 Hosts: - Create HA DB entries"
+- name: "Create HA SCS/ERS entries"
   ansible.builtin.blockinfile:
-    path:                              "/etc/hosts"
-    marker:                            "# {mark} ANSIBLE MANAGED BLOCK - HA DB {{ sap_sid | upper }}"
+    path: "/etc/hosts"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - HA {{ sap_sid | upper }}"
     block: |
-                                      {{ database_loadbalancer_ip | format_host_entry(ha_hostnames.db, sap_fqdn) }}
-    state:                             present
-  when:                                database_high_availability
+      {% if scs_lb_ip is defined and ha_hostnames.scs is defined %}
+      {{ scs_lb_ip | format_host_entry(ha_hostnames.scs, sap_fqdn) }}
+      {% endif %}
+      {% if ers_lb_ip is defined and ha_hostnames.ers is defined %}
+      {{ ers_lb_ip | format_host_entry(ha_hostnames.ers, sap_fqdn) }}
+      {% endif %}
+    state: present
+  when: scs_high_availability
+
+- name: "Create HA DB entries"
+  ansible.builtin.blockinfile:
+    path: "/etc/hosts"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - HA DB {{ sap_sid | upper }}"
+    block: |
+      {{ database_loadbalancer_ip | format_host_entry(ha_hostnames.db, sap_fqdn) }}
+    state: present
+  when: database_high_availability
+
+# - name:                                "2.4 Hosts: - Add DB virtual hostname for HA"
+#   ansible.builtin.set_fact:
+#     ha_hostnames:                      "{{ ha_hostnames | default({}) | combine({
+#                                           'db': custom_db_virtual_hostname | default(sap_sid | generate_hostname('db', db_instance_number, ha_enabled=true))
+#                                         }) }}"
+#   when:                                database_high_availability
+
+# - name:                                "2.4 Hosts: - Create HA SCS/ERS entries"
+#   ansible.builtin.blockinfile:
+#     path:                              "/etc/hosts"
+#     marker:                            "# {mark} ANSIBLE MANAGED BLOCK - HA {{ sap_sid | upper }}"
+#     block: |
+#                                        {{ scs_lb_ip | format_host_entry(ha_hostnames.scs, sap_fqdn) }}
+#                                        {{ ers_lb_ip | format_host_entry(ha_hostnames.ers, sap_fqdn) }}
+#     state:                             present
+#   when:                                scs_high_availability
+
+# - name:                                "2.4 Hosts: - Create HA DB entries"
+#   ansible.builtin.blockinfile:
+#     path:                              "/etc/hosts"
+#     marker:                            "# {mark} ANSIBLE MANAGED BLOCK - HA DB {{ sap_sid | upper }}"
+#     block: |
+#                                       {{ database_loadbalancer_ip | format_host_entry(ha_hostnames.db, sap_fqdn) }}
+#     state:                             present
+#   when:                                database_high_availability
