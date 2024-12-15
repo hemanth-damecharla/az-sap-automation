@@ -2,32 +2,36 @@
 # tasks/cleanup_hosts.yaml
 # Removes duplicate entries and validates hosts file
 
-- name:                                "2.4 Hosts: - Read current hosts file"
+- name: "Read current hosts file"
   ansible.builtin.slurp:
-    src:                               "/etc/hosts"
-  register:                            hosts_content
+    src: "/etc/hosts"
+  register: hosts_content
 
-- name:                                "2.4 Hosts: - Get unique lines"
+- name: "Get unique lines"
   ansible.builtin.set_fact:
-    unique_lines:                      "{{ (hosts_content['content'] | b64decode).split('\n') | unique | list }}"
+    unique_lines: "{{ (hosts_content['content'] | b64decode).split('\n') | unique | list }}"
 
-- name:                                "2.4 Hosts: - Count original and unique lines"
+- name: "Convert line counts to integers"
   ansible.builtin.set_fact:
-    original_count:                    "{{ (hosts_content['content'] | b64decode).split('\n') | length }}"
-    unique_count:                      "{{ unique_lines | length }}"
+    original_line_count: "{{ (hosts_content['content'] | b64decode).split('\n') | length | int }}"
+    unique_line_count: "{{ unique_lines | length | int }}"
 
-- name:                                "2.4 Hosts: - Update hosts file if duplicates found"
+- name: "Calculate difference"
+  ansible.builtin.set_fact:
+    removed_count: "{{ original_line_count - unique_line_count }}"
+
+- name: "Update hosts file if duplicates found"
   ansible.builtin.copy:
-    dest:                              "/etc/hosts"
-    content:                           "{{ unique_lines | join('\n') }}"
-    mode:                              "0644"
-    backup:                            true
-  when:                                original_count != unique_count
+    dest: "/etc/hosts"
+    content: "{{ unique_lines | join('\n') }}"
+    mode: "0644"
+    backup: true
+  when: removed_count > 0
 
-- name:                                "2.4 Hosts: - Report cleanup results"
+- name: "Report cleanup results"
   ansible.builtin.debug:
-    msg:
-                                       - "Original lines: {{ original_count }}"
-                                       - "After deduplication: {{ unique_count }}"
-                                       - "Duplicates removed: {{ original_count - unique_count }}"
-  when:                                original_count != unique_count
+    msg: 
+      - "Original lines: {{ original_line_count }}"
+      - "After deduplication: {{ unique_line_count }}"
+      - "Duplicates removed: {{ removed_count }}"
+  when: removed_count > 0

@@ -13,9 +13,9 @@
       - subnet_cidr_db is defined
     fail_msg: "Missing required variables for database scale-out configuration"
 
-- name: "Generate scale-out hostname"
+- name: "Generate scale-out virtual hostname"
   ansible.builtin.set_fact:
-    db_so_virtual_hostname: "{{ custom_db_virtual_hostname | default(sap_sid | lower + db_sid | lower + 'db' + (db_instance_number | string) + 'so') }}"
+    db_so_virtual_hostname: "{{ custom_db_virtual_hostname | default(sap_sid | lower + db_sid | lower + 'db' + db_instance_number + 'so') }}"
 
 - name: "Get DB group hosts"
   ansible.builtin.set_fact:
@@ -43,16 +43,19 @@
     block: |
       {% for host in db_hosts %}
       {% if hostvars[host].ipadd is defined and hostvars[host].ipadd | length > 1 %}
-      {# Get storage network IP #}
-      {% set storage_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_storage) %}
-      {% if storage_ip %}
-      {{ storage_ip }} {{ host }}-inter.{{ sap_fqdn }} {{ host }}-inter
+      {# Primary host entry #}
+      {{ hostvars[host].ipadd[0] | format_host_entry(host, sap_fqdn) }}
+      
+      {# HSR network IP for system replication #}
+      {% set hsr_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_db) %}
+      {% if hsr_ip %}
+      {{ hsr_ip | format_host_entry(host + '-hsr', sap_fqdn) }}
       {% endif %}
       
-      {# Get DB network IP #}
-      {% set db_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_db) %}
-      {% if db_ip %}
-      {{ db_ip }} {{ host }}-hsr.{{ sap_fqdn }} {{ host }}-hsr
+      {# Internal network IP for inter-node communication #}
+      {% set inter_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_storage) %}
+      {% if inter_ip %}
+      {{ inter_ip | format_host_entry(host + '-inter', sap_fqdn) }}
       {% endif %}
       {% endif %}
       {% endfor %}
@@ -60,6 +63,7 @@
     backup: true
   when: not database_high_availability
 
+# Verify entries
 - name: "Verify scale-out entries"
   ansible.builtin.shell: |
     set -e

@@ -19,75 +19,65 @@
     fail_msg: "Missing load balancer IPs for HA configuration"
   when: scs_high_availability
 
-- name: "Debug HA variables"
-  ansible.builtin.debug:
-    msg:
-      - "SCS LB IP: {{ scs_lb_ip | default('NOT DEFINED') }}"
-      - "ERS LB IP: {{ ers_lb_ip | default('NOT DEFINED') }}"
-      - "SAP SID: {{ sap_sid | upper }}"
-      - "SCS Instance: {{ scs_instance_number }}"
-      - "ERS Instance: {{ ers_instance_number }}"
-  when: scs_high_availability
-
-# Generate virtual hostnames
-- name: "Generate SCS virtual hostname"
+- name: "Generate ASCS/ERS virtual hostnames"
   ansible.builtin.set_fact:
-    scs_virtual_hostname: "{{ custom_scs_virtual_hostname | default(sap_sid | lower + 'scs' + (scs_instance_number | string) + 'cl1') }}"
-  when: scs_high_availability
-
-- name: "Generate ERS virtual hostname"
-  ansible.builtin.set_fact:
-    ers_virtual_hostname: "{{ custom_ers_virtual_hostname | default(sap_sid | lower + 'ers' + (ers_instance_number | string) + 'cl2') }}"
+    ha_hostnames: "{{ ha_hostnames | default({}) | combine({
+      'scs': custom_scs_virtual_hostname | default(sap_sid | lower + 'ascs' + scs_instance_number + 'cl1'),
+      'ers': custom_ers_virtual_hostname | default(sap_sid | lower + 'ers' + ers_instance_number + 'cl2')
+    }) }}"
   when: scs_high_availability
 
 - name: "Generate DB virtual hostname"
   ansible.builtin.set_fact:
-    db_virtual_hostname: "{{ custom_db_virtual_hostname | default(sap_sid | lower + db_sid | lower + 'db' + (db_instance_number | string) + 'cl') }}"
+    ha_hostnames: "{{ ha_hostnames | default({}) | combine({
+      'db': custom_db_virtual_hostname | default(sap_sid | lower + db_sid | lower + 'db' + db_instance_number + 'cl')
+    }) }}"
   when: database_high_availability
 
 - name: "Debug generated hostnames"
   ansible.builtin.debug:
     msg:
-      - "SCS Virtual Hostname: {{ scs_virtual_hostname | default('NOT SET') }}"
-      - "ERS Virtual Hostname: {{ ers_virtual_hostname | default('NOT SET') }}"
-      - "DB Virtual Hostname: {{ db_virtual_hostname | default('NOT SET') }}"
+      - "ASCS Virtual Hostname: {{ ha_hostnames.scs | default('NOT SET') }}"
+      - "ERS Virtual Hostname: {{ ha_hostnames.ers | default('NOT SET') }}"
+      - "DB Virtual Hostname: {{ ha_hostnames.db | default('NOT SET') }}"
   when: scs_high_availability or database_high_availability
 
-# Create host entries
-- name: "Create HA SCS/ERS entries"
+# Create host entries using format_host_entry filter
+- name: "Create HA ASCS/ERS entries"
   ansible.builtin.blockinfile:
     path: "/etc/hosts"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - HA {{ sap_sid | upper }}"
     block: |
-      {{ scs_lb_ip }} {{ scs_virtual_hostname }}.{{ sap_fqdn }} {{ scs_virtual_hostname }}
-      {{ ers_lb_ip }} {{ ers_virtual_hostname }}.{{ sap_fqdn }} {{ ers_virtual_hostname }}
+      {{ scs_lb_ip | format_host_entry(ha_hostnames.scs, sap_fqdn) }}
+      {{ ers_lb_ip | format_host_entry(ha_hostnames.ers, sap_fqdn) }}
     state: present
     backup: true
   when: 
     - scs_high_availability
-    - scs_virtual_hostname is defined
-    - ers_virtual_hostname is defined
+    - ha_hostnames.scs is defined
+    - ha_hostnames.ers is defined
 
 - name: "Create HA DB entries"
   ansible.builtin.blockinfile:
     path: "/etc/hosts"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - HA DB {{ sap_sid | upper }}"
     block: |
-      {{ database_loadbalancer_ip }} {{ db_virtual_hostname }}.{{ sap_fqdn }} {{ db_virtual_hostname }}
+      {{ database_loadbalancer_ip | format_host_entry(ha_hostnames.db, sap_fqdn) }}
     state: present
     backup: true
   when: 
     - database_high_availability
     - database_loadbalancer_ip is defined
-    - db_virtual_hostname is defined
+    - ha_hostnames.db is defined
 
-- name: "Verify HA entries"
+# Verify entries
+- name: "Verify HA entries existence"
   ansible.builtin.shell: "grep -E '{{ item }}' /etc/hosts"
   register: ha_verify
   changed_when: false
   failed_when: ha_verify.rc != 0
   with_items:
-    - "{{ scs_virtual_hostname | default('') }}"
-    - "{{ ers_virtual_hostname | default('') }}"
-    - "{{ db_virtual_hostname | default('') }}"
+    - "{{ ha_hostnames.scs | default('') }}"
+    - "{{ ha_hostnames.ers | default('') }}"
+    - "{{ ha_hostnames.db | default('') }}"
   when: item != ''
