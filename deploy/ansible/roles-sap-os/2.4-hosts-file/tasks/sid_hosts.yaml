@@ -1,35 +1,40 @@
 ---
 # tasks/sid_hosts.yaml
 
-- name:                                "2.4 Hosts: - Get host lists for each component"
+- name: "Get host lists for each component"
   ansible.builtin.set_fact:
-    component_hosts:                   "{{ component_hosts | default({}) | combine({
-                                            item: groups[sap_sid | upper + '_' + item] | default([])
-                                          }) }}"
+    component_hosts: "{{ component_hosts | default({}) | combine({
+      item: groups[sap_sid | upper + '_' + item] | default([])
+    }) }}"
   loop:
-                                       - "SCS"
-                                       - "PAS"
-                                       - "APP"
-                                       - "DB"
-                                       - "WEB"
+    - "SCS"
+    - "PAS"
+    - "APP"
+    - "DB"
+    - "WEB"
 
-- name:                                "2.4 Hosts: - Generate host entries for each component"
+- name: "Generate host entries for each component"
   ansible.builtin.blockinfile:
-    path:                              "/etc/hosts"
-    marker:                            "# {mark} ANSIBLE MANAGED BLOCK - {{ sap_sid | upper }} {{ component_type }}"
+    path: "/etc/hosts"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - {{ sap_sid | upper }} {{ component_type }}"
     block: |
-                                       {% for host in hosts %}
-                                       {% if hostvars[host].ipadd is defined and hostvars[host].ipadd | length > 0 %}
-                                       {{ hostvars[host].ipadd[0] | format_host_entry(host, sap_fqdn) }}
-                                       {% if 'pas' in hostvars[host].supported_tiers %}
-                                       {{ hostvars[host].ipadd[0] | format_host_entry(hostvars[host].pas_virtual_hostname | default(host), sap_fqdn) }}
-                                       {% endif %}
-                                       {% endif %}
-                                       {% endfor %}
-    state:                             present
-  loop:                                "{{ component_hosts | dict2items }}"
+      {% for host in hosts %}
+      {% if hostvars[host].ipadd is defined and hostvars[host].ipadd | length > 0 %}
+      {# Get primary IP (client network) #}
+      {% set primary_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_client) | default(hostvars[host].ipadd | get_tier_ip(0)) %}
+      {{ primary_ip | format_host_entry(host, sap_fqdn) }}
+      
+      {# Handle PAS virtual hostnames #}
+      {% if 'pas' in hostvars[host].supported_tiers %}
+      {% set pas_hostname = hostvars[host].pas_virtual_hostname | default(host) %}
+      {{ primary_ip | format_host_entry(pas_hostname, sap_fqdn) }}
+      {% endif %}
+      {% endif %}
+      {% endfor %}
+    state: present
+  loop: "{{ component_hosts | dict2items }}"
   loop_control:
-    loop_var:                          component
+    loop_var: component
   vars:
-    component_type:                    "{{ component.key }}"
-    hosts:                             "{{ component.value }}"
+    component_type: "{{ component.key }}"
+    hosts: "{{ component.value }}"
