@@ -36,30 +36,33 @@
 # Generate ASCS/ERS hostnames separately
 - name: "Generate ASCS hostname"
   ansible.builtin.set_fact:
-    ha_hostnames: >-
-      {{ ha_hostnames | combine({
-        'scs': custom_scs_virtual_hostname | default(sap_sid | lower + 'ascs' + scs_instance_number + 'cl1')
-      }) }}
+    ascs_name: "{{ sap_sid | lower }}ascs{{ scs_instance_number }}cl1"
   when: scs_high_availability | bool
 
 - name: "Generate ERS hostname"
   ansible.builtin.set_fact:
-    ha_hostnames: >-
-      {{ ha_hostnames | combine({
-        'ers': custom_ers_virtual_hostname | default(sap_sid | lower + 'ers' + ers_instance_number + 'cl2')
-      }) }}
+    ers_name: "{{ sap_sid | lower }}ers{{ ers_instance_number }}cl2"
   when: scs_high_availability | bool
 
-- name: "Debug generated hostnames"
+# Now combine them into ha_hostnames
+- name: "Set HA hostnames"
+  ansible.builtin.set_fact:
+    ha_hostnames:
+      scs: "{{ ascs_name }}"
+      ers: "{{ ers_name }}"
+  when: scs_high_availability | bool
+
+# Debug the generated names
+- name: "Debug generated names"
   ansible.builtin.debug:
     msg:
-      - "Generated hostnames:"
-      - "  ASCS: {{ ha_hostnames.scs | default('NOT SET') }}"
-      - "  ERS: {{ ha_hostnames.ers | default('NOT SET') }}"
-      - "Load Balancer IPs:"
-      - "  SCS LB IP: {{ scs_lb_ip | default('NOT SET') }}"
-      - "  ERS LB IP: {{ ers_lb_ip | default('NOT SET') }}"
-  when: scs_high_availability | bool
+      - "Generated names:"
+      - "ASCS name: {{ ascs_name | default('NOT SET') }}"
+      - "ERS name: {{ ers_name | default('NOT SET') }}"
+      - "Combined ha_hostnames:"
+      - "  scs: {{ ha_hostnames.scs | default('NOT SET') }}"
+      - "  ers: {{ ha_hostnames.ers | default('NOT SET') }}"
+
 
 # Create HA host entries
 - name: "Create HA ASCS/ERS entries"
