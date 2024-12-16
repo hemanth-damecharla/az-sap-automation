@@ -2,7 +2,7 @@
 # tasks/cleanup_hosts.yaml
 # Removes duplicate entries and validates hosts file
 
-- name: "Read current hosts file"
+- name: "2.4 Hosts: - Read current hosts file"
   ansible.builtin.slurp:
     src: "/etc/hosts"
   register: hosts_content
@@ -19,7 +19,7 @@
 
 - name: "Calculate removed entries"
   ansible.builtin.set_fact:
-    removed_count: "{{ line_counts.original - line_counts.unique }}"
+    removed_count: "{{ line_counts.original | int - line_counts.unique | int }}"
 
 - name: "Debug cleanup details"
   ansible.builtin.debug:
