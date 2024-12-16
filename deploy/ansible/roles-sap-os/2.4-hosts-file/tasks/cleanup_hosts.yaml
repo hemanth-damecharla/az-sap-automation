@@ -30,6 +30,20 @@
       - "  - Duplicate lines found: {{ removed_count }}"
   when: removed_count | int > 0
 
+- name: "Debug hostnames that cannot be resolved"
+  ansible.builtin.shell: "/usr/bin/getent hosts {{ item }}"
+  loop: "{{ unique_lines | map('regex_replace', '^(\\S+)\\s+.*$', '\\1') | list }}"
+  register: getent_results
+  failed_when: getent_results.rc == 2
+
+- name: "Show unresolved hostnames"
+  ansible.builtin.debug:
+    msg: "{{ item.item }}"
+  when: item.rc == 2
+  loop: "{{ getent_results.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+
 - name: "Update hosts file if duplicates found"
   ansible.builtin.copy:
     dest: "/etc/hosts"
