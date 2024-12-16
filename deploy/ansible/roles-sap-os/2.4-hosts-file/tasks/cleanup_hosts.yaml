@@ -36,7 +36,7 @@
     content: "{{ unique_lines | join('\n') }}"
     mode: "0644"
     backup: true
-    validate: "/usr/sbin/getent hosts %s"
+    validate: "/usr/bin/getent hosts %s"
   when: removed_count | int > 0
 
 - name: "Report cleanup results"
