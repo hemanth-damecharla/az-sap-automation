@@ -28,7 +28,7 @@
       - "  - Original line count: {{ line_counts.original }}"
       - "  - Unique line count: {{ line_counts.unique }}"
       - "  - Duplicate lines found: {{ removed_count }}"
-  when: removed_count > 0
+  when: removed_count | int > 0
 
 - name: "Update hosts file if duplicates found"
   ansible.builtin.copy:
@@ -37,7 +37,7 @@
     mode: "0644"
     backup: true
     validate: "/usr/sbin/getent hosts %s"
-  when: removed_count > 0
+  when: removed_count | int > 0
 
 - name: "Report cleanup results"
   ansible.builtin.debug:
@@ -46,4 +46,4 @@
       - "  - Original entries: {{ line_counts.original }}"
       - "  - Final entries: {{ line_counts.unique }}"
       - "  - Duplicates removed: {{ removed_count }}"
-  when: removed_count > 0
+  when: removed_count | int > 0
