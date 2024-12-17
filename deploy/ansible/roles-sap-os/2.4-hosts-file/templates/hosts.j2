@@ -70,23 +70,40 @@ ansible_facts.
 
 #}
 
-# {{ sap_sid|upper }}
-# {{ ansible_play_hosts|length }} Hosts
-
 {% for host in ansible_play_hosts|sort %}
 {%   set supported_tiers = hostvars[host]['supported_tiers'] | default([]) %}
 {%   set host_ips = hostvars[host]['ipadd'] | default([]) %}
+{%   set virtual_hostnames = [] %}
+
+{# Collect virtual hostnames based on supported tiers #}
+{%   for tier in supported_tiers %}
+{%     if tier == 'pas' %}
+{%       set pas_name = hostvars[host]['custom_pas_virtual_hostname'] | default(hostvars[host]['virtual_host']) %}
+{%       if pas_name %}{% set _ = virtual_hostnames.append(pas_name) %}{% endif %}
+{%     elif tier == 'app' %}
+{%       set app_name = hostvars[host]['custom_app_virtual_hostname'] | default(hostvars[host]['virtual_host']) %}
+{%       if app_name %}{% set _ = virtual_hostnames.append(app_name) %}{% endif %}
+{%     elif tier in ['scs', 'ers'] and not scs_high_availability %}
+{%       set scs_name = hostvars[host]['custom_' + tier + '_virtual_hostname'] | default(hostvars[host]['virtual_host']) %}
+{%       if scs_name %}{% set _ = virtual_hostnames.append(scs_name) %}{% endif %}
+{%     endif %}
+{%   endfor %}
 
 {%   if host_ips %}
 {# Primary host entry #}
 {{ host_ips[0] | format_host_entry(host, sap_fqdn) }}
 
+{# Virtual hostname entries #}
+{%     for vh_name in virtual_hostnames | unique %}
+{{ host_ips[0] | format_host_entry(vh_name, sap_fqdn) }}
+{%     endfor %}
+
 {%     if database_scale_out and platform == 'HANA' %}
 {%       for ip in host_ips[1:] %}
 {%         if subnet_cidr_db | ansible.utils.network_in_usable(ip) %}
-{{ ip | format_host_entry(host + '-db', sap_fqdn) }}
+{{ ip | format_host_entry(host + ('-hsr' if database_high_availability else '-db'), sap_fqdn) }}
 {%         elif subnet_cidr_storage | ansible.utils.network_in_usable(ip) %}
-{{ ip | format_host_entry(host + '-storage', sap_fqdn) }}
+{{ ip | format_host_entry(host + ('-inter' if database_high_availability else '-storage'), sap_fqdn) }}
 {%         endif %}
 {%       endfor %}
 {%     endif %}

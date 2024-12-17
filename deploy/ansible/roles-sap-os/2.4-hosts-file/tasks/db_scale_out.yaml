@@ -1,7 +1,6 @@
 ---
 # tasks/db_scale_out.yaml
 # Handles database scale-out scenarios for SAP HANA systems
-
 - name: "Validate scale-out variables"
   ansible.builtin.assert:
     that:
@@ -11,34 +10,24 @@
       - platform == 'HANA'
       - subnet_cidr_storage is defined
       - subnet_cidr_db is defined
-      - db_instance_number | string is match("[0-9]+")
-    fail_msg: "Missing or invalid required variables for database scale-out configuration"
+    fail_msg: "Missing required variables for database scale-out configuration"
 
 - name: "Get DB group hosts"
   ansible.builtin.set_fact:
     db_hosts: "{{ groups[sap_sid | upper + '_DB'] | default([]) }}"
 
-- name: "Validate DB hosts"
-  ansible.builtin.assert:
-    that:
-      - db_hosts | length > 0
-    fail_msg: "No database hosts found for SID {{ sap_sid | upper }}"
-
 - name: "Set subnet information"
   ansible.builtin.set_fact:
     subnet_info:
-      hsr: "{{ subnet_cidr_db }}"        # System replication network
-      internal: "{{ subnet_cidr_storage }}"  # Internal communication network
+      hsr: "{{ subnet_cidr_db }}"
+      internal: "{{ subnet_cidr_storage }}"
 
-- name: "Debug network configuration"
-  ansible.builtin.debug:
-    msg:
-      - "Network configuration for {{ sap_sid | upper }} database nodes:"
-      - "  - HSR network: {{ subnet_info.hsr }}"
-      - "  - Internal network: {{ subnet_info.internal }}"
-      - "  - Number of DB hosts: {{ db_hosts | length }}"
+- name: "Set DB suffixes based on configuration"
+  ansible.builtin.set_fact:
+    db_suffixes:
+      replication: "{{ '-hsr' if database_high_availability else '-db' }}"
+      internal: "{{ '-inter' if database_high_availability else '-storage' }}"
 
-# Create network-specific host entries for each DB node
 - name: "Create DB network entries"
   ansible.builtin.blockinfile:
     path: "/etc/hosts"
@@ -46,61 +35,22 @@
     block: |
       {% for host in db_hosts %}
       {% if hostvars[host].ipadd is defined and hostvars[host].ipadd | length > 1 %}
-      {# System Replication Network - HSR #}
+      {# System Replication Network #}
       {% set hsr_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_info.hsr) %}
       {% if hsr_ip %}
-      {{ hsr_ip | format_host_entry(host + '-hsr', sap_fqdn) }}
+      {{ hsr_ip | format_host_entry(host + db_suffixes.replication, sap_fqdn) }}
       {% endif %}
       
       {# Internal Communication Network #}
       {% set inter_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_info.internal) %}
       {% if inter_ip %}
-      {{ inter_ip | format_host_entry(host + '-inter', sap_fqdn) }}
+      {{ inter_ip | format_host_entry(host + db_suffixes.internal, sap_fqdn) }}
       {% endif %}
       {% endif %}
       {% endfor %}
     state: present
     backup: true
   when: not database_high_availability
-
-# Verify network entries
-- name: "Verify DB network entries"
-  ansible.builtin.shell: |
-    set -e
-    {% for host in db_hosts %}
-    # Check HSR entry
-    grep -q "{{ host }}-hsr" /etc/hosts || echo "Missing HSR entry for {{ host }}"
-    # Check internal network entry
-    grep -q "{{ host }}-inter" /etc/hosts || echo "Missing internal network entry for {{ host }}"
-    {% endfor %}
-  register: verify_result
-  changed_when: false
-  failed_when: verify_result.stdout != ""
-  when: 
-    - not database_high_availability
-    - db_hosts | length > 0
-
-- name: "Report scale-out configuration"
-  ansible.builtin.debug:
-    msg:
-      - "Database network configuration completed:"
-      - "  - System Replication (HSR) network configured"
-      - "  - Internal communication network configured"
-      - "  - Entries created for {{ db_hosts | length }} database nodes"
-      - "Configuration type: {{ 'High Availability' if database_high_availability else 'Scale-out' }}"
-  when: db_hosts | length > 0
-
-# Add validation that entries were created correctly
-- name: "Validate network entries"
-  ansible.builtin.shell: |
-    set -e
-    declare -i hsr_count=0
-    declare -i inter_count=0
-    
-    while IFS= read -r line; do
-      [[ $line =~ -hsr ]] && ((hsr_count++))
-      [[ $line =~ -inter ]] && ((inter_count++))
-    done < /etc/hosts
     
     # Each DB host should have both entries
     expected_count={{ db_hosts | length }}

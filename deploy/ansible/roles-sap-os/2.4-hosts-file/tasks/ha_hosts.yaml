@@ -2,15 +2,6 @@
 # tasks/ha_hosts.yaml
 # Handles High Availability host entries for SAP systems
 
-- name: "Debug input variables"
-  ansible.builtin.debug:
-    msg:
-      - "SAP SID: {{ sap_sid | default('NOT SET') }}"
-      - "SCS Instance Number: {{ scs_instance_number | default('NOT SET') }}"
-      - "ERS Instance Number: {{ ers_instance_number | default('NOT SET') }}"
-      - "SCS HA Enabled: {{ scs_high_availability | default('NOT SET') }}"
-      - "DB HA Enabled: {{ database_high_availability | default('NOT SET') }}"
-
 - name: "Validate required variables for HA"
   ansible.builtin.assert:
     that:
@@ -20,49 +11,13 @@
       - ers_instance_number is defined
     fail_msg: "Missing required variables for HA configuration"
 
-- name: "Validate HA specific variables"
-  ansible.builtin.assert:
-    that:
-      - scs_lb_ip is defined
-      - ers_lb_ip is defined
-    fail_msg: "Missing load balancer IPs for HA configuration"
-  when: scs_high_availability | bool
-
-# Initialize hostnames dictionary
-- name: "Initialize HA hostnames"
+- name: "Set cluster hostnames"
   ansible.builtin.set_fact:
-    ha_hostnames: {}
-
-# Generate ASCS/ERS hostnames separately
-- name: "Generate ASCS hostname"
-  ansible.builtin.set_fact:
-    ascs_name: "{{ sap_sid | lower }}ascs{{ scs_instance_number }}cl1"
-  when: scs_high_availability | bool
-
-- name: "Generate ERS hostname"
-  ansible.builtin.set_fact:
-    ers_name: "{{ sap_sid | lower }}ers{{ ers_instance_number }}cl2"
-  when: scs_high_availability | bool
-
-# Now combine them into ha_hostnames
-- name: "Set HA hostnames"
-  ansible.builtin.set_fact:
-    ha_hostnames:
-      scs: "{{ ascs_name }}"
-      ers: "{{ ers_name }}"
-  when: scs_high_availability | bool
-
-# Debug the generated names
-- name: "Debug generated names"
-  ansible.builtin.debug:
-    msg:
-      - "Generated names:"
-      - "ASCS name: {{ ascs_name | default('NOT SET') }}"
-      - "ERS name: {{ ers_name | default('NOT SET') }}"
-      - "Combined ha_hostnames:"
-      - "  scs: {{ ha_hostnames.scs | default('NOT SET') }}"
-      - "  ers: {{ ha_hostnames.ers | default('NOT SET') }}"
-
+    cluster_hostnames:
+      scs: "{{ sap_sid | lower }}scs00cl1"
+      ers: "{{ sap_sid | lower }}ers01cl2"
+      db: "{{ sap_sid | lower }}hdbdb00cl"
+  when: scs_high_availability or database_high_availability
 
 # Create HA host entries
 - name: "Create HA ASCS/ERS entries"
@@ -70,48 +25,13 @@
     path: "/etc/hosts"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - HA {{ sap_sid | upper }}"
     block: |
-      {{ scs_lb_ip }} {{ ha_hostnames.scs }}.{{ sap_fqdn }} {{ ha_hostnames.scs }}
-      {{ ers_lb_ip }} {{ ha_hostnames.ers }}.{{ sap_fqdn }} {{ ha_hostnames.ers }}
+      {% if scs_high_availability %}
+      {{ scs_lb_ip }} {{ cluster_hostnames.scs }}.{{ sap_fqdn }} {{ cluster_hostnames.scs }}
+      {{ ers_lb_ip }} {{ cluster_hostnames.ers }}.{{ sap_fqdn }} {{ cluster_hostnames.ers }}
+      {% endif %}
+      {% if database_high_availability %}
+      {{ database_loadbalancer_ip }} {{ cluster_hostnames.db }}.{{ sap_fqdn }} {{ cluster_hostnames.db }}
+      {% endif %}
     state: present
     backup: true
-  when: 
-    - scs_high_availability | bool
-    - ha_hostnames.scs is defined and ha_hostnames.scs != ''
-    - ha_hostnames.ers is defined and ha_hostnames.ers != ''
-
-- name: "Generate DB virtual hostname"
-  ansible.builtin.set_fact:
-    ha_hostnames: >-
-      {{ ha_hostnames | combine({
-        'db': custom_db_virtual_hostname | default(sap_sid | lower + db_sid | lower + 'db' + db_instance_number + 'cl')
-      }) }}
-  when: database_high_availability | bool
-
-- name: "Create HA DB entries"
-  ansible.builtin.blockinfile:
-    path: "/etc/hosts"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - HA DB {{ sap_sid | upper }}"
-    block: |
-      {{ database_loadbalancer_ip }} {{ ha_hostnames.db }}.{{ sap_fqdn }} {{ ha_hostnames.db }}
-    state: present
-    backup: true
-  when: 
-    - database_high_availability | bool
-    - database_loadbalancer_ip is defined
-    - ha_hostnames.db is defined and ha_hostnames.db != ''
-
-# Verify entries
-- name: "Verify HA entries existence"
-  ansible.builtin.shell: |
-    set -e
-    {% if scs_high_availability | bool %}
-    grep -q "{{ ha_hostnames.scs }}" /etc/hosts || echo "Missing ASCS entry"
-    grep -q "{{ ha_hostnames.ers }}" /etc/hosts || echo "Missing ERS entry"
-    {% endif %}
-    {% if database_high_availability | bool and ha_hostnames.db is defined %}
-    grep -q "{{ ha_hostnames.db }}" /etc/hosts || echo "Missing DB entry"
-    {% endif %}
-  register: verify_result
-  changed_when: false
-  failed_when: verify_result.stdout != ""
-  when: scs_high_availability | bool or database_high_availability | bool
+  when: scs_high_availability or database_high_availability

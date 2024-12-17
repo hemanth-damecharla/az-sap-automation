@@ -12,92 +12,122 @@
 #
 
 # Import pre-checks
-- name:                                "2.4 Hosts: - Import prerequisite checks"
-  ansible.builtin.import_tasks:        "pre_checks.yaml"
-  tags:                                ["always"]
+- name: "2.4 Hosts: - Import prerequisite checks"
+  ansible.builtin.import_tasks: "pre_checks.yaml"
+  tags: ["always"]
 
 # Validate IP configuration
-- name:                                "2.4 Hosts: - Validate IP configuration from playbook"
+- name: "2.4 Hosts: - Validate IP configuration from playbook"
   ansible.builtin.assert:
     that:
-                                       - ipadd is defined
-                                       - ipadd | type_debug != 'NoneType'
-                                       - ipadd | length > 0
-    fail_msg:                          "No valid IP addresses found for host {{ inventory_hostname }}. The ipadd variable must be set at the playbook level."
-    success_msg:                       "Successfully validated {{ ipadd | length }} IP addresses from playbook"
+      - ipadd is defined
+      - ipadd | type_debug != 'NoneType'
+      - ipadd | length > 0
+    fail_msg: "No valid IP addresses found for host {{ inventory_hostname }}. The ipadd variable must be set at the playbook level."
+    success_msg: "Successfully validated {{ ipadd | length }} IP addresses from playbook"
+
+# Backward compatibility check
+- name: "Backward Compatibility - Check required Database HA variables"
+  ansible.builtin.set_fact:
+    database_high_availability: "{{ db_high_availability | default(false) }}"
+  when:
+    - db_high_availability is defined
+    - database_high_availability is not defined
 
 # Create common hosts entries
-- name:                                "2.4 Hosts: - Manage common hosts entries"
+- name: "2.4 Hosts: - Manage common hosts entries"
   ansible.builtin.blockinfile:
-    path:                              "/etc/hosts"
-    mode:                              "0644"
-    create:                            true
-    backup:                            true
-    state:                             present
-    block:                             "{{ lookup('file', 'hosts.block') }}"
-    marker:                            "# {mark} ANSIBLE MANAGED BLOCK - COMMON"
+    path: "/etc/hosts"
+    mode: "0644"
+    create: true
+    backup: true
+    state: present
+    block: "{{ lookup('file', 'hosts.block') }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - COMMON"
 
 # Create SID-specific entries
-- name:                                "2.4 Hosts: - Manage SID-specific hosts entries"
-  ansible.builtin.include_tasks:       "tasks/sid_hosts.yaml"
-  when:                                "sap_sid is defined"
+- name: "2.4 Hosts: - Manage SID-specific hosts entries"
+  ansible.builtin.include_tasks: "tasks/sid_hosts.yaml"
+  when: "sap_sid is defined"
+
+# Process PAS hostname configuration
+- name: "2.4 Hosts: Process pas_hostname variable"
+  block:
+    - name: "Get PAS server list"
+      ansible.builtin.set_fact:
+        pas_server_temp: "{{ pas_server_temp | default([]) + [item] }}"
+      with_items:
+        - "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_PAS') }}"
+        - "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_SCS') }}"
+        - "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_DB') }}"
+      when: "'pas' in hostvars[item]['supported_tiers'] | default([])"
+
+    - name: "Set PAS virtual hostname"
+      ansible.builtin.set_fact:
+        pas_virtualhost_from_inventory: "{{ pas_server_temp | first }}"
+        pas_virtual_hostname: "{{ custom_pas_virtual_hostname | default(pas_server_temp | first, true) }}"
+      when: pas_server_temp | default([]) | length > 0
 
 # Handle high availability configurations
-- name:                                "2.4 Hosts: - Configure HA host entries"
-  ansible.builtin.include_tasks:       "tasks/ha_hosts.yaml"
-  when:                                "scs_high_availability or database_high_availability"
+- name: "2.4 Hosts: - Configure HA host entries"
+  ansible.builtin.include_tasks: "tasks/ha_hosts.yaml"
+  when: "scs_high_availability or database_high_availability"
 
 # Handle database scale-out configurations
-- name:                                "2.4 Hosts: - Configure database scale-out entries"
-  ansible.builtin.include_tasks:       "tasks/db_scale_out.yaml"
+- name: "2.4 Hosts: - Configure database scale-out entries"
+  ansible.builtin.include_tasks: "tasks/db_scale_out.yaml"
   when:
-                                       - "platform == 'HANA'"
-                                       - "database_scale_out"
+    - "platform == 'HANA'"
+    - "database_scale_out"
+
+# Setup iSCSI host name resolution
+- name: "2.4 Hosts: - Setup iSCSI host name resolution"
+  ansible.builtin.lineinfile:
+    path: "/etc/hosts"
+    line: "{{ '%-19s' | format(iscsi_server.ip) }} {{ '%-80s' | format(iscsi_server.host + '.' + sap_fqdn) }} {{ '%-21s' | format(iscsi_server.host) }}"
+  loop: "{{ iscsi_servers }}"
+  loop_control:
+    loop_var: iscsi_server
+  when: iscsi_servers is defined
 
 # Create hostname entries from template
-- name:                                "2.4 Hosts: - Generate hostname entries from template"
+- name: "2.4 Hosts: - Generate hostname entries from template"
   ansible.builtin.template:
-    src:                               "hosts.j2"
-    dest:                              "/etc/hosts"
-    mode:                              "0644"
-    backup:                            true
+    src: "hosts.j2"
+    dest: "/etc/hosts"
+    mode: "0644"
+    backup: true
 
 # Clean up duplicate entries
-- name:                                "2.4 Hosts: - Remove duplicate entries from hosts file"
-  ansible.builtin.include_tasks:       "tasks/cleanup_hosts.yaml"
-  tags:                                ["cleanup"]
+- name: "2.4 Hosts: - Remove duplicate entries from hosts file"
+  ansible.builtin.include_tasks: "tasks/cleanup_hosts.yaml"
+  tags: ["cleanup"]
 
-- name:                                "2.4 Hosts: - Validate hosts file syntax"
+# Validate hosts file syntax
+- name: "2.4 Hosts: - Validate hosts file syntax"
   ansible.builtin.shell: |
-                                       set -o pipefail
-                                       # Check for malformed lines (should have at least 2 columns)
-                                       awk '!/^#/ && NF < 2 && length($0) > 0 { exit 1 }' /etc/hosts
-                                       # Check for invalid IP addresses
-                                       awk '!/^#/ && NF >= 2 { if ($1 !~ /^([0-9]{1,3}\.){3}[0-9]{1,3}$/) exit 1 }' /etc/hosts
-  changed_when:                        false
-  register:                            hosts_validation
-  failed_when:                         hosts_validation.rc != 0
-
-# Final validation of hosts file
-- name:                                "2.4 Hosts: - Validate final hosts file"
-  ansible.builtin.command:             "getent hosts"
-  changed_when:                        false
-  register:                            hosts_final_validation
-  failed_when:                         hosts_final_validation.rc != 0
+    set -o pipefail
+    # Check for malformed lines (should have at least 2 columns)
+    awk '!/^#/ && NF < 2 && length($0) > 0 { exit 1 }' /etc/hosts
+    # Check for invalid IP addresses
+    awk '!/^#/ && NF >= 2 { if ($1 !~ /^([0-9]{1,3}\.){3}[0-9]{1,3}$/) exit 1 }' /etc/hosts
+  changed_when: false
+  register: hosts_validation
+  failed_when: hosts_validation.rc != 0
 
 # Display final host entry count
-- name:                                "2.4 Hosts: - Display host entry statistics"
+- name: "2.4 Hosts: - Display host entry statistics"
   ansible.builtin.shell: |
-                                       set -o pipefail
-                                       grep -v '^#' /etc/hosts | grep -v '^$' | wc -l
-  register:                            host_entry_count
-  changed_when:                        false
+    set -o pipefail
+    grep -v '^#' /etc/hosts | grep -v '^$' | wc -l
+  register: host_entry_count
+  changed_when: false
 
-- name:                                "2.4 Hosts: - Show host entry summary"
+- name: "2.4 Hosts: - Show host entry summary"
   ansible.builtin.debug:
     msg:
       - "Total host entries: {{ host_entry_count.stdout }}"
       - "Host file validation: {{ 'Passed' if hosts_validation.rc == 0 else 'Failed' }}"
-    verbosity:                         1
+    verbosity: 1                      1
 
 ...
