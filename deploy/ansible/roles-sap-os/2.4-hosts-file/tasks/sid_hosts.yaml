@@ -1,40 +1,85 @@
 ---
-# tasks/sid_hosts.yaml
+# Description: Manages component-specific host entries for SAP systems
 
-- name: "Get host lists for each component"
+# Validate component variables
+- name: "2.4 Hosts: - Validate SID components"
+  ansible.builtin.assert:
+    that:
+      - sap_sid is defined
+      - sap_fqdn is defined
+    fail_msg: "Missing required SID variables"
+
+# Define the components to process
+- name: "2.4 Hosts: - Set component list"
   ansible.builtin.set_fact:
-    component_hosts: "{{ component_hosts | default({}) | combine({
-      item: groups[sap_sid | upper + '_' + item] | default([])
-    }) }}"
-  loop:
-    - "SCS"
-    - "PAS"
-    - "APP"
-    - "DB"
-    - "WEB"
+    sap_components:
+      - name: "SCS"
+        group: "{{ sap_sid | upper }}_SCS"
+      - name: "PAS"
+        group: "{{ sap_sid | upper }}_PAS"
+      - name: "APP"
+        group: "{{ sap_sid | upper }}_APP"
+      - name: "DB"
+        group: "{{ sap_sid | upper }}_DB"
+      - name: "WEB"
+        group: "{{ sap_sid | upper }}_WEB"
 
-- name: "Generate host entries for each component"
+# Create entries for each component
+- name: "2.4 Hosts: - Create component entries"
   ansible.builtin.blockinfile:
     path: "/etc/hosts"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - {{ sap_sid | upper }} {{ component_type }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - {{ sap_sid | upper }} {{ item.name }}"
     block: |
-      {% for host in hosts %}
+      {% for host in groups[item.group] | default([]) %}
       {% if hostvars[host].ipadd is defined and hostvars[host].ipadd | length > 0 %}
-      {# Get primary IP (client network) #}
-      {% set primary_ip = hostvars[host].ipadd | get_tier_ip(subnet_cidr=subnet_cidr_client) | default(hostvars[host].ipadd | get_tier_ip(0)) %}
-      {{ primary_ip | format_host_entry(host, sap_fqdn) }}
+      {{ hostvars[host].ipadd[0] | format_host_entry(host, sap_fqdn) }}
       
-      {# Handle PAS virtual hostnames #}
-      {% if 'pas' in hostvars[host].supported_tiers %}
-      {% set pas_hostname = hostvars[host].pas_virtual_hostname | default(host) %}
-      {{ primary_ip | format_host_entry(pas_hostname, sap_fqdn) }}
+      {# Handle virtual hostnames for PAS #}
+      {% if item.name == 'PAS' and hostvars[host].pas_virtual_hostname is defined %}
+      {{ hostvars[host].ipadd[0] | format_host_entry(hostvars[host].pas_virtual_hostname, sap_fqdn) }}
+      {% endif %}
+      
+      {# Handle custom virtual hostnames if defined #}
+      {% if hostvars[host]['custom_' + item.name | lower + '_virtual_hostname'] is defined %}
+      {{ hostvars[host].ipadd[0] | format_host_entry(hostvars[host]['custom_' + item.name | lower + '_virtual_hostname'], sap_fqdn) }}
       {% endif %}
       {% endif %}
       {% endfor %}
     state: present
-  loop: "{{ component_hosts | dict2items }}"
-  loop_control:
-    loop_var: component
-  vars:
-    component_type: "{{ component.key }}"
-    hosts: "{{ component.value }}"
+  loop: "{{ sap_components }}"
+  when: "groups[item.group] is defined"
+
+# Remove any duplicate entries that might have been created
+- name: "2.4 Hosts: - Remove duplicate component entries"
+  ansible.builtin.shell: |
+    awk '!seen[$0]++' /etc/hosts > /etc/hosts.tmp && mv /etc/hosts.tmp /etc/hosts
+  changed_when: false
+  
+# Validate component entries
+- name: "2.4 Hosts: - Validate component entries"
+  ansible.builtin.shell: |
+    component="{{ item.name }}"
+    group="{{ item.group }}"
+    if [ -n "$(grep -l "{{ sap_sid | upper }} ${component}" /etc/hosts)" ]; then
+      host_count=$(grep -c "{{ sap_sid | upper }} ${component}" /etc/hosts)
+      group_count=$(ansible-inventory --list | jq -r ".${group} | length")
+      if [ $host_count -lt $group_count ]; then
+        echo "Missing entries for ${component}: found ${host_count}, expected ${group_count}"
+        exit 1
+      fi
+    fi
+  loop: "{{ sap_components }}"
+  when: "groups[item.group] is defined"
+  changed_when: false
+  
+# Show summary of created entries
+- name: "2.4 Hosts: - Show component entries summary"
+  ansible.builtin.debug:
+    msg:
+      - "Component entries created for {{ sap_sid | upper }}:"
+      - "{% for component in sap_components %}"
+      - "  {{ component.name }}: {{ groups[component.group] | default([]) | length }} hosts"
+      - "{% endfor %}"
+    verbosity: 1
+
+...

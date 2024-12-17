@@ -16,22 +16,27 @@
     cluster_hostnames:
       scs: "{{ sap_sid | lower }}scs00cl1"
       ers: "{{ sap_sid | lower }}ers01cl2"
-      db: "{{ sap_sid | lower }}hdbdb00cl"
+      db: "{{ sap_sid | lower }}{{ db_sid | lower }}db00cl"
   when: scs_high_availability or database_high_availability
 
 # Create HA host entries
-- name: "Create HA ASCS/ERS entries"
+- name: "Create cluster entries"
   ansible.builtin.blockinfile:
     path: "/etc/hosts"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - HA {{ sap_sid | upper }}"
+    marker: "# {mark} ASCS/ERS Entries {{ cluster_hostnames.scs }}"
     block: |
-      {% if scs_high_availability %}
-      {{ scs_lb_ip }} {{ cluster_hostnames.scs }}.{{ sap_fqdn }} {{ cluster_hostnames.scs }}
-      {{ ers_lb_ip }} {{ cluster_hostnames.ers }}.{{ sap_fqdn }} {{ cluster_hostnames.ers }}
-      {% endif %}
-      {% if database_high_availability %}
-      {{ database_loadbalancer_ip }} {{ cluster_hostnames.db }}.{{ sap_fqdn }} {{ cluster_hostnames.db }}
-      {% endif %}
+      {{ scs_lb_ip }}        {{ cluster_hostnames.scs }}.{{ sap_fqdn }}                                                {{ cluster_hostnames.scs }}          
+      {{ ers_lb_ip }}        {{ cluster_hostnames.ers }}.{{ sap_fqdn }}                                                {{ cluster_hostnames.ers }}          
     state: present
     backup: true
-  when: scs_high_availability or database_high_availability
+  when: scs_high_availability
+
+- name: "Create DB cluster entry"
+  ansible.builtin.blockinfile:
+    path: "/etc/hosts"
+    marker: "# {mark} DB Entries {{ cluster_hostnames.db }}"
+    block: |
+      {{ database_loadbalancer_ip }}        {{ cluster_hostnames.db }}.{{ sap_fqdn }}                                               {{ cluster_hostnames.db }}     
+    state: present
+    backup: true
+  when: database_high_availability

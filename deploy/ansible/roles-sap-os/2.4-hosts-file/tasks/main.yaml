@@ -1,17 +1,12 @@
 ---
 # Description: Manages host file entries for SAP systems
-# This role handles the creation and management of /etc/hosts entries
 # Tasks:
 #   OS: hosts file, Entries - /etc/hosts
-#
-# TODO:
 
 # -------------------------------------+---------------------------------------8
 #
 # Description:  Validation for Prerequisites
 #
-
-# Import pre-checks
 - name: "2.4 Hosts: - Import prerequisite checks"
   ansible.builtin.import_tasks: "pre_checks.yaml"
   tags: ["always"]
@@ -26,7 +21,12 @@
     fail_msg: "No valid IP addresses found for host {{ inventory_hostname }}. The ipadd variable must be set at the playbook level."
     success_msg: "Successfully validated {{ ipadd | length }} IP addresses from playbook"
 
-# Backward compatibility check
+# -------------------------------------+---------------------------------------8
+#
+# Description:  Initial Setup and Backward Compatibility
+#
+
+# Backward compatibility check for database HA
 - name: "Backward Compatibility - Check required Database HA variables"
   ansible.builtin.set_fact:
     database_high_availability: "{{ db_high_availability | default(false) }}"
@@ -34,7 +34,20 @@
     - db_high_availability is defined
     - database_high_availability is not defined
 
-# Create common hosts entries
+# Ensure basic hosts file exists
+- name: "2.4 Hosts: - Ensure basic /etc/hosts exists"
+  ansible.builtin.copy:
+    dest: "/etc/hosts"
+    content: |
+      127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+      ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+    force: false
+    mode: "0644"
+
+# -------------------------------------+---------------------------------------8
+#
+# Description:  Common Entries
+#
 - name: "2.4 Hosts: - Manage common hosts entries"
   ansible.builtin.blockinfile:
     path: "/etc/hosts"
@@ -45,42 +58,38 @@
     block: "{{ lookup('file', 'hosts.block') }}"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - COMMON"
 
-# Create SID-specific entries
+# -------------------------------------+---------------------------------------8
+#
+# Description:  Component-Specific Entries
+#
 - name: "2.4 Hosts: - Manage SID-specific hosts entries"
-  ansible.builtin.include_tasks: "tasks/sid_hosts.yaml"
+  ansible.builtin.import_tasks: "tasks/sid_hosts.yaml"
   when: "sap_sid is defined"
 
-# Process PAS hostname configuration
-- name: "2.4 Hosts: Process pas_hostname variable"
-  block:
-    - name: "Get PAS server list"
-      ansible.builtin.set_fact:
-        pas_server_temp: "{{ pas_server_temp | default([]) + [item] }}"
-      with_items:
-        - "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_PAS') }}"
-        - "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_SCS') }}"
-        - "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_DB') }}"
-      when: "'pas' in hostvars[item]['supported_tiers'] | default([])"
-
-    - name: "Set PAS virtual hostname"
-      ansible.builtin.set_fact:
-        pas_virtualhost_from_inventory: "{{ pas_server_temp | first }}"
-        pas_virtual_hostname: "{{ custom_pas_virtual_hostname | default(pas_server_temp | first, true) }}"
-      when: pas_server_temp | default([]) | length > 0
-
-# Handle high availability configurations
+# -------------------------------------+---------------------------------------8
+#
+# Description:  High Availability Configuration
+#
 - name: "2.4 Hosts: - Configure HA host entries"
   ansible.builtin.include_tasks: "tasks/ha_hosts.yaml"
   when: "scs_high_availability or database_high_availability"
 
-# Handle database scale-out configurations
+# -------------------------------------+---------------------------------------8
+#
+# Description:  Scale-Out Configuration
+#
 - name: "2.4 Hosts: - Configure database scale-out entries"
   ansible.builtin.include_tasks: "tasks/db_scale_out.yaml"
   when:
     - "platform == 'HANA'"
     - "database_scale_out"
 
-# Setup iSCSI host name resolution
+# -------------------------------------+---------------------------------------8
+#
+# Description:  Additional Host Entries
+#
+
+# Handle iSCSI server entries if defined
 - name: "2.4 Hosts: - Setup iSCSI host name resolution"
   ansible.builtin.lineinfile:
     path: "/etc/hosts"
@@ -90,20 +99,17 @@
     loop_var: iscsi_server
   when: iscsi_servers is defined
 
-# Create hostname entries from template
-- name: "2.4 Hosts: - Generate hostname entries from template"
-  ansible.builtin.template:
-    src: "hosts.j2"
-    dest: "/etc/hosts"
-    mode: "0644"
-    backup: true
+# -------------------------------------+---------------------------------------8
+#
+# Description:  Final Cleanup and Validation
+#
 
 # Clean up duplicate entries
 - name: "2.4 Hosts: - Remove duplicate entries from hosts file"
   ansible.builtin.include_tasks: "tasks/cleanup_hosts.yaml"
   tags: ["cleanup"]
 
-# Validate hosts file syntax
+# Validate host file syntax
 - name: "2.4 Hosts: - Validate hosts file syntax"
   ansible.builtin.shell: |
     set -o pipefail
@@ -115,7 +121,7 @@
   register: hosts_validation
   failed_when: hosts_validation.rc != 0
 
-# Display final host entry count
+# Display statistics
 - name: "2.4 Hosts: - Display host entry statistics"
   ansible.builtin.shell: |
     set -o pipefail
@@ -128,6 +134,7 @@
     msg:
       - "Total host entries: {{ host_entry_count.stdout }}"
       - "Host file validation: {{ 'Passed' if hosts_validation.rc == 0 else 'Failed' }}"
-    verbosity: 1                      1
+      - "Configuration completed for SID: {{ sap_sid | upper }}"
+    verbosity: 1
 
 ...

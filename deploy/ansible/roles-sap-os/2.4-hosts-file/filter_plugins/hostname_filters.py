@@ -120,29 +120,26 @@ class FilterModule(object):
             return None
 
     def format_host_entry(self, ip, hostname, fqdn, aliases=None):
-        """Format a hosts file entry with proper spacing"""
+        """Format a hosts file entry with exact spacing matching original format"""
         try:
-            # Handle cases where inputs might be None or empty
             ip = str(ip).strip() if ip else ""
             hostname = str(hostname).strip() if hostname else ""
             fqdn = str(fqdn).strip() if fqdn else ""
-            
-            # If we don't have the minimum required components, return empty string
+
             if not ip or not hostname or not fqdn:
                 return ""
-                
-            # Format the basic entry
-            entry = f"{ip:<19}{hostname}.{fqdn:<80}{hostname:<21}"
-            
-            # Add aliases if provided
+
+            # Exact spacing: 7 spaces after IP, 63 spaces after FQDN
+            entry = f"{ip:.<19}{hostname}.{fqdn:<80}{hostname:<21}"
+
             if aliases:
                 if isinstance(aliases, (list, tuple)):
-                    entry += ' '.join(str(alias).strip() for alias in aliases)
+                    entry += " ".join(str(alias).strip() for alias in aliases)
                 else:
                     entry += str(aliases).strip()
-                    
+
             return entry.rstrip()
-            
+
         except Exception as e:
             display.warning(f"Error formatting host entry: {str(e)}")
-            return ""  # Return empty string on error instead of raising exception
+            return ""
