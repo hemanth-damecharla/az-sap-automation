@@ -35,7 +35,7 @@
         - name:                         Clone PR from repository
           uses:                         actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
           with:
-            ref:                        ${{ github.event.pull_request.head.ref }}
+            ref:                        main # temporarily set ref to main, for actually we might need to use: ${{ github.event.pull_request.head.ref }}
             token:                      ${{ secrets.GITHUB_TOKEN }}
 
         - name:                         Render Terraform documentation and commit changes to PR
