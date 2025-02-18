@@ -57,7 +57,7 @@
                                         deploy/terraform/terraform-units/modules/sap_system/anydb_node,
                                         deploy/terraform/terraform-units/modules/sap_system/app_tier,
                                         deploy/terraform/terraform-units/modules/sap_system/output_files
-            args:                       markdown table --read-comments --show all --sort-by required
+            args:                       --read-comments --show all --sort
             output-file:                README.md
             output-method:              inject
             git-push:                   true
