@@ -1,0 +1,53 @@
+---
+    name:                               Generate Terraform documentation
+    permissions:
+      contents:                         read
+      pull-requests:                    read
+      actions:                          none
+      checks:                           none
+      deployments:                      none
+      issues:                           none
+      packages:                         none
+      repository-projects:              none
+      security-events:                  none
+      statuses:                         none
+    on:
+      pull_request:
+        branches:
+                                        - main
+                                        - development
+      workflow_dispatch:                # Manual trigger
+    jobs:
+      generate-terraform-docs:
+        runs-on:                        ubuntu-latest
+        permissions:
+          contents:                     write
+          pull-requests:                read
+          actions:                      none
+          checks:                       none
+          deployments:                  none
+          issues:                       none
+          packages:                     none
+          repository-projects:          none
+          security-events:              none
+          statuses:                     none
+        steps:
+          - name:                       Clone PR from repository
+            uses:                       actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+            with:
+              ref:                      ${{ github.event.pull_request.head.ref }}
+              token:                    ${{ secrets.GITHUB_TOKEN }}
+
+          - name:                       Render Terraform documentation and commit changes to PR
+            env:
+              GITHUB_TOKEN:             ${{ secrets.GITHUB_TOKEN }}
+            uses:                       terraform-docs/gh-actions@main
+            with:
+              working-dir:              deploy/terraform/run/sap_deployer/, deploy/terraform/run/sap_library/, deploy/terraform/run/sap_landscape/, deploy/terraform/run/sap_system/
+              output-file:              README.md
+              output-method:            inject
+              git-push:                 true
+
+
+
+
