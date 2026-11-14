@@ -24,6 +24,9 @@ pythonpath = [
   # their modules/packages can still be imported by bare name.
   "deploy/ansible/roles-sap-os/2.4-hosts-file/filter_plugins",
   "deploy/scripts/py_scripts/SDAF-GitHub-Actions",
+  # Collection root: modules import their helpers through the canonical
+  # "ansible_collections.azure.sap_automation" package path.
+  "deploy/ansible/collections",
 ]
 addopts = "--cov --cov-report=term-missing --cov-fail-under=85"
 
@@ -33,6 +36,7 @@ extraPaths = [
   ".",
   "deploy/ansible/roles-sap-os/2.4-hosts-file/filter_plugins",
   "deploy/scripts/py_scripts/SDAF-GitHub-Actions",
+  "deploy/ansible/collections",
 ]
 exclude = [
   "**/.venv",
@@ -50,6 +54,7 @@ source = [
   "deploy/ansible/lookup_plugins",
   "deploy/ansible/roles-sap-os/2.4-hosts-file/filter_plugins",
   "deploy/scripts/py_scripts/SDAF-GitHub-Actions",
+  "deploy/ansible/collections/ansible_collections/azure/sap_automation/plugins",
 ]
 omit = [
   "*/tests/*",

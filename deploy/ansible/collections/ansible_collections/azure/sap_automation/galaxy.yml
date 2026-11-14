@@ -1,0 +1,25 @@
+---
+namespace: azure
+name: sap_automation
+version: 0.1.0
+readme: README.md
+authors:
+  - SAP Deployment Automation Framework contributors
+description: >-
+  Roles and modules of the SAP Deployment Automation Framework (SDAF),
+  packaged as a collection with provider-style extension points.
+license:
+  - MIT
+tags:
+  - sap
+  - azure
+  - hana
+  - pacemaker
+  - linux
+dependencies:
+  ansible.posix: ">=1.5.4"
+  community.general: ">=11.4.1"
+repository: https://github.com/Azure/sap-automation
+build_ignore:
+  - .ansible
+  - "*.tar.gz"
