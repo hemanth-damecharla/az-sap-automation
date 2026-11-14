@@ -1,0 +1,25 @@
+---
+- name: Load platform variables
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: Prepare the nodes
+  ansible.builtin.import_tasks: prerequisites.yml
+
+- name: Read cluster state before bootstrap
+  azure.sap_automation.pacemaker_cluster_info:
+  register: __ha_pacemaker_core_before
+
+- name: Create the cluster
+  ansible.builtin.include_tasks: "bootstrap_{{ ansible_facts['os_family'] }}.yml"
+
+- name: Apply base cluster configuration
+  ansible.builtin.import_tasks: configuration.yml
+
+- name: Configure the Azure scheduled events agent
+  ansible.builtin.import_tasks: azure_events.yml
+  when:
+    - ha_pacemaker_core_azure_events_enabled | bool
+    - __ha_pacemaker_core_azure_events_supported | bool
+
+- name: Delay Pacemaker start after boot
+  ansible.builtin.import_tasks: start_delay.yml

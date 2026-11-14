@@ -38,8 +38,22 @@ jobs:
           ansible-galaxy collection install microsoft.ad --force
 
       - name: Run ansible-lint
+        env:
+          ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/deploy/ansible/collections:~/.ansible/collections
         run: |
           ansible-lint deploy/ansible -c .ansible-lint
+
+      # The azure.sap_automation collection is held to the production profile
+      # by its own .ansible-lint; the repository-wide run above still applies
+      # the legacy skip list to the roles that have not been migrated yet.
+      - name: Run ansible-lint (production profile) and yamllint on the collection
+        working-directory: deploy/ansible/collections/ansible_collections/azure/sap_automation
+        env:
+          ANSIBLE_COLLECTIONS_PATH: ${{ github.workspace }}/deploy/ansible/collections:~/.ansible/collections
+        run: |
+          pip install yamllint==1.37.1
+          yamllint .
+          ansible-lint --offline
 
       - name: Install Python test dependencies
         run: |

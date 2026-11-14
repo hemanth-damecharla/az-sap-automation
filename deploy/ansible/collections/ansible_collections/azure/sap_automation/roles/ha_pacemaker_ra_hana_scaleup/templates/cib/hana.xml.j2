@@ -1,0 +1,100 @@
+{% set spec = __ha_pacemaker_ra_hana_scaleup_spec %}
+{% set db = spec['database'] %}
+{% macro nvpairs(tag, values) %}
+{% set present = values | dict2items | rejectattr('value', 'equalto', '') | list %}
+{% if present %}
+<{{ tag }}>
+{% for pair in present | sort(attribute='key') %}
+  <nvpair name="{{ pair['key'] }}" value="{{ pair['value'] }}"/>
+{% endfor %}
+</{{ tag }}>
+{% endif %}
+{% endmacro %}
+{% macro operations(items) %}
+{% if items %}
+<operations>
+{% for operation in items %}
+  <op{% for key, value in operation.items() %} {{ key }}="{{ value }}"{% endfor %}/>
+{% endfor %}
+</operations>
+{% endif %}
+{% endmacro %}
+{% set agent_parameters = {
+     'SID': __ha_pacemaker_ra_hana_scaleup_sid,
+     'InstanceNumber': __ha_pacemaker_ra_hana_scaleup_nr } %}
+<rsc_defaults>
+  <meta_attributes>
+    <nvpair name="resource-stickiness" value="{{ ha_pacemaker_ra_hana_scaleup_resource_stickiness }}"/>
+    <nvpair name="migration-threshold" value="{{ ha_pacemaker_ra_hana_scaleup_migration_threshold }}"/>
+{% if spec['default_priority'] %}
+    <nvpair name="priority" value="{{ spec['default_priority'] }}"/>
+{% endif %}
+  </meta_attributes>
+</rsc_defaults>
+<resources>
+  <clone id="{{ spec['topology']['clone_id'] }}">
+    {{ nvpairs('meta_attributes', spec['topology']['clone_meta']) }}
+    <primitive id="{{ spec['topology']['id'] }}" class="ocf" provider="{{ spec['provider'] }}" type="SAPHanaTopology">
+      {{ nvpairs('instance_attributes', agent_parameters) }}
+      {{ operations(spec['topology']['operations']) }}
+    </primitive>
+  </clone>
+  <{{ spec['promotable_element'] }} id="{{ db['clone_id'] }}">
+    {{ nvpairs('meta_attributes', db['clone_meta']
+               | combine({'promotable': 'true'} if spec['promotable_element'] == 'clone' else {})) }}
+    <primitive id="{{ db['id'] }}" class="ocf" provider="{{ spec['provider'] }}" type="{{ db['type'] }}">
+      {{ nvpairs('instance_attributes', agent_parameters | combine({
+           'PREFER_SITE_TAKEOVER': ha_pacemaker_ra_hana_scaleup_prefer_site_takeover | bool | string | lower,
+           'AUTOMATED_REGISTER': ha_pacemaker_ra_hana_scaleup_automated_register | bool | string | lower,
+           'DUPLICATE_PRIMARY_TIMEOUT': ha_pacemaker_ra_hana_scaleup_duplicate_primary_timeout | string })) }}
+      {{ nvpairs('meta_attributes', db['meta']) }}
+      <operations>
+{% for action in ['start', 'stop', 'promote', 'demote'] %}
+{% if db['timeouts'][action] %}
+        <op name="{{ action }}" interval="0" timeout="{{ db['timeouts'][action] }}"/>
+{% endif %}
+{% endfor %}
+        <op name="monitor" interval="{{ db['monitor_promoted_interval'] }}" role="{{ spec['promoted_role'] }}" timeout="{{ db['timeouts']['monitor'] }}"/>
+        <op name="monitor" interval="{{ db['monitor_unpromoted_interval'] }}" role="{{ spec['unpromoted_role'] }}" timeout="{{ db['timeouts']['monitor'] }}"/>
+      </operations>
+    </primitive>
+  </{{ spec['promotable_element'] }}>
+{% if spec['filesystem'] %}
+  <clone id="{{ spec['filesystem']['clone_id'] }}">
+    {{ nvpairs('meta_attributes', spec['filesystem']['clone_meta']) }}
+    <primitive id="{{ spec['filesystem']['id'] }}" class="ocf" provider="{{ spec['provider'] }}" type="SAPHanaFilesystem">
+      {{ nvpairs('instance_attributes', agent_parameters | combine({'ON_FAIL_ACTION': 'fence'})) }}
+      <operations>
+        <op name="start" interval="0" timeout="10"/>
+        <op name="stop" interval="0" timeout="20"/>
+        <op name="monitor" interval="120" timeout="120"/>
+      </operations>
+    </primitive>
+  </clone>
+{% endif %}
+  <group id="{{ spec['group']['id'] }}">
+{% for member in spec['group']['members'] %}
+{% if member == 'ip' %}
+    <primitive id="{{ spec['ip']['id'] }}" class="ocf" provider="heartbeat" type="IPaddr2">
+      {{ nvpairs('instance_attributes', {'ip': ha_pacemaker_ra_hana_scaleup_virtual_ip}) }}
+      {{ nvpairs('meta_attributes', spec['ip']['meta']) }}
+      {{ operations(spec['ip']['operations']) }}
+    </primitive>
+{% else %}
+    <primitive id="{{ spec['probe']['id'] }}" class="ocf" provider="heartbeat" type="azure-lb">
+      {{ nvpairs('instance_attributes', {'port': ha_pacemaker_ra_hana_scaleup_probe_port}) }}
+      {{ nvpairs('meta_attributes', spec['probe']['meta']) }}
+      {{ operations(spec['probe']['operations']) }}
+    </primitive>
+{% endif %}
+{% endfor %}
+  </group>
+</resources>
+<constraints>
+  <rsc_colocation id="{{ spec['colocation_id'] }}" score="4000" rsc="{{ spec['group']['id'] }}"
+{%- if spec['colocation_rsc_role'] %} rsc-role="{{ spec['colocation_rsc_role'] }}"{% endif %}
+ with-rsc="{{ db['clone_id'] }}" with-rsc-role="{{ spec['promoted_role'] }}"/>
+  <rsc_order id="{{ spec['order_id'] }}" first="{{ spec['topology']['clone_id'] }}" then="{{ db['clone_id'] }}"
+{%- if spec['order_kind'] %} kind="{{ spec['order_kind'] }}"{% endif %}
+{%- if spec['order_symmetrical'] %} symmetrical="{{ spec['order_symmetrical'] }}"{% endif %}/>
+</constraints>

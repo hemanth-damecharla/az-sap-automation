@@ -1,0 +1,12 @@
+---
+__ha_pacemaker_core_start_delay: "216"
+__ha_pacemaker_core_manage_corosync_conf: true
+__ha_pacemaker_core_azure_events_clone_id: health-azure-events-cln
+# Pacemaker before 2.1.3 only honours allow-unhealthy-nodes on the primitive.
+__ha_pacemaker_core_azure_events_unhealthy_on_clone: >-
+  {{ ansible_facts['packages']['pacemaker'][0]['version'] is version('2.1.3', '>=') }}
+__ha_pacemaker_core_azure_events_operations:
+  - name: start
+    start-delay: 60s
+  - name: monitor
+    interval: 10s

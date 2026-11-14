@@ -1,0 +1,12 @@
+---
+# Clears a failed start recorded before the device definition was corrected.
+# crm_resource ships with Pacemaker, so this is identical on RHEL and SLES;
+# no module exposes resource cleanup.
+- name: Clean up the Azure fence resource
+  ansible.builtin.command:
+    argv:
+      - crm_resource
+      - --cleanup
+      - --resource
+      - "{{ ha_pacemaker_fence_azure_msi_resource_id }}"
+  changed_when: true

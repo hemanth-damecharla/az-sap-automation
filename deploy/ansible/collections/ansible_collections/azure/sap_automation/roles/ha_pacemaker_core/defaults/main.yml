@@ -1,0 +1,45 @@
+---
+ha_pacemaker_core_nodes: "{{ ha_pacemaker_nodes }}"
+ha_pacemaker_core_config_node: "{{ ha_pacemaker_config_node }}"
+
+# Corosync cluster name, for example hdb_X00 or scs_X00.
+# ha_pacemaker_core_cluster_name:
+
+# Password of the hacluster operating system user. Supply it from Azure Key
+# Vault or Ansible Vault; it has no default on purpose.
+# ha_pacemaker_core_hacluster_password:
+
+ha_pacemaker_core_interface: eth0
+
+ha_pacemaker_core_totem:
+  token: 30000
+  retransmits: 10
+  join: 60
+  consensus: 36000
+  max_messages: 20
+ha_pacemaker_core_quorum:
+  expected_votes: 2
+  two_node: 1
+
+# SLES before 16 only: the role owns /etc/corosync/corosync.conf.
+ha_pacemaker_core_corosync_transport: udpu
+ha_pacemaker_core_corosync_crypto:
+  secauth: "on"
+  crypto_hash: sha1
+  crypto_cipher: aes256
+  clear_node_high_bit: "yes"
+ha_pacemaker_core_corosync_mcastport: 5405
+
+# SBD block devices handed to the SLES bootstrap. Leave empty unless an SBD
+# fencing provider is used.
+ha_pacemaker_core_sbd_devices: []
+
+# Seconds after boot before Pacemaker starts (pacemaker.timer).
+ha_pacemaker_core_start_delay: "{{ __ha_pacemaker_core_start_delay }}"
+
+# Deploy the azure-events-az agent that reacts to Azure scheduled events.
+ha_pacemaker_core_azure_events_enabled: true
+
+# How long to wait for all nodes to be online after a membership change.
+ha_pacemaker_core_online_retries: 12
+ha_pacemaker_core_online_delay: 10

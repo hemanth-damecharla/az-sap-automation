@@ -1,0 +1,5 @@
+---
+# Pacemaker 1.1 has no promotable clones.
+__ha_pacemaker_ra_hana_scaleup_platform_common:
+  provider: suse
+  promotable_element: master

@@ -1,0 +1,22 @@
+---
+# Constants shared by every platform. Platform files only hold what differs.
+__ha_pacemaker_core_node_names: "{{ ha_pacemaker_core_nodes | map(attribute='name') | list }}"
+__ha_pacemaker_core_is_config_node: "{{ ansible_facts['hostname'] == ha_pacemaker_core_config_node }}"
+__ha_pacemaker_core_corosync_conf: /etc/corosync/corosync.conf
+
+__ha_pacemaker_core_start_delay: "186"
+
+# Whether this role templates corosync.conf itself after the bootstrap.
+__ha_pacemaker_core_manage_corosync_conf: false
+
+# Azure scheduled events agent.
+__ha_pacemaker_core_azure_events_supported: true
+__ha_pacemaker_core_azure_events_clone_id: health-azure-events-clone
+__ha_pacemaker_core_azure_events_unhealthy_on_clone: true
+__ha_pacemaker_core_azure_events_operations:
+  - name: monitor
+    interval: 10s
+    timeout: 240s
+  - name: start
+    timeout: 10s
+    start-delay: 90s

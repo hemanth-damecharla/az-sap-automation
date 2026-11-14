@@ -1,0 +1,30 @@
+---
+- name: start_delay | Deploy the pacemaker.timer unit
+  ansible.builtin.template:
+    src: pacemaker.timer.j2
+    dest: /etc/systemd/system/pacemaker.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: start_delay | Load the timer unit
+  ansible.builtin.meta: flush_handlers
+
+- name: start_delay | Enable the timer
+  ansible.builtin.systemd:
+    name: pacemaker.timer
+    enabled: true
+    state: started
+
+# The timer starts Pacemaker, which pulls in Corosync; neither may start on
+# its own at boot.
+- name: start_delay | Disable direct start of the cluster services at boot
+  ansible.builtin.systemd:
+    name: "{{ __ha_pacemaker_core_service }}"
+    enabled: false
+  loop:
+    - pacemaker
+    - corosync
+  loop_control:
+    loop_var: __ha_pacemaker_core_service

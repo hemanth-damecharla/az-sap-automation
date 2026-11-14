@@ -1,0 +1,59 @@
+---
+# crmsh joins nodes over SSH as root, so each node needs a key pair that is
+# trusted by itself and by its peer. Authorizing a node's own key is required
+# by the SLES 16 bootstrap and must not be removed.
+- name: bootstrap_Suse | Create an SSH key pair for root
+  ansible.builtin.user:
+    name: root
+    generate_ssh_key: true
+    ssh_key_type: rsa
+    ssh_key_bits: 4096
+    ssh_key_file: .ssh/id_rsa
+  register: __ha_pacemaker_core_root_user
+
+- name: bootstrap_Suse | Authorize the root keys of every cluster node, including this one
+  ansible.posix.authorized_key:
+    user: root
+    key: "{{ hostvars[__ha_pacemaker_core_peer]['__ha_pacemaker_core_root_user']['ssh_public_key'] }}"
+  loop: "{{ ansible_play_hosts_all }}"
+  loop_control:
+    loop_var: __ha_pacemaker_core_peer
+  when: hostvars[__ha_pacemaker_core_peer]['__ha_pacemaker_core_root_user'] is defined
+
+# Cluster creation has no declarative interface: it generates the Corosync
+# authentication key and exchanges it between the nodes. crmsh is therefore
+# called directly, guarded so that it only ever runs once per node.
+- name: bootstrap_Suse | Create the cluster on the first node
+  ansible.builtin.command:
+    argv: "{{ ['crm', 'cluster', 'init', '-y', '--name', ha_pacemaker_core_cluster_name,
+      '--interface', ha_pacemaker_core_interface, '--no-overwrite-sshkey']
+      + (['--sbd-device=' + ha_pacemaker_core_sbd_devices | join(';')] if ha_pacemaker_core_sbd_devices else []) }}"
+    creates: "{{ __ha_pacemaker_core_corosync_conf }}"
+  when: __ha_pacemaker_core_is_config_node | bool
+
+- name: bootstrap_Suse | Join the remaining node to the cluster
+  ansible.builtin.command:
+    argv:
+      - crm
+      - cluster
+      - join
+      - -y
+      - -c
+      - "{{ ha_pacemaker_core_config_node }}"
+      - --interface
+      - "{{ ha_pacemaker_core_interface }}"
+    creates: "{{ __ha_pacemaker_core_corosync_conf }}"
+  when: not (__ha_pacemaker_core_is_config_node | bool)
+
+- name: bootstrap_Suse | Write the Corosync configuration
+  ansible.builtin.template:
+    src: corosync.conf.j2
+    dest: "{{ __ha_pacemaker_core_corosync_conf }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: __ha_pacemaker_core_manage_corosync_conf | bool
+  notify: Restart corosync
+
+- name: bootstrap_Suse | Apply the Corosync configuration
+  ansible.builtin.meta: flush_handlers

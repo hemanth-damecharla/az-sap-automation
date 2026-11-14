@@ -1,0 +1,60 @@
+---
+argument_specs:
+  main:
+    short_description: Azure fence agent STONITH using a managed identity
+    description:
+      - Creates the C(fence_azure_arm) STONITH resource authenticated by the
+        managed identity of the cluster VMs, and enables fencing.
+      - No credential is stored in the cluster configuration.
+    options:
+      ha_pacemaker_fence_azure_msi_nodes:
+        description: Cluster nodes. Defaults to C(ha_pacemaker_nodes).
+        type: list
+        elements: dict
+        required: true
+        options:
+          name:
+            description: Short host name of the node as known to the cluster.
+            type: str
+            required: true
+          vm_name:
+            description: Azure virtual machine name of the node.
+            type: str
+            required: true
+          address:
+            description: IP address of the node. Not used by this role.
+            type: str
+      ha_pacemaker_fence_azure_msi_config_node:
+        description: Node on which the cluster configuration is applied.
+        type: str
+        required: true
+      ha_pacemaker_fence_azure_msi_subscription_id:
+        description: Azure subscription ID of the cluster VMs.
+        type: str
+        required: true
+      ha_pacemaker_fence_azure_msi_resource_group:
+        description: Azure resource group of the cluster VMs.
+        type: str
+        required: true
+      ha_pacemaker_fence_azure_msi_cloud:
+        description: Azure cloud of the cluster VMs.
+        type: str
+        choices: [public, usgov]
+        default: public
+      ha_pacemaker_fence_azure_msi_resource_id:
+        description: ID of the STONITH resource.
+        type: str
+        default: rsc_st_azure
+      ha_pacemaker_fence_azure_msi_stonith_timeout:
+        description: Value of the C(stonith-timeout) cluster property, in seconds.
+        type: str
+        default: "900"
+      ha_pacemaker_fence_azure_msi_priority_fencing_delay:
+        description:
+          - Value of the C(priority-fencing-delay) cluster property.
+          - Defaults to V(15) on RHEL and is left unset on SLES, where the resource agent roles set it.
+        type: str
+      ha_pacemaker_fence_azure_msi_parameters:
+        description: Extra C(fence_azure_arm) parameters merged over the platform defaults.
+        type: dict
+        default: {}

@@ -1,0 +1,51 @@
+{{ ansible_managed | comment }}
+totem {
+    version:             2
+{% for key, value in ha_pacemaker_core_corosync_crypto.items() %}
+    {{ key }}: {{ value }}
+{% endfor %}
+    cluster_name:        {{ ha_pacemaker_core_cluster_name }}
+
+    token:                               {{ ha_pacemaker_core_totem['token'] }}
+    token_retransmits_before_loss_const: {{ ha_pacemaker_core_totem['retransmits'] }}
+    join:                                {{ ha_pacemaker_core_totem['join'] }}
+    consensus:                           {{ ha_pacemaker_core_totem['consensus'] }}
+    max_messages:                        {{ ha_pacemaker_core_totem['max_messages'] }}
+
+    interface {
+        ringnumber: 0
+        mcastport:  {{ ha_pacemaker_core_corosync_mcastport }}
+        ttl:        1
+    }
+
+    transport: {{ ha_pacemaker_core_corosync_transport }}
+}
+
+logging {
+    fileline:   off
+    to_stderr:  no
+    to_logfile: yes
+    logfile:    /var/log/cluster/corosync.log
+    to_syslog:  no
+    debug:      off
+    timestamp:  on
+    logger_subsys {
+        subsys: QUORUM
+        debug:  off
+    }
+}
+
+nodelist {
+{% for node in ha_pacemaker_core_nodes %}
+    node {
+        ring0_addr: {{ node['address'] }}
+        nodeid:     {{ loop.index }}
+    }
+{% endfor %}
+}
+
+quorum {
+    provider: corosync_votequorum
+    expected_votes: {{ ha_pacemaker_core_quorum['expected_votes'] }}
+    two_node: {{ ha_pacemaker_core_quorum['two_node'] }}
+}

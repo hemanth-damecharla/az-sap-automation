@@ -1,0 +1,62 @@
+---
+- name: prerequisites | Set the hacluster password
+  ansible.builtin.user:
+    name: hacluster
+    # A fixed, non-secret salt keeps the hash stable so the task is idempotent.
+    password: "{{ ha_pacemaker_core_hacluster_password
+      | password_hash('sha512', (ha_pacemaker_core_cluster_name | hash('sha256'))[:16]) }}"
+  no_log: true
+
+- name: prerequisites | Create the systemd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ansible_facts['packages']['systemd'][0]['version'] is version('234', '>=')
+
+- name: prerequisites | Raise the systemd task limit
+  ansible.builtin.template:
+    src: 99-pacemaker.conf.j2
+    dest: /etc/systemd/system.conf.d/99-pacemaker.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: ansible_facts['packages']['systemd'][0]['version'] is version('234', '>=')
+  notify: Reload systemd
+
+# systemd before 234 does not read system.conf.d reliably and system.conf is
+# shared with the distribution, so a single line is managed instead of the file.
+- name: prerequisites | Raise the systemd task limit on systemd before 234
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/system.conf
+    regexp: '^#?\s*DefaultTasksMax='
+    line: DefaultTasksMax=4096
+  when: ansible_facts['packages']['systemd'][0]['version'] is version('234', '<')
+  notify: Reload systemd
+
+- name: prerequisites | Allow cluster traffic through firewalld
+  ansible.posix.firewalld:
+    service: high-availability
+    state: enabled
+    permanent: true
+    immediate: true
+  when: ansible_facts['os_family'] == 'RedHat'
+
+# ifcfg-eth0 is owned by the distribution; only this key is managed. Old
+# cloud-netconfig releases would otherwise remove the cluster's virtual IP.
+- name: prerequisites | Stop cloud-netconfig from managing the cluster interface
+  ansible.builtin.lineinfile:
+    path: "/etc/sysconfig/network/ifcfg-{{ ha_pacemaker_core_interface }}"
+    regexp: '^#?\s*CLOUD_NETCONFIG_MANAGE='
+    line: CLOUD_NETCONFIG_MANAGE='no'
+    backup: true
+  when:
+    - ansible_facts['os_family'] == 'Suse'
+    - ansible_facts['distribution_major_version'] | int < 16
+    - "'cloud-netconfig-azure' in ansible_facts['packages']"
+    - ansible_facts['packages']['cloud-netconfig-azure'][0]['version'] is version('1.3', '<')
+
+- name: prerequisites | Apply systemd changes before the cluster starts
+  ansible.builtin.meta: flush_handlers

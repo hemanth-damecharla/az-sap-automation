@@ -1,0 +1,15 @@
+---
+# Cluster nodes. `name` is the short host name known to the cluster, `address`
+# the IP address used for Corosync, `vm_name` the Azure VM resource name.
+ha_pacemaker_nodes: []
+
+# Node on which cluster-wide configuration (CIB) changes are made.
+ha_pacemaker_config_node: "{{ (ha_pacemaker_nodes | first | default({}))['name'] | default('') }}"
+
+# Provider roles, as fully qualified collection names. Replace or extend these
+# lists to plug in a different bootstrap, fencing mechanism or resource agent
+# without changing this collection.
+ha_pacemaker_core_role: azure.sap_automation.ha_pacemaker_core
+ha_pacemaker_fence_roles:
+  - azure.sap_automation.ha_pacemaker_fence_azure_msi
+ha_pacemaker_ra_roles: []

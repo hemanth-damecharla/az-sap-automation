@@ -1,0 +1,42 @@
+---
+- name: resources | Determine whether the HANA resources need to change
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/hana.xml.j2') }}"
+  check_mode: true
+  register: __ha_pacemaker_ra_hana_scaleup_plan
+
+# Resources and constraints are separate CIB sections. Maintenance mode keeps
+# Pacemaker from acting on the resources before their constraints exist.
+- name: resources | Apply the HANA resources under maintenance mode
+  when: __ha_pacemaker_ra_hana_scaleup_plan['sections'] | length > 0
+  block:
+    - name: resources | Enter maintenance mode
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/maintenance.xml.j2') }}"
+      vars:
+        __ha_pacemaker_ra_hana_scaleup_maintenance: "true"
+
+    - name: resources | Configure the HANA resources and constraints
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/hana.xml.j2') }}"
+
+    - name: resources | Leave maintenance mode
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/maintenance.xml.j2') }}"
+      vars:
+        __ha_pacemaker_ra_hana_scaleup_maintenance: "false"
+
+- name: resources | Set the priority fencing delay
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/properties.xml.j2') }}"
+
+- name: resources | Wait for the cluster to be out of maintenance with all nodes online
+  azure.sap_automation.pacemaker_cluster_info:
+  register: __ha_pacemaker_ra_hana_scaleup_state
+  until:
+    - not __ha_pacemaker_ra_hana_scaleup_state['maintenance_mode']
+    - ha_pacemaker_ra_hana_scaleup_nodes | map(attribute='name')
+      | difference(__ha_pacemaker_ra_hana_scaleup_state['online_nodes']) | length == 0
+  retries: "{{ ha_pacemaker_ra_hana_scaleup_settle_retries }}"
+  delay: "{{ ha_pacemaker_ra_hana_scaleup_settle_delay }}"
+  when: not ansible_check_mode

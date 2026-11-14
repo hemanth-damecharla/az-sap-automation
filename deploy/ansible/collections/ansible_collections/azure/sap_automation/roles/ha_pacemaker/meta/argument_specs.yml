@@ -1,0 +1,47 @@
+---
+argument_specs:
+  main:
+    short_description: Compose a Pacemaker cluster from provider roles
+    description:
+      - Runs the cluster bootstrap role, then every fencing role, then every
+        resource agent role.
+      - Provider roles read O(ha_pacemaker_nodes) and
+        O(ha_pacemaker_config_node) as the default for their own node
+        parameters; all other provider inputs are set with the provider's own
+        prefixed variables.
+    options:
+      ha_pacemaker_nodes:
+        description: Cluster nodes.
+        type: list
+        elements: dict
+        required: true
+        options:
+          name:
+            description: Short host name of the node as known to the cluster.
+            type: str
+            required: true
+          address:
+            description: IP address used for cluster communication.
+            type: str
+            required: true
+          vm_name:
+            description: Azure virtual machine name; needed by Azure fencing providers.
+            type: str
+      ha_pacemaker_config_node:
+        description: Name of the node on which cluster-wide configuration is applied.
+        type: str
+      ha_pacemaker_core_role:
+        description: Fully qualified name of the role that bootstraps the cluster.
+        type: str
+        default: azure.sap_automation.ha_pacemaker_core
+      ha_pacemaker_fence_roles:
+        description: Fully qualified names of the fencing provider roles, applied in order.
+        type: list
+        elements: str
+        default:
+          - azure.sap_automation.ha_pacemaker_fence_azure_msi
+      ha_pacemaker_ra_roles:
+        description: Fully qualified names of the resource agent provider roles, applied in order.
+        type: list
+        elements: str
+        default: []

@@ -1,0 +1,34 @@
+<crm_config>
+  <cluster_property_set>
+    <nvpair name="node-health-strategy" value="custom"/>
+  </cluster_property_set>
+</crm_config>
+<resources>
+  <clone id="{{ __ha_pacemaker_core_azure_events_clone_id }}">
+{% if __ha_pacemaker_core_azure_events_unhealthy_on_clone | bool %}
+    <meta_attributes>
+      <nvpair name="allow-unhealthy-nodes" value="true"/>
+    </meta_attributes>
+{% endif %}
+    <primitive id="health-azure-events" class="ocf" provider="heartbeat" type="azure-events-az">
+      <meta_attributes>
+        <nvpair name="failure-timeout" value="120s"/>
+{% if not (__ha_pacemaker_core_azure_events_unhealthy_on_clone | bool) %}
+        <nvpair name="allow-unhealthy-nodes" value="true"/>
+{% endif %}
+      </meta_attributes>
+      <operations>
+{% for operation in __ha_pacemaker_core_azure_events_operations %}
+        <op{% for key, value in operation.items() %} {{ key }}="{{ value }}"{% endfor %}/>
+{% endfor %}
+      </operations>
+    </primitive>
+  </clone>
+</resources>
+<constraints>
+  <rsc_location id="loc_azure_health" rsc-pattern="!health-.*">
+    <rule score-attribute="#health-azure">
+      <expression attribute="#uname" operation="defined"/>
+    </rule>
+  </rsc_location>
+</constraints>

@@ -1,0 +1,7 @@
+---
+- name: Load platform variables
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: Configure the cluster resources
+  ansible.builtin.import_tasks: resources.yml
+  when: __ha_pacemaker_ra_hana_scaleup_is_config_node | bool

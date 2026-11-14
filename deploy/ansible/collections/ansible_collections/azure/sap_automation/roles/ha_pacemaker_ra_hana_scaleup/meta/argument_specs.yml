@@ -1,0 +1,67 @@
+---
+argument_specs:
+  main:
+    short_description: Pacemaker resources for SAP HANA scale-up system replication
+    description:
+      - Creates the SAP HANA topology and database resources, the virtual IP
+        with its Azure load balancer probe, and the constraints between them.
+      - HANA System Replication and the HA/DR provider hook must already be
+        configured.
+    options:
+      ha_pacemaker_ra_hana_scaleup_nodes:
+        description: Cluster nodes. Defaults to C(ha_pacemaker_nodes).
+        type: list
+        elements: dict
+        required: true
+      ha_pacemaker_ra_hana_scaleup_config_node:
+        description: Node on which the cluster configuration is applied.
+        type: str
+        required: true
+      ha_pacemaker_ra_hana_scaleup_sid:
+        description: SAP HANA system ID, three upper-case characters.
+        type: str
+        required: true
+      ha_pacemaker_ra_hana_scaleup_instance_number:
+        description: Two-digit SAP HANA instance number.
+        type: str
+        required: true
+      ha_pacemaker_ra_hana_scaleup_virtual_ip:
+        description: Front-end IP address of the load balancer for the HANA primary.
+        type: str
+        required: true
+      ha_pacemaker_ra_hana_scaleup_probe_port:
+        description: Load balancer health probe port. Defaults to 625 followed by the instance number.
+        type: str
+      ha_pacemaker_ra_hana_scaleup_flavor:
+        description: Resource agent generation to configure.
+        type: str
+        choices: [classic, angi]
+        default: classic
+      ha_pacemaker_ra_hana_scaleup_prefer_site_takeover:
+        description: Value of the C(PREFER_SITE_TAKEOVER) agent parameter.
+        type: bool
+        default: true
+      ha_pacemaker_ra_hana_scaleup_automated_register:
+        description: Value of the C(AUTOMATED_REGISTER) agent parameter.
+        type: bool
+        default: true
+      ha_pacemaker_ra_hana_scaleup_duplicate_primary_timeout:
+        description: Value of the C(DUPLICATE_PRIMARY_TIMEOUT) agent parameter, in seconds.
+        type: int
+        default: 7200
+      ha_pacemaker_ra_hana_scaleup_resource_stickiness:
+        description: Cluster-wide default resource stickiness.
+        type: int
+        default: 1000
+      ha_pacemaker_ra_hana_scaleup_migration_threshold:
+        description: Cluster-wide default migration threshold.
+        type: int
+        default: 5000
+      ha_pacemaker_ra_hana_scaleup_settle_retries:
+        description: Number of polls while waiting for the cluster to leave maintenance mode.
+        type: int
+        default: 12
+      ha_pacemaker_ra_hana_scaleup_settle_delay:
+        description: Seconds between those polls.
+        type: int
+        default: 10

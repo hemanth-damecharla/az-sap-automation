@@ -1,0 +1,14 @@
+---
+- name: configuration | Wait until every node is online
+  azure.sap_automation.pacemaker_cluster_info:
+  register: __ha_pacemaker_core_state
+  until: __ha_pacemaker_core_node_names | difference(__ha_pacemaker_core_state['online_nodes']) | length == 0
+  retries: "{{ ha_pacemaker_core_online_retries }}"
+  delay: "{{ ha_pacemaker_core_online_delay }}"
+  # A cluster that does not exist yet cannot be polled in check mode.
+  when: not ansible_check_mode or __ha_pacemaker_core_before['running']
+
+- name: configuration | Set base cluster properties
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/properties.xml.j2') }}"
+  when: __ha_pacemaker_core_is_config_node | bool

@@ -1,0 +1,3 @@
+---
+# azure-events-az needs RHEL 8.4 or later.
+__ha_pacemaker_core_azure_events_supported: "{{ ansible_facts['distribution_version'] is version('8.4', '>=') }}"

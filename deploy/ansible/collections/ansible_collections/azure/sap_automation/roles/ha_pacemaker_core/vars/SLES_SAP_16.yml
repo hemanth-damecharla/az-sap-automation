@@ -1,0 +1,3 @@
+---
+# From SLES 16 the bootstrap tool writes a complete corosync.conf.
+__ha_pacemaker_core_manage_corosync_conf: false

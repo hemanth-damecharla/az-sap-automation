@@ -1,0 +1,26 @@
+---
+- name: set_vars | Collect installed package versions
+  ansible.builtin.package_facts:
+
+- name: set_vars | Load platform specific variables
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/vars/{{ __ha_pacemaker_core_vars_file }}"
+  loop:
+    - "{{ ansible_facts['os_family'] }}.yml"
+    - "{{ ansible_facts['distribution'] }}.yml"
+    - "{{ ansible_facts['distribution'] }}_{{ ansible_facts['distribution_major_version'] }}.yml"
+    - "{{ ansible_facts['distribution'] }}_{{ ansible_facts['distribution_version'] }}.yml"
+  loop_control:
+    loop_var: __ha_pacemaker_core_vars_file
+  when: (role_path + '/vars/' + __ha_pacemaker_core_vars_file) is file
+
+- name: set_vars | Check that this host is a cluster node
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['hostname'] in __ha_pacemaker_core_node_names
+      - ha_pacemaker_core_config_node in __ha_pacemaker_core_node_names
+      - __ha_pacemaker_core_node_names | length == 2
+    fail_msg: >-
+      ha_pacemaker_core_nodes must list exactly two nodes, including this host
+      ({{ ansible_facts['hostname'] }}) and ha_pacemaker_core_config_node.
+    quiet: true

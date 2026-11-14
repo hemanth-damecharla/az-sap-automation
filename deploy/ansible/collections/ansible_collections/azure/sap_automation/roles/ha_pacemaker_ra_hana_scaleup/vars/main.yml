@@ -1,0 +1,102 @@
+---
+# Everything here is the SAPHanaSR-angi layout on SLES, which is also the
+# naming used by angi on RHEL. Platform files hold only the differences, and
+# the two are merged recursively in __ha_pacemaker_ra_hana_scaleup_spec.
+__ha_pacemaker_ra_hana_scaleup_is_config_node: "{{ ansible_facts['hostname'] == ha_pacemaker_ra_hana_scaleup_config_node }}"
+__ha_pacemaker_ra_hana_scaleup_sid: "{{ ha_pacemaker_ra_hana_scaleup_sid | upper }}"
+__ha_pacemaker_ra_hana_scaleup_nr: "{{ ha_pacemaker_ra_hana_scaleup_instance_number }}"
+__ha_pacemaker_ra_hana_scaleup_suffix: "{{ __ha_pacemaker_ra_hana_scaleup_sid }}_HDB{{ __ha_pacemaker_ra_hana_scaleup_nr }}"
+
+__ha_pacemaker_ra_hana_scaleup_common:
+  provider: heartbeat
+  promoted_role: Promoted
+  unpromoted_role: Unpromoted
+  # "clone" with promotable=true, or the legacy "master" element.
+  promotable_element: clone
+  priority_fencing_delay: "30"
+  default_priority: ""
+  order_kind: Optional
+  order_symmetrical: ""
+  colocation_rsc_role: Started
+  ip:
+    id: "rsc_ip_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+    meta:
+      target-role: Started
+    operations:
+      - {name: monitor, interval: 10s, timeout: 20s}
+  probe:
+    id: "rsc_nc_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+    meta:
+      resource-stickiness: "0"
+    operations:
+      - {name: monitor, interval: "10", timeout: 20s}
+  group:
+    id: "g_ip_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+    members: [ip, probe]
+  colocation_id: "col_saphana_ip_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+  order_id: "ord_SAPHana_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+  topology:
+    id: "rsc_SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+    clone_id: "cln_SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+    clone_meta:
+      clone-node-max: "1"
+      interleave: "true"
+
+__ha_pacemaker_ra_hana_scaleup_flavors:
+  classic:
+    topology:
+      operations:
+        - {name: monitor, interval: "10", timeout: "600"}
+        - {name: start, interval: "0", timeout: "600"}
+        - {name: stop, interval: "0", timeout: "300"}
+    database:
+      id: "rsc_SAPHana_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+      type: SAPHana
+      clone_id: "msl_SAPHana_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+      meta: {}
+      clone_meta:
+        notify: "true"
+        clone-max: "2"
+        clone-node-max: "1"
+        interleave: "true"
+      monitor_promoted_interval: "60"
+      monitor_unpromoted_interval: "61"
+      timeouts: {start: "3600", stop: "3600", promote: "3600", demote: "", monitor: "700"}
+    filesystem: {}
+  angi:
+    topology:
+      operations:
+        - {name: monitor, interval: "50", timeout: "600"}
+        - {name: start, interval: "0", timeout: "600"}
+        - {name: stop, interval: "0", timeout: "300"}
+    database:
+      id: "rsc_SAPHanaCon_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+      type: SAPHanaController
+      clone_id: "mst_SAPHanaCon_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+      meta:
+        priority: "100"
+      clone_meta:
+        clone-node-max: "1"
+        interleave: "true"
+      monitor_promoted_interval: "60"
+      monitor_unpromoted_interval: "61"
+      timeouts: {start: "3600", stop: "3600", promote: "3600", demote: "320", monitor: "700"}
+    filesystem:
+      id: "rsc_SAPHanaFil_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+      clone_id: "cln_SAPHanaFil_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+      clone_meta:
+        clone-node-max: "1"
+        interleave: "true"
+
+# Platform deltas; overridden by the platform files.
+__ha_pacemaker_ra_hana_scaleup_platform_common: {}
+__ha_pacemaker_ra_hana_scaleup_platform_flavors:
+  classic: {}
+  angi: {}
+
+__ha_pacemaker_ra_hana_scaleup_spec: >-
+  {{ __ha_pacemaker_ra_hana_scaleup_common
+     | combine(__ha_pacemaker_ra_hana_scaleup_flavors[ha_pacemaker_ra_hana_scaleup_flavor],
+               __ha_pacemaker_ra_hana_scaleup_platform_common,
+               __ha_pacemaker_ra_hana_scaleup_platform_flavors[ha_pacemaker_ra_hana_scaleup_flavor],
+               recursive=true) }}

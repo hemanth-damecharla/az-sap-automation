@@ -1,0 +1,15 @@
+---
+- name: azure_events | Initialise the Azure health attribute of every node
+  azure.sap_automation.pacemaker_attribute:
+    name: "#health-azure"
+    node: "{{ __ha_pacemaker_core_node }}"
+    value: "0"
+  loop: "{{ __ha_pacemaker_core_node_names }}"
+  loop_control:
+    loop_var: __ha_pacemaker_core_node
+  when: __ha_pacemaker_core_is_config_node | bool
+
+- name: azure_events | Configure the scheduled events agent and node health strategy
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/azure_events.xml.j2') }}"
+  when: __ha_pacemaker_core_is_config_node | bool

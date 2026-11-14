@@ -1,0 +1,5 @@
+---
+# Pacemaker 3 removed the Master/Slave role names.
+__ha_pacemaker_ra_hana_scaleup_rhel_role_names:
+  promoted_role: Promoted
+  unpromoted_role: Unpromoted

@@ -1,0 +1,20 @@
+---
+ha_pacemaker_fence_azure_msi_nodes: "{{ ha_pacemaker_nodes }}"
+ha_pacemaker_fence_azure_msi_config_node: "{{ ha_pacemaker_config_node }}"
+
+# Azure subscription and resource group that contain the cluster VMs.
+# ha_pacemaker_fence_azure_msi_subscription_id:
+# ha_pacemaker_fence_azure_msi_resource_group:
+
+# Azure cloud of the VMs: public or usgov.
+ha_pacemaker_fence_azure_msi_cloud: public
+
+ha_pacemaker_fence_azure_msi_resource_id: rsc_st_azure
+ha_pacemaker_fence_azure_msi_stonith_timeout: "900"
+
+# Empty leaves the cluster property untouched.
+ha_pacemaker_fence_azure_msi_priority_fencing_delay: "{{ __ha_pacemaker_fence_azure_msi_priority_fencing_delay }}"
+
+# Additional or overriding fence_azure_arm parameters, merged over the
+# platform defaults.
+ha_pacemaker_fence_azure_msi_parameters: {}

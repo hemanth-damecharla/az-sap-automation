@@ -1,0 +1,28 @@
+---
+# Cluster creation has no declarative interface: it generates the Corosync
+# authentication key and registers the nodes with pcsd. pcs is therefore
+# called directly, guarded so that it only ever runs once.
+- name: bootstrap_RedHat | Authenticate the cluster nodes with pcsd
+  ansible.builtin.command:
+    argv: "{{ ['pcs', 'host', 'auth'] + __ha_pacemaker_core_node_names
+      + ['-u', 'hacluster', '-p', ha_pacemaker_core_hacluster_password] }}"
+    creates: "{{ __ha_pacemaker_core_corosync_conf }}"
+  when: __ha_pacemaker_core_is_config_node | bool
+  no_log: true
+
+- name: bootstrap_RedHat | Create the cluster
+  ansible.builtin.command:
+    argv: "{{ ['pcs', 'cluster', 'setup', ha_pacemaker_core_cluster_name] + __ha_pacemaker_core_node_names
+      + ['totem', 'token=' + ha_pacemaker_core_totem['token'] | string] }}"
+    creates: "{{ __ha_pacemaker_core_corosync_conf }}"
+  when: __ha_pacemaker_core_is_config_node | bool
+
+- name: bootstrap_RedHat | Start the cluster services
+  ansible.builtin.systemd:
+    name: "{{ __ha_pacemaker_core_service }}"
+    state: started
+  loop:
+    - corosync
+    - pacemaker
+  loop_control:
+    loop_var: __ha_pacemaker_core_service

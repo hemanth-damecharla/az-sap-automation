@@ -1,0 +1,27 @@
+---
+ha_pacemaker_ra_hana_scaleup_nodes: "{{ ha_pacemaker_nodes }}"
+ha_pacemaker_ra_hana_scaleup_config_node: "{{ ha_pacemaker_config_node }}"
+
+# ha_pacemaker_ra_hana_scaleup_sid:
+# ha_pacemaker_ra_hana_scaleup_instance_number:
+
+# Front-end IP address of the Azure load balancer for the HANA primary.
+# ha_pacemaker_ra_hana_scaleup_virtual_ip:
+
+# Health probe port of that load balancer.
+ha_pacemaker_ra_hana_scaleup_probe_port: "625{{ ha_pacemaker_ra_hana_scaleup_instance_number }}"
+
+# classic: SAPHana + SAPHanaTopology agents.
+# angi:    SAPHanaController + SAPHanaTopology + SAPHanaFilesystem (SAPHanaSR-angi).
+ha_pacemaker_ra_hana_scaleup_flavor: classic
+
+ha_pacemaker_ra_hana_scaleup_prefer_site_takeover: true
+ha_pacemaker_ra_hana_scaleup_automated_register: true
+ha_pacemaker_ra_hana_scaleup_duplicate_primary_timeout: 7200
+
+ha_pacemaker_ra_hana_scaleup_resource_stickiness: 1000
+ha_pacemaker_ra_hana_scaleup_migration_threshold: 5000
+
+# How long to wait for the cluster to settle after leaving maintenance mode.
+ha_pacemaker_ra_hana_scaleup_settle_retries: 12
+ha_pacemaker_ra_hana_scaleup_settle_delay: 10

@@ -1,0 +1,75 @@
+---
+__ha_pacemaker_ra_hana_scaleup_rhel_suffix: "{{ __ha_pacemaker_ra_hana_scaleup_sid }}_{{ __ha_pacemaker_ra_hana_scaleup_nr }}"
+__ha_pacemaker_ra_hana_scaleup_rhel_role_names:
+  promoted_role: Master
+  unpromoted_role: Slave
+
+__ha_pacemaker_ra_hana_scaleup_platform_common:
+  priority_fencing_delay: 15s
+  default_priority: "1"
+  order_kind: ""
+  order_symmetrical: "false"
+  colocation_rsc_role: ""
+  ip:
+    meta:
+      target-role: ""
+      priority: "5"
+    operations: []
+  probe:
+    meta:
+      resource-stickiness: ""
+      priority: "5"
+    operations: []
+  group:
+    members: [probe, ip]
+  topology:
+    clone_meta:
+      clone-max: "2"
+
+__ha_pacemaker_ra_hana_scaleup_platform_flavors:
+  classic: >-
+    {{ __ha_pacemaker_ra_hana_scaleup_rhel_classic
+       | combine(__ha_pacemaker_ra_hana_scaleup_rhel_role_names) }}
+  angi:
+    topology:
+      operations:
+        - {name: start, timeout: "600"}
+        - {name: stop, timeout: "300"}
+        - {name: monitor, interval: "30", timeout: "300"}
+    database:
+      id: "rsc_SAPHanaController_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+      clone_id: "cln_SAPHanaController_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+      clone_meta:
+        clone-max: "2"
+      monitor_promoted_interval: "59"
+      timeouts: {start: "", stop: "3600", promote: "", demote: "", monitor: "700"}
+    filesystem:
+      id: "rsc_SAPHanaFilesystem_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+      clone_id: "cln_SAPHanaFilesystem_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+
+# Classic resources on RHEL keep the names pcs generates, so that clusters
+# built by earlier SDAF releases are adopted instead of duplicated.
+__ha_pacemaker_ra_hana_scaleup_rhel_classic:
+  ip:
+    id: "vip_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}"
+  probe:
+    id: "nc_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}"
+  group:
+    id: "g_ip_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}"
+  colocation_id: "colocation-g_ip_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}-SAPHana_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}-clone-4000"
+  order_id: >-
+    order-SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}-clone-SAPHana_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}-clone-mandatory
+  topology:
+    id: "SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}"
+    clone_id: "SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}-clone"
+    operations:
+      - {name: start, timeout: "600"}
+      - {name: stop, timeout: "300"}
+      - {name: monitor, interval: "10", timeout: "600"}
+  database:
+    id: "SAPHana_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}"
+    clone_id: "SAPHana_{{ __ha_pacemaker_ra_hana_scaleup_rhel_suffix }}-clone"
+    meta:
+      priority: "10"
+    monitor_promoted_interval: "59"
+    timeouts: {start: "3600", stop: "3600", promote: "3600", demote: "3600", monitor: "700"}

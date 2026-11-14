@@ -1,0 +1,111 @@
+---
+argument_specs:
+  main:
+    short_description: Bootstrap a two-node Pacemaker and Corosync cluster
+    description:
+      - Prepares the nodes, creates the cluster with the distribution's own
+        bootstrap tool, and applies the fencing-independent base configuration.
+      - Fencing devices and SAP resources are the responsibility of the
+        C(ha_pacemaker_fence_*) and C(ha_pacemaker_ra_*) roles.
+    options:
+      ha_pacemaker_core_nodes:
+        description: Cluster nodes. Defaults to C(ha_pacemaker_nodes).
+        type: list
+        elements: dict
+        required: true
+        options:
+          name:
+            description: Short host name of the node as known to the cluster.
+            type: str
+            required: true
+          address:
+            description: IP address used for cluster communication.
+            type: str
+            required: true
+          vm_name:
+            description: Azure virtual machine name. Not used by this role.
+            type: str
+      ha_pacemaker_core_config_node:
+        description: Node that creates the cluster and applies cluster-wide configuration.
+        type: str
+        required: true
+      ha_pacemaker_core_cluster_name:
+        description: Corosync cluster name.
+        type: str
+        required: true
+      ha_pacemaker_core_hacluster_password:
+        description: Password of the C(hacluster) user. Never logged.
+        type: str
+        required: true
+        no_log: true
+      ha_pacemaker_core_interface:
+        description: Network interface used for cluster communication on SLES.
+        type: str
+        default: eth0
+      ha_pacemaker_core_totem:
+        description: Corosync totem timings.
+        type: dict
+        options:
+          token:
+            description: Token timeout in milliseconds.
+            type: int
+            default: 30000
+          retransmits:
+            description: Token retransmits before loss.
+            type: int
+            default: 10
+          join:
+            description: Join timeout in milliseconds.
+            type: int
+            default: 60
+          consensus:
+            description: Consensus timeout in milliseconds.
+            type: int
+            default: 36000
+          max_messages:
+            description: Maximum messages per token.
+            type: int
+            default: 20
+      ha_pacemaker_core_quorum:
+        description: Corosync votequorum settings.
+        type: dict
+        options:
+          expected_votes:
+            description: Expected votes.
+            type: int
+            default: 2
+          two_node:
+            description: Two-node mode flag.
+            type: int
+            default: 1
+      ha_pacemaker_core_corosync_transport:
+        description: Corosync transport written on SLES before 16.
+        type: str
+        default: udpu
+      ha_pacemaker_core_corosync_crypto:
+        description: Totem crypto options written on SLES before 16, as key/value pairs.
+        type: dict
+      ha_pacemaker_core_corosync_mcastport:
+        description: Corosync port written on SLES before 16.
+        type: int
+        default: 5405
+      ha_pacemaker_core_sbd_devices:
+        description: SBD block devices passed to the SLES cluster bootstrap.
+        type: list
+        elements: str
+        default: []
+      ha_pacemaker_core_start_delay:
+        description: Seconds after boot before Pacemaker is started. Defaults to 216 on SLES and 186 on RHEL.
+        type: str
+      ha_pacemaker_core_azure_events_enabled:
+        description: Whether to configure the Azure scheduled events agent.
+        type: bool
+        default: true
+      ha_pacemaker_core_online_retries:
+        description: Number of polls while waiting for all nodes to be online.
+        type: int
+        default: 12
+      ha_pacemaker_core_online_delay:
+        description: Seconds between those polls.
+        type: int
+        default: 10

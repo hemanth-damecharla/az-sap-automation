@@ -1,0 +1,9 @@
+---
+- name: Load platform variables
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: Configure the Azure fence agent and enable fencing
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/stonith.xml.j2') }}"
+  when: __ha_pacemaker_fence_azure_msi_is_config_node | bool
+  notify: Clean up the Azure fence resource

@@ -1,0 +1,11 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Restart corosync
+  ansible.builtin.systemd:
+    name: corosync
+    state: restarted
+  # One node at a time, so the cluster never loses both members.
+  throttle: 1
