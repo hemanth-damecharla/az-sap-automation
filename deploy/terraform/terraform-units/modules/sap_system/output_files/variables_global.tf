@@ -1,78 +1,164 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
-variable "subnet_cidr_anf"                    { description = "address prefix for the ANF subnet" }
+variable "subnet_cidr_anf"                    {
+                                                description = "Address prefix of the Azure NetApp Files subnet"
+                                                type        = string
+                                              }
 variable "ansible_user"                         {
                                                   description = "The ansible remote user account to use"
+                                                  type        = string
                                                   default     = "azureadm"
                                                 }
 variable "app_instance_number"                  {
                                                   description = "Instance number for Additional Application Server"
+                                                  type        = string
                                                   default     = "00"
                                                 }
 variable "app_server_count"                     {
                                                   description = "Number of Application Servers"
                                                   type    = number
                                                 }
-variable "app_subnet_netmask"                   { description = "netmask for the SAP application subnet" }
-variable "app_tier_os_types"                    { description = "Defines the app tier os types" }
-variable "app_vm_names"                         { description = "List of VM names for the Application Servers" }
-variable "application_server_ips"               { description = "List of IP addresses for the Application Servers" }
-variable "application_server_secondary_ips"     { description = "List of secondary IP addresses for the Application Servers" }
+variable "app_subnet_netmask"                   {
+                                                  description = "Netmask length of the application subnet"
+                                                  type        = string
+                                                }
+variable "app_tier_os_types"                    {
+                                                  description = "Operating system type per application tier role, as returned by the app_tier module"
+                                                  type        = any
+                                                }
+variable "app_vm_names"                         {
+                                                  description = "Names of the application server virtual machines"
+                                                  type        = list(string)
+                                                }
+variable "application_server_ips"               {
+                                                  description = "IP addresses of the application servers"
+                                                  type        = list(string)
+                                                }
+variable "application_server_secondary_ips"     {
+                                                  description = "Secondary IP addresses of the application servers"
+                                                  type        = list(string)
+                                                }
 variable "authentication_type"                  {
                                                   description = "VM Authentication type"
+                                                  type        = string
                                                   default     = "key"
                                                 }
-variable "authentication"                       { description = "Dictionary with authentication details" }
+variable "authentication"                       {
+                                                  description = "Credentials of the virtual machine administrator assembled by the root module's transform. Untyped: shared by five modules; it will be typed together with them"
+                                                  type        = any
+                                                }
 variable "bom_name"                             {
                                                   description = "Name of Bill of Materials file"
+                                                  type        = string
                                                   default     = ""
                                                 }
-variable "subnet_cidr_app"                      { description = "address prefix for the app subnet" }
-variable "subnet_cidr_db"                       { description = "address prefix for the db subnet" }
-variable "subnet_cidr_client"                   { description = "address prefix for the client subnet" }
-variable "configuration_settings"               { description = "This is a dictionary that will contain values persisted to the sap-parameters.file" }
-variable "created_resource_group_name"          { description = "Name of the resource group" }
-variable "created_resource_group_subscription_id" { description = "Subscription ID of the resource group" }
-variable "database_admin_ips"                   { description = "List of Admin NICs for the DB VMs" }
+variable "subnet_cidr_app"                      {
+                                                  description = "Address prefix of the application subnet"
+                                                  type        = string
+                                                }
+variable "subnet_cidr_db"                       {
+                                                  description = "Address prefix of the database subnet"
+                                                  type        = string
+                                                }
+variable "subnet_cidr_client"                   {
+                                                  description = "Address prefix of the client subnet"
+                                                  type        = string
+                                                }
+variable "configuration_settings"               {
+                                                  description = "Dictionary of additional values persisted to sap-parameters.yaml; values may be strings, numbers, lists or maps"
+                                                  type        = any
+                                                }
+variable "created_resource_group_name"          {
+                                                  description = "Name of the resource group of the SAP system"
+                                                  type        = string
+                                                }
+variable "created_resource_group_subscription_id" {
+                                                    description = "Subscription ID of the resource group of the SAP system"
+                                                    type        = string
+                                                  }
+variable "database_admin_ips"                   {
+                                                  description = "Admin network IP addresses of the database servers"
+                                                  type        = list(string)
+                                                }
 variable "database_cluster_type"                {
                                                   description   = "Cluster quorum type; AFA (Azure Fencing Agent), ASD (Azure Shared Disk), ISCSI"
                                                   type          = string
                                                 }
 variable "database_high_availability"           {
                                                   description = "If true, the database tier will be configured for high availability"
+                                                  type        = bool
                                                   default     = false
                                                 }
-variable "database"                             { description = "Dictionary with information on the database tier"}
+variable "database"                             {
+                                                  description = "Database tier settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
+                                                  type        = any
+                                                }
 variable "database_authentication_type"         {
                                                   description = "Platform to use"
-                                                  default = "key"
+                                                  type        = string
+                                                  default     = "key"
                                                 }
-variable "database_cluster_ip"                  { description = "This is a Cluster IP address for Windows load balancer for the database" }
-variable "database_active_active"               { description = "If true, database will deployed with Active/Active (read enabled) configuration (HANA only)" }
+variable "database_cluster_ip"                  {
+                                                  description = "IP address of the database cluster (Windows Server Failover Cluster)"
+                                                  type        = string
+                                                }
+variable "database_active_active"               {
+                                                  description = "If true, database will deployed with Active/Active (read enabled) configuration, only supported for HANA"
+                                                  type        = bool
+                                                }
 variable "database_active_active_loadbalancer_ip" {
-                                                  description = "DB Active Active Load Balancer IP"
-                                                  default     = ""
-                                                }
+                                                    description = "DB Active Active Load Balancer IP"
+                                                    type        = string
+                                                    default     = ""
+                                                  }
 variable "database_loadbalancer_ip"             {
                                                   description = "DB Load Balancer IP"
+                                                  type        = string
                                                   default     = ""
                                                 }
 variable "db_server_count"                      {
                                                   description = "Number of Database Servers"
                                                   type    = number
                                                 }
-variable "database_server_ips"                  { description = "List of IP addresses for the database servers" }
-variable "database_server_secondary_ips"        { description = "List of secondary IP addresses for the database servers" }
-variable "database_shared_disks"                { description = "Database Azure Shared Disk" }
-variable "database_server_vm_names"             { description = "List of VM names for the database servers" }
-variable "deploy_monitoring_extension"          { description = "Deploy the Azure Extended monitoring for SAP solution" }
+variable "database_server_ips"                  {
+                                                  description = "IP addresses of the database servers"
+                                                  type        = list(string)
+                                                }
+variable "database_server_secondary_ips"        {
+                                                  description = "Secondary IP addresses of the database servers"
+                                                  type        = list(string)
+                                                }
+variable "database_shared_disks"                {
+                                                  description = "Shared disks of the database cluster, as returned by the database modules"
+                                                  type        = any
+                                                }
+variable "database_server_vm_names"             {
+                                                  description = "Names of the database server virtual machines"
+                                                  type        = list(string)
+                                                }
+variable "deploy_monitoring_extension"          {
+                                                  description = "Defines if the Microsoft.AzureCAT.AzureEnhancedMonitoring extension will be deployed"
+                                                  type        = bool
+                                                }
 
-variable "is_use_fence_kdump"                   { description = "Use fence kdump for optional stonith configuration on RHEL" }
+variable "is_use_fence_kdump"                   {
+                                                  description = "Configure fencing device based on the fence agent fence_kdump for both SCS and DB clusters"
+                                                  type        = bool
+                                                }
 
-variable "db_sid"                               { description = "Database SID" }
-variable "database_subnet_netmask"              { description = "netmask for the database subnet" }
-variable "disks"                                { description = "List of disks" }
+variable "db_sid"                               {
+                                                  description = "The database system ID"
+                                                  type        = string
+                                                }
+variable "database_subnet_netmask"              {
+                                                  description = "Netmask length of the database subnet"
+                                                  type        = string
+                                                }
+variable "disks"                                {
+                                                  description = "Disk layout entries of the database virtual machines, as returned by the database modules"
+                                                  type        = any
+                                                }
 variable "dns_zone_names"                       {
                                                   description = "Private DNS zone names"
                                                   type        = map(string)
@@ -86,39 +172,67 @@ variable "dns_zone_names"                       {
                                                 }
 variable "dns"                                  {
                                                   description = "The DNS label"
+                                                  type        = string
                                                   default     = ""
                                                 }
-variable "dns_a_records_for_secondary_names"    { description = "Boolean value indicating if dns a records should be created for the secondary DNS names"}
+variable "dns_a_records_for_secondary_names"    {
+                                                  description = "Boolean value indicating if dns a records should be created for the secondary DNS names"
+                                                  type        = bool
+                                                }
 variable "ers_instance_number"                  {
                                                   description = "Instance number for ERS"
+                                                  type        = string
                                                   default     = "02"
                                                 }
 variable "ers_server_loadbalancer_ip"                            {
-                                                  description = "ERS Load Balancer IP"
-                                                  default     = ""
+                                                                   description = "ERS Load Balancer IP"
+                                                                   type        = string
+                                                                   default     = ""
+                                                                 }
+variable "hana_data"                            {
+                                                  description = "Azure NetApp Files data volumes for SAP HANA, as returned by the hdb_node module"
+                                                  type        = any
                                                 }
-variable "hana_data"                            { description = "If defined provides the mount point for HANA data on ANF" }
-variable "hana_log"                             { description = "If defined provides the mount point for HANA log on ANF" }
-variable "hana_shared"                          { description = "If defined provides the mount point for HANA shared on ANF" }
-variable "infrastructure"                       { description = "Dictionary with infrastructure details" }
+variable "hana_log"                             {
+                                                  description = "Azure NetApp Files log volumes for SAP HANA, as returned by the hdb_node module"
+                                                  type        = any
+                                                }
+variable "hana_shared"                          {
+                                                  description = "Shared volumes for SAP HANA, as returned by the hdb_node module"
+                                                  type        = any
+                                                }
+variable "infrastructure"                       {
+                                                  description = "Infrastructure settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
+                                                  type        = any
+                                                }
 variable "install_path"                         {
                                                   description = "Defines the install path for mounting /usr/sap/install"
+                                                  type        = string
                                                   default     = ""
                                                 }
 variable "iSCSI_server_ips"                     {
                                                   description = "List of IP addresses for the iSCSI Servers"
+                                                  type        = list(string)
                                                   default     = []
                                                 }
 variable "iSCSI_server_names"                   {
                                                   description = "List of host names for the iSCSI Servers"
+                                                  type        = list(string)
                                                   default     = []
                                                 }
 variable "iSCSI_servers"                        {
                                                   description = "List of host names and IPs for the iSCSI Servers"
+                                                  type        = any
                                                   default     = []
                                                 }
-variable "landscape_tfstate"                    { description = "Landscape remote tfstate file" }
-variable "loadbalancers"                        { description = "List of LoadBalancers created for HANA Databases" }
+variable "landscape_tfstate"                    {
+                                                  description = "Outputs of the workload zone Terraform state. Untyped until the workload zone publishes a versioned capability contract"
+                                                  type        = any
+                                                }
+variable "loadbalancers"                        {
+                                                  description = "Load balancers of the database tier, as returned by the hdb_node module"
+                                                  type        = any
+                                                }
 variable "management_dns_resourcegroup_name"    {
                                                   description = "String value giving the possibility to register custom dns a records in a separate resourcegroup"
                                                   default     = null
@@ -130,92 +244,178 @@ variable "management_dns_subscription_id"       {
                                                   type        = string
                                                 }
 
-variable "naming"                               { description = "Defines the names for the resources" }
+variable "naming"                               {
+                                                  description = "Defines the names for the resources: the output of the sap_namegenerator module, or a custom names file with the same structure"
+                                                  type        = any
+                                                }
 variable "NFS_provider"                         {
                                                   description = "Defines the NFS provider"
                                                   type        = string
                                                 }
-variable "observer_ips"                         { description = "List of NICs for the Observer VMs" }
-variable "observer_vms"                         { description = "List of Observer VMs" }
-variable "observer_shared_disks"                { description = "Observer Azure Shared Disk" }
+variable "observer_ips"                         {
+                                                  description = "IP addresses of the observer virtual machines"
+                                                  type        = list(string)
+                                                }
+variable "observer_vms"                         {
+                                                  description = "Observer virtual machines, as returned by the database modules"
+                                                  type        = any
+                                                }
+variable "observer_shared_disks"                {
+                                                  description = "Shared disks of the observer virtual machines, as returned by the database modules"
+                                                  type        = any
+                                                }
 variable "pas_instance_number"                  {
                                                   description = "Instance number for Primary Application Server"
+                                                  type        = string
                                                   default     = "00"
                                                 }
 variable "platform"                             {
                                                   description = "Platform to use"
+                                                  type        = string
                                                   default     = "HANA"
                                                 }
-variable "random_id"                            { description = "Random hex string" }
+variable "random_id"                            {
+                                                  description = "Random hex string used to make resource names unique"
+                                                  type        = string
+                                                }
 variable "sap_mnt"                              {
                                                   description = "ANF Volume for SAP mount"
+                                                  type        = string
                                                   default     = ""
                                                 }
-variable "sap_sid"                              { description = "SAP SID" }
+variable "sap_sid"                              {
+                                                  description = "The SAP system ID"
+                                                  type        = string
+                                                }
 variable "sap_transport"                        {
                                                   description = "ANF Volume for SAP Transport"
+                                                  type        = string
                                                   default     = ""
                                                 }
 variable "save_naming_information"              {
                                                   description = "If defined, will save the naming information for the resources"
+                                                  type        = bool
                                                   default     = false
                                                 }
-variable "scale_out"                            { description = "If true, the SAP System will be scale out" }
-variable "scale_out_no_standby_role"            { description = "If true, the SAP Scale out system will not have a standby-node. Only applicable for shared storage based deployment" }
-variable "scs_shared_disks"                     { description = "SCS Azure Shared Disk" }
+variable "scale_out"                            {
+                                                  description = "If true, the database tier will be configured for scaleout scenario"
+                                                  type        = bool
+                                                }
+variable "scale_out_no_standby_role"            {
+                                                  description = "If true, the database scale out tier will not have a standby role"
+                                                  type        = bool
+                                                }
+variable "scs_shared_disks"                     {
+                                                  description = "Shared disks of the central services cluster, as returned by the app_tier module"
+                                                  type        = any
+                                                }
 
 
-variable "scs_cluster_loadbalancer_ip"          { description = "This is a Cluster IP address for Windows load balancer for central services" }
+variable "scs_cluster_loadbalancer_ip"          {
+                                                  description = "IP address of the central services cluster load balancer"
+                                                  type        = string
+                                                }
 variable "scs_cluster_type"                     {
                                                   description   = "Cluster quorum type; AFA (Azure Fencing Agent), ASD (Azure Shared Disk), ISCSI"
                                                   type          = string
                                                 }
 variable "scs_high_availability"                {
                                                   description = "If true, the SAP Central Services tier will be configured for high availability"
+                                                  type        = bool
                                                   default     = false
                                                 }
 variable "scs_instance_number"                  {
                                                   description = "Instance number for SCS"
+                                                  type        = string
                                                   default     = "00"
                                                 }
 variable "scs_server_loadbalancer_ip"           {
                                                   description = "SCS Load Balancer IP"
+                                                  type        = string
                                                   default     = ""
                                                 }
 variable "scs_server_count"                     {
                                                   description = "Number of SCS Servers"
                                                   type    = number
                                                 }
-variable "scs_server_ips"                       { description = "List of IP addresses for the SCS Servers" }
-variable "scs_server_secondary_ips"             { description = "List of secondary IP addresses for the SCS Servers" }
-variable "scs_server_vm_resource_ids"           { description = "List of Virtual Machine resource IDs for the SCS servers" }
-variable "scs_vm_names"                         { description = "List of VM names for the SCS Servers" }
-variable "shared_home"                          { description = "If defined provides shared-home support" }
-variable "sid_keyvault_user_id"                 { description = "Defines the names for the resources" }
-variable "subnet_cidr_storage"                  { description = "address prefix for the storage subnet" }
-variable "tfstate_resource_id"                  { description = "Resource ID for tf state file" }
-variable "upgrade_packages"                     { description = "Upgrade packages" }
-variable "use_AFS_encryption_in_transit"        { description = "Indicates if Encryption in transit is enabled for AFS shares" }
-variable "suse_subscription_id"                  {
-                                                  description = "SUSE registration code for BYOS/BYOL images"
-                                                  default     = ""
+variable "scs_server_ips"                       {
+                                                  description = "IP addresses of the central services servers"
+                                                  type        = list(string)
                                                 }
+variable "scs_server_secondary_ips"             {
+                                                  description = "Secondary IP addresses of the central services servers"
+                                                  type        = list(string)
+                                                }
+variable "scs_server_vm_resource_ids"           {
+                                                  description = "Azure resource IDs of the central services virtual machines"
+                                                  type        = list(string)
+                                                }
+variable "scs_vm_names"                         {
+                                                  description = "Names of the central services virtual machines"
+                                                  type        = list(string)
+                                                }
+variable "shared_home"                          {
+                                                  description = "If defined provides shared-home support"
+                                                  type        = bool
+                                                }
+variable "sid_keyvault_user_id"                 {
+                                                  description = "Azure resource ID of the key vault holding the SAP system credentials"
+                                                  type        = string
+                                                }
+variable "subnet_cidr_storage"                  {
+                                                  description = "Address prefix of the storage subnet"
+                                                  type        = string
+                                                }
+variable "tfstate_resource_id"                  {
+                                                  description = "Azure resource ID of the storage account holding the Terraform state"
+                                                  type        = string
+                                                }
+variable "upgrade_packages"                     {
+                                                  description = "If defined, will upgrade the packages on the virtual machines"
+                                                  type        = bool
+                                                }
+variable "use_AFS_encryption_in_transit"        {
+                                                  description = "True when Azure Files shares are mounted with encryption in transit"
+                                                  type        = bool
+                                                }
+variable "suse_subscription_id"                  {
+                                                   description = "SUSE registration code for BYOS/BYOL images"
+                                                   type        = string
+                                                   default     = ""
+                                                 }
 variable "use_custom_dns_a_registration"        {
                                                   description = "Boolean value indicating if a custom dns a record should be created when using private endpoints"
                                                   default     = false
                                                   type        = bool
                                                 }
-variable "use_local_credentials"                { description = "SDU has unique credentials" }
-variable "use_msi_for_clusters"                 { description = "If true, the Pacemaker cluser will use a managed identity" }
-variable "use_secondary_ips"                    { description = "Use secondary IPs for the SAP System" }
+variable "use_local_credentials"                {
+                                                  description = "True when the SAP system has its own credentials instead of the workload zone's"
+                                                  type        = bool
+                                                }
+variable "use_msi_for_clusters"                 {
+                                                  description = "If true, the Pacemaker cluser will use a managed identity"
+                                                  type        = bool
+                                                }
+variable "use_secondary_ips"                    {
+                                                  description = "Defines if secondary IPs are used for the SAP Systems virtual machines"
+                                                  type        = bool
+                                                }
 variable "use_simple_mount"                     {
                                                   description = "Use simple mount"
+                                                  type        = bool
                                                   default     = true
                                                 }
-variable "usr_sap"                              { description = "If defined provides the mount point for /usr/sap on ANF or on the Azure Files sapmnt storage" }
-variable "user_assigned_identity_id"            { description = "User assigned managed identity" }
+variable "usr_sap"                              {
+                                                  description = "NFS path of the /usr/sap share, or empty"
+                                                  type        = string
+                                                }
+variable "user_assigned_identity_id"            {
+                                                  description = "If provided defines the user assigned identity to assign to the virtual machines"
+                                                  type        = string
+                                                }
 variable "web_instance_number"                  {
                                                   description = "The Instance number for Web Dispatcher"
+                                                  type        = string
                                                   default     = "00"
                                                 }
 variable "web_server_count"                     {
@@ -224,14 +424,36 @@ variable "web_server_count"                     {
                                                 }
 variable "web_sid"                              {
                                                   description = "The sid of the web dispatchers"
+                                                  type        = string
                                                   default     = ""
                                                 }
-variable "webdispatcher_server_ips"             { description = "List of IP addresses for the Web dispatchers" }
-variable "webdispatcher_server_secondary_ips"   { description = "List of secondary IP addresses for the Web dispatchers" }
-variable "webdispatcher_server_vm_names"        { description = "List of VM names for the Web dispatchers" }
+variable "webdispatcher_server_ips"             {
+                                                  description = "IP addresses of the web dispatchers"
+                                                  type        = list(string)
+                                                }
+variable "webdispatcher_server_secondary_ips"   {
+                                                  description = "Secondary IP addresses of the web dispatchers"
+                                                  type        = list(string)
+                                                }
+variable "webdispatcher_server_vm_names"        {
+                                                  description = "Names of the web dispatcher virtual machines"
+                                                  type        = list(string)
+                                                }
 
-variable "ams_resource_id"                      { description = "Resource ID for AMS" }
-variable "enable_os_monitoring"                 { description = "Enable OS monitoring" }
-variable "enable_ha_monitoring"                 { description = "Enable HA monitoring" }
+variable "ams_resource_id"                      {
+                                                  description = "Azure resource ID of the Azure Monitor for SAP instance, or empty"
+                                                  type        = string
+                                                }
+variable "enable_os_monitoring"                 {
+                                                  description = "If defined, will enable prometheus os monitoring"
+                                                  type        = bool
+                                                }
+variable "enable_ha_monitoring"                 {
+                                                  description = "If defined, will enable prometheus high availability cluster monitoring"
+                                                  type        = bool
+                                                }
 
-variable "site_information"                     { description = "Site information" }
+variable "site_information"                     {
+                                                  description = "Site assignment of the SAP HANA nodes, as returned by the hdb_node module"
+                                                  type        = any
+                                                }

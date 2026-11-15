@@ -529,7 +529,7 @@ run "iscsi_static_ips_override_dhcp_setting" {
   }
 
   assert {
-    condition     = module.sap_landscape.resolved_iscsi_nic_ips == ["10.10.6.4", "10.10.6.5"]
+    condition     = module.sap_landscape.resolved_iscsi_nic_ips == tolist(["10.10.6.4", "10.10.6.5"])
     error_message = "With static IPs provided, the iSCSI NIC IP input list must be preserved."
   }
 }

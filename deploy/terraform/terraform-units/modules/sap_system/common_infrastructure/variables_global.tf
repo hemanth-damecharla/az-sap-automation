@@ -2,6 +2,8 @@
 # Licensed under the MIT License.
 
 variable "application_tier"                      {
+                                       description = "Application tier settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
+                                       type        = any
                                        validation {
                                                     condition = (
                                                       length(trimspace(try(var.application_tier.sid, ""))) == 3
@@ -37,6 +39,8 @@ variable "application_tier_ppg_names"            {
                                                  }
 
 variable "database"                              {
+                                       description = "Database tier settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
+                                       type        = any
                                        validation {
                                                     condition = (
                                                       length(trimspace(try(var.database.platform, ""))) != 7
@@ -52,6 +56,8 @@ variable "database"                              {
                                                   }
                                                  }
 variable "infrastructure"                        {
+                                       description = "Infrastructure settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
+                                       type        = any
                                        validation {
                                                     condition = (
                                                       length(trimspace(try(var.infrastructure.region, ""))) != 0
@@ -114,9 +120,17 @@ variable "infrastructure"                        {
                                                  }
 
 
-variable "options"                               {}
-variable "authentication"                        {}
+variable "options"                               {
+                                                   description = "Miscellaneous deployment options assembled by the root module's transform. Untyped: shared by five modules; it will be typed together with them"
+                                                   type        = any
+                                                 }
+variable "authentication"                        {
+                                                   description = "Credentials of the virtual machine administrator assembled by the root module's transform. Untyped: shared by five modules; it will be typed together with them"
+                                                   type        = any
+                                                 }
 variable "key_vault"                             {
+                                       description = "Key vault settings assembled by the root module's transform. Untyped: its attributes are conditional; it will be typed with the other shared objects"
+                                       type        = any
                                        validation {
                                                     condition = (
                                                       contains(keys(var.key_vault), "keyvault_id_for_deployment_credentials") ? (
@@ -144,6 +158,8 @@ variable "key_vault"                             {
                                                  }
 
 variable "ha_validator"                          {
+                                       description = "Encodes the high availability choices and the NFS provider so that an invalid combination is rejected"
+                                       type        = string
                                        validation {
                                                     condition = (
                                                       parseint(split("-", var.ha_validator)[0], 10) != 0 ? upper(split("-", var.ha_validator)[1]) != "NONE" : true
@@ -160,35 +176,55 @@ variable "custom_prefix"                         {
 
 variable "is_single_node_hana"                   {
                                                    description = "Checks if single node hana architecture scenario is being deployed"
+                                                   type        = bool
                                                    default     = false
                                                  }
 
-variable "deployer_tfstate"                      { description = "Deployer remote tfstate file" }
-
-variable "naming"                                { description = "Defines the names for the resources" }
-
-variable "custom_disk_sizes_filename"            {
-                                                    description = "Custom disk sizing file"
-                                                    default     = ""
+variable "deployer_tfstate"                      {
+                                                   description = "Outputs of the deployer Terraform state. Untyped until the deployer publishes a versioned capability contract"
+                                                   type        = any
                                                  }
 
-variable "deployment"                            { description = "The type of deployment" }
+variable "naming"                                {
+                                                   description = "Defines the names for the resources: the output of the sap_namegenerator module, or a custom names file with the same structure"
+                                                   type        = any
+                                                 }
 
-variable "terraform_template_version"            { description = "The version of Terraform templates that were identified in the state file" }
-
-variable "license_type"                          {
-                                                   description = "Specifies the license type for the OS"
+variable "custom_disk_sizes_filename"            {
+                                                   description = "Custom disk sizing file"
+                                                   type        = string
                                                    default     = ""
                                                  }
 
-variable "enable_purge_control_for_keyvaults"    { description = "Allow the deployment to control the purge protection" }
+variable "deployment"                            {
+                                                   description = "The type of deployment: new or update"
+                                                   type        = string
+                                                 }
 
-variable "sapmnt_volume_size"                    { description = "The volume size in GB for sapmnt" }
+variable "terraform_template_version"            {
+                                                   description = "The version of Terraform templates that were identified in the state file"
+                                                   type        = string
+                                                 }
+
+variable "license_type"                          {
+                                                   description = "Specifies the license type for the OS"
+                                                   type        = string
+                                                   default     = ""
+                                                 }
+
+variable "enable_purge_control_for_keyvaults"    {
+                                                   description = "Disables the purge protection for Azure keyvaults."
+                                                   type        = bool
+                                                 }
+
+variable "sapmnt_volume_size"                    {
+                                                   description = "sapmnt volume size in GB"
+                                                   type        = number
+                                                 }
 
 variable "NFS_provider"                          {
-                                                    description = "NFS provider *(AFS, ANF, NONE)*)"
-                                                    default     = "NONE"
-                                                    type        = string
+                                                   description = "NFS provider *(AFS, ANF, NONE)*)"
+                                                   type        = string
                                                  }
 
 variable "azure_files_sapmnt_id"                 {
@@ -198,7 +234,10 @@ variable "azure_files_sapmnt_id"                 {
                                                  }
 
 
-variable "use_random_id_for_storageaccounts"     { description = "If true, will use random id for storage accounts" }
+variable "use_random_id_for_storageaccounts"     {
+                                                   description = "If true, will use random id for storage accounts"
+                                                   type        = bool
+                                                 }
 
 variable "Agent_IP"                              {
                                                     description = "If provided, contains the IP address of the agent"
@@ -236,7 +275,8 @@ variable "AFS_enable_encryption_in_transit"      {
 
 
 variable "dns_settings"                          {
-                                                    description = "DNS Settings"
+                                                   description = "DNS Settings"
+                                                   type        = any
                                                  }
 variable "sapmnt_private_endpoint_id"            {
                                                     description = "Azure Resource Identifier for an private endpoint connection"
@@ -244,13 +284,20 @@ variable "sapmnt_private_endpoint_id"            {
                                                     default     = ""
                                                  }
 
-variable "hana_ANF_volumes"                      { description = "Defines HANA ANF  volumes" }
+variable "hana_ANF_volumes"                      {
+                                                   description = "Azure NetApp Files volume settings for SAP HANA assembled by the root module's transform. Untyped: shared by several modules; it will be typed together with them"
+                                                   type        = any
+                                                 }
 
-variable "deploy_application_security_groups"    { description = "Defines if application security groups should be deployed" }
+variable "deploy_application_security_groups"    {
+                                                   description = "Defines if application security groups should be deployed"
+                                                   type        = bool
+                                                 }
 
 
 variable "landscape_tfstate"                     {
                                                     description = "Landscape remote tfstate file"
+                                                    type        = any
                                                     validation {
                                                                  condition = (
                                                                      length(trimspace(try(var.landscape_tfstate.vnet_sap_arm_id, ""))) != 0
@@ -264,10 +311,14 @@ variable "landscape_tfstate"                     {
 #  Scale Set                                                                            #
 #                                                                                       #
 #########################################################################################
-variable "use_scalesets_for_deployment"          { description = "Use Flexible Virtual Machine Scale Sets for the deployment" }
+variable "use_scalesets_for_deployment"          {
+                                                   description = "Use Flexible Virtual Machine Scale Sets for the deployment"
+                                                   type        = bool
+                                                 }
 
 variable "scaleset_id"                           {
                                                    description = "If defined the Flexible Virtual Machine Scale Sets for the deployment"
+                                                   type        = string
                                                    default     = ""
                                                  }
 
@@ -278,4 +329,7 @@ variable "scaleset_id"                           {
 #                                                                                       #
 #########################################################################################
 
-variable "tags"                                  { description = "If provided, tags for all resources" }
+variable "tags"                                  {
+                                                   description = "If provided, tags for all resources"
+                                                   type        = map(string)
+                                                 }
