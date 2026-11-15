@@ -79,7 +79,7 @@ resource "local_file" "configure_deployer" {
                                            pool                 = var.infrastructure.devops.agent_pool,
                                            pat                  = var.infrastructure.devops.agent_pat,
                                            ado_repo             = var.infrastructure.devops.agent_ado_url,
-                                           use_webapp           = var.infrastructure.devops.app_service.use,
+                                           use_webapp           = var.app_service.use,
                                            ansible_core_version = var.infrastructure.devops.ansible_core_version,
                                            api_url              = var.infrastructure.devops.api_url,
                                            app_token            = var.infrastructure.devops.app_token,
