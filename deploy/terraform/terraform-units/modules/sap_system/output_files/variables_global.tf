@@ -45,8 +45,14 @@ variable "authentication_type"                  {
                                                   default     = "key"
                                                 }
 variable "authentication"                       {
-                                                  description = "Credentials of the virtual machine administrator assembled by the root module's transform. Untyped: shared by five modules; it will be typed together with them"
-                                                  type        = any
+                                                  description = "Credentials specific to this SAP system. When every attribute is empty the workload zone credentials are used"
+                                                  type        = object({
+                                                                  username            = optional(string, "")
+                                                                  password            = optional(string, "")
+                                                                  path_to_public_key  = optional(string, "")
+                                                                  path_to_private_key = optional(string, "")
+                                                                })
+                                                  default     = {}
                                                 }
 variable "bom_name"                             {
                                                   description = "Name of Bill of Materials file"
@@ -91,8 +97,13 @@ variable "database_high_availability"           {
                                                   default     = false
                                                 }
 variable "database"                             {
-                                                  description = "Database tier settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
-                                                  type        = any
+                                                  description = "Database tier settings. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                  type        = object({
+                                                                  database_hana_use_saphanasr_angi = optional(bool, false)
+                                                                  instance                         = optional(object({
+                                                                                                       number = optional(string, "00")
+                                                                                                     }), {})
+                                                                })
                                                 }
 variable "database_authentication_type"         {
                                                   description = "Platform to use"
@@ -202,8 +213,11 @@ variable "hana_shared"                          {
                                                   type        = any
                                                 }
 variable "infrastructure"                       {
-                                                  description = "Infrastructure settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
-                                                  type        = any
+                                                  description = "Infrastructure settings of the SAP system. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                  type        = object({
+                                                                  disk_controller_type_app_tier      = optional(string, "SCSI")
+                                                                  disk_controller_type_database_tier = optional(string, "SCSI")
+                                                                })
                                                 }
 variable "install_path"                         {
                                                   description = "Defines the install path for mounting /usr/sap/install"

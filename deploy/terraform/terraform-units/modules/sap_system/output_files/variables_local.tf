@@ -76,7 +76,7 @@ locals {
                                               format("{ host: '%s', ip : %s, iqn: %s, type: 'observer' }", vm, var.iSCSI_server_ips[idx], local.observer_iqn)]]))) : (
                                           [])
 
-  use_local_credentials                = length(var.authentication) > 0
+  use_local_credentials                = anytrue([for value in values(var.authentication) : length(value) > 0])
   use_eit_for_afs                      = var.use_AFS_encryption_in_transit
 
 }

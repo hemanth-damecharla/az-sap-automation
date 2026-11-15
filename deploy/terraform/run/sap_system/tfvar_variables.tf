@@ -1481,7 +1481,7 @@ variable "ANF_HANA_shared_use_existing"         {
 
 variable "ANF_HANA_shared_volume_name"          {
                                                   description = "If defined provides the name of the HANA shared volume"
-                                                  default     = 512
+                                                  default     = [""]
                                                 }
 
 variable "ANF_HANA_shared_volume_throughput"    {

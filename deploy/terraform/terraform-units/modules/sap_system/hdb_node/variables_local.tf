@@ -53,7 +53,7 @@ locals {
   //ANF support
   use_ANF                              = try(var.database.use_ANF, false)
   //Scalout subnet is needed if ANF is used and there are more than one hana node
-  dbnode_per_site                      = length(try(var.database.dbnodes, [{}]))
+  dbnode_per_site                      = 1
   enable_storage_subnet                = var.database.scale_out && length(try(var.storage_subnet_id,""))>0
 
   // Availability Set
@@ -69,7 +69,7 @@ locals {
   // Tags
   tags                                 = try(var.database.tags, {})
 
-  hdb_version                          = try(var.database.db_version, "2.00.066")
+  hdb_version                          = "2.00.066"
   // If custom image is used, we do not overwrite os reference with default value
   hdb_custom_image                     = length(try(var.database.os.source_image_id, "")) > 0
   hdb_os                               = {
@@ -127,7 +127,7 @@ locals {
 
   enable_db_lb_deployment             = var.database_server_count > 0 ? var.database.high_availability || var.use_loadbalancers_for_standalone_deployments : false
 
-  database_sid                        = try(var.database.instance.sid, local.sid) // HANA database sid from the Databases array for use as reference to LB/AS
+  database_sid                        = var.database.instance.sid != null ? var.database.instance.sid : local.sid // HANA database sid from the Databases array for use as reference to LB/AS
   database_instance                   = try(var.database.instance.number, "00")
 
   loadbalancer                        = try(var.database.loadbalancer, {})

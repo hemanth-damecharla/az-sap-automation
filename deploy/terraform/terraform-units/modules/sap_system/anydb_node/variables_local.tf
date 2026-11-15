@@ -23,7 +23,7 @@ locals {
   resource_suffixes                    = var.naming.resource_suffixes
 
   region                               = var.infrastructure.region
-  anydb_sid                            = try(var.database.sid, "")
+  anydb_sid                            = ""
   sid                                  = length(var.sap_sid) > 0 ? var.sap_sid : local.anydb_sid
   prefix                               = trimspace(var.naming.prefix.SDU)
 
@@ -75,7 +75,7 @@ locals {
   anydb_sku                            = length(var.database.database_vm_sku) > 0 ? var.database.database_vm_sku : try(local.db_size.vm_size, "Standard_E16_v3")
 
   anydb_ha                             = var.database.high_availability
-  db_sid                               = try(var.database.instance.sid, lower(substr(var.database.platform, 0, 3)))
+  db_sid                               = var.database.instance.sid != null ? var.database.instance.sid : lower(substr(var.database.platform, 0, 3))
 
   # Oracle deployments do not need a load balancer
   enable_db_lb_deployment              = (
@@ -85,7 +85,7 @@ locals {
                                            var.database.platform != "NONE"
                                          )
 
-  anydb_cred                           = try(var.database.credentials, {})
+  anydb_cred                           = {}
 
   sid_auth_type                        = try(var.database.authentication.type, "key")
   enable_auth_password                 = local.enable_deployment && local.sid_auth_type == "password"
@@ -174,7 +174,7 @@ locals {
                                          } : null
 
   //Observer VM
-  observer                             = try(var.database.observer, {})
+  observer                             = {}
 
   #If using an existing VM for observer set use_observer to false in .tfvars
   deploy_observer                      = var.use_observer ? (

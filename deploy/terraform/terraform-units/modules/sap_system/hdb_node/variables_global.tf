@@ -27,8 +27,50 @@ variable "custom_disk_sizes_filename"                   {
                                                           type        = string
                                                         }
 variable "database"                                     {
-                                                          description = "Database tier settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
-                                                          type        = any
+                                                          description = "Database tier settings. use_avset and use_ppg are null when the caller leaves the placement decision open. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          platform                   = string
+                                                                          db_sizing_key              = optional(string, "Default")
+                                                                          database_vm_sku            = optional(string, "")
+                                                                          high_availability          = optional(bool, false)
+                                                                          scale_out                  = optional(bool, false)
+                                                                          stand_by_node_count        = optional(number, 0)
+                                                                          dual_network_interfaces    = optional(bool, false)
+                                                                          use_ANF                    = optional(bool, false)
+                                                                          instance                   = optional(object({
+                                                                                                         sid    = optional(string)
+                                                                                                         number = optional(string, "00")
+                                                                                                       }), {})
+                                                                          authentication             = optional(object({
+                                                                                                         type = optional(string, "key")
+                                                                                                       }), {})
+                                                                          os                         = optional(object({
+                                                                                                         os_type         = optional(string, "LINUX")
+                                                                                                         type            = optional(string, "marketplace")
+                                                                                                         source_image_id = optional(string, "")
+                                                                                                         publisher       = optional(string, "SUSE")
+                                                                                                         offer           = optional(string, "sles-sap-15-sp5")
+                                                                                                         sku             = optional(string, "gen2")
+                                                                                                         version         = optional(string, "latest")
+                                                                                                       }), {})
+                                                                          loadbalancer               = optional(object({
+                                                                                                         frontend_ips = optional(list(string), [])
+                                                                                                       }), {})
+                                                                          observer_vm_ips            = optional(list(string), [])
+                                                                          database_cluster_type      = optional(string, "AFA")
+                                                                          database_cluster_disk_lun  = optional(number, 8)
+                                                                          database_cluster_disk_size = optional(number, 128)
+                                                                          database_cluster_disk_type = optional(string, "Premium_ZRS")
+                                                                          fence_kdump_disk_size      = optional(number, 128)
+                                                                          fence_kdump_lun_number     = optional(number, -1)
+                                                                          use_DHCP                   = optional(bool, false)
+                                                                          use_avset                  = optional(bool)
+                                                                          use_ppg                    = optional(bool)
+                                                                          avset_arm_ids              = optional(list(string), [])
+                                                                          zones                      = optional(list(string), [])
+                                                                          user_assigned_identity_id  = optional(string, "")
+                                                                          tags                       = optional(map(string), {})
+                                                                        })
                                                         }
 
 variable "enable_storage_nic"                           {
@@ -89,8 +131,71 @@ variable "fencing_role_name"                            {
                                                           type        = string
                                                         }
 variable "infrastructure"                               {
-                                                          description = "Infrastructure settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
-                                                          type        = any
+                                                          description = "Infrastructure settings of the SAP system. resource_group is empty unless an existing or explicitly named resource group is used. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          region                             = string
+                                                                          patch_mode                         = optional(string, "ImageDefault")
+                                                                          patch_assessment_mode              = optional(string, "ImageDefault")
+                                                                          encryption_at_host_enabled         = optional(bool, false)
+                                                                          deploy_monitoring_extension        = optional(bool, false)
+                                                                          deploy_defender_extension          = optional(bool, false)
+                                                                          disk_controller_type_database_tier = optional(string, "SCSI")
+                                                                          shared_access_key_enabled_nfs      = optional(bool, false)
+                                                                          configuration_settings             = optional(any, {})
+                                                                          resource_group                     = optional(object({
+                                                                                                                 name = optional(string, "")
+                                                                                                                 id   = optional(string, "")
+                                                                                                               }), {})
+                                                                          virtual_networks                   = object({
+                                                                                                                 sap = object({
+                                                                                                                         subnet_admin    = optional(object({
+                                                                                                                                             name               = optional(string, "")
+                                                                                                                                             id                 = optional(string, "")
+                                                                                                                                             prefix             = optional(string, "")
+                                                                                                                                             defined            = optional(bool, false)
+                                                                                                                                             exists             = optional(bool, false)
+                                                                                                                                             exists_in_workload = optional(bool, false)
+                                                                                                                                             id_in_workload     = optional(string)
+                                                                                                                                           }), {})
+                                                                                                                         subnet_db       = optional(object({
+                                                                                                                                             name               = optional(string, "")
+                                                                                                                                             id                 = optional(string, "")
+                                                                                                                                             prefix             = optional(string, "")
+                                                                                                                                             defined            = optional(bool, false)
+                                                                                                                                             exists             = optional(bool, false)
+                                                                                                                                             exists_in_workload = optional(bool, false)
+                                                                                                                                             id_in_workload     = optional(string)
+                                                                                                                                           }), {})
+                                                                                                                         subnet_app      = optional(object({
+                                                                                                                                             name               = optional(string, "")
+                                                                                                                                             id                 = optional(string, "")
+                                                                                                                                             prefix             = optional(string, "")
+                                                                                                                                             defined            = optional(bool, false)
+                                                                                                                                             exists             = optional(bool, false)
+                                                                                                                                             exists_in_workload = optional(bool, false)
+                                                                                                                                             id_in_workload     = optional(string)
+                                                                                                                                           }), {})
+                                                                                                                         subnet_storage  = optional(object({
+                                                                                                                                             name               = optional(string, "")
+                                                                                                                                             id                 = optional(string, "")
+                                                                                                                                             prefix             = optional(string, "")
+                                                                                                                                             defined            = optional(bool, false)
+                                                                                                                                             exists             = optional(bool, false)
+                                                                                                                                             exists_in_workload = optional(bool, false)
+                                                                                                                                             id_in_workload     = optional(string)
+                                                                                                                                           }), {})
+                                                                                                                         subnet_endpoint = optional(object({
+                                                                                                                                             name               = optional(string, "")
+                                                                                                                                             id                 = optional(string, "")
+                                                                                                                                             prefix             = optional(string, "")
+                                                                                                                                             defined            = optional(bool, false)
+                                                                                                                                             exists             = optional(bool, false)
+                                                                                                                                             exists_in_workload = optional(bool, false)
+                                                                                                                                             id_in_workload     = optional(string)
+                                                                                                                                           }), {})
+                                                                                                                       })
+                                                                                                               })
+                                                                        })
                                                         }
 variable "landscape_tfstate"                            {
                                                           description = "Outputs of the workload zone Terraform state. Untyped until the workload zone publishes a versioned capability contract"
@@ -110,8 +215,12 @@ variable "NFS_provider"                                 {
                                                           type        = string
                                                         }
 variable "options"                                      {
-                                                          description = "Miscellaneous deployment options assembled by the root module's transform. Untyped: shared by five modules; it will be typed together with them"
-                                                          type        = any
+                                                          description = "Miscellaneous deployment options. disk_encryption_set_id is null unless a disk encryption set is used. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          legacy_nic_order       = optional(bool, false)
+                                                                          resource_offset        = optional(number, 0)
+                                                                          disk_encryption_set_id = optional(string)
+                                                                        })
                                                         }
 variable "ppg"                                          {
                                                           description = "Proximity placement groups, as returned by the common_infrastructure module"
@@ -201,8 +310,13 @@ variable "enable_firewall_for_keyvaults_and_storage"    {
 
 
 variable "dns_settings"                                 {
-                                                          description = "DNS Settings"
-                                                          type        = any
+                                                          description = "DNS settings. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          dns_zone_names                    = optional(map(string), {})
+                                                                          management_dns_resourcegroup_name = optional(string, "")
+                                                                          register_endpoints_with_dns       = optional(bool, false)
+                                                                          register_virtual_network_to_dns   = optional(bool, false)
+                                                                        })
                                                         }
 
 #########################################################################################
@@ -212,8 +326,28 @@ variable "dns_settings"                                 {
 #########################################################################################
 
 variable "hana_ANF_volumes"                           {
-                                                        description = "Azure NetApp Files volume settings for SAP HANA assembled by the root module's transform. Untyped: shared by several modules; it will be typed together with them"
-                                                        type        = any
+                                                        description = "Azure NetApp Files settings for the SAP HANA data, log and shared volumes. The volume name lists hold one entry per volume and are read only when the matching use_existing flag is set. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                        type        = object({
+                                                                        use_for_data               = optional(bool, false)
+                                                                        data_volume_size           = optional(number, 512)
+                                                                        use_existing_data_volume   = optional(bool, false)
+                                                                        data_volume_name           = optional(list(string), [""])
+                                                                        data_volume_throughput     = optional(number, 128)
+                                                                        data_volume_count          = optional(number, 1)
+                                                                        use_for_log                = optional(bool, false)
+                                                                        log_volume_size            = optional(number, 512)
+                                                                        use_existing_log_volume    = optional(bool, false)
+                                                                        log_volume_name            = optional(list(string), [""])
+                                                                        log_volume_throughput      = optional(number, 128)
+                                                                        log_volume_count           = optional(number, 1)
+                                                                        use_for_shared             = optional(bool, false)
+                                                                        shared_volume_size         = optional(number, 512)
+                                                                        use_existing_shared_volume = optional(bool, false)
+                                                                        shared_volume_name         = optional(list(string), [""])
+                                                                        shared_volume_throughput   = optional(number, 128)
+                                                                        use_AVG                    = optional(bool, false)
+                                                                        use_zones                  = optional(bool, false)
+                                                                      })
                                                       }
 
 #########################################################################################

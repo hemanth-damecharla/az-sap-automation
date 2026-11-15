@@ -12,8 +12,87 @@ variable "admin_subnet"                                 {
                                                           type        = any
                                                         }
 variable "application_tier"                             {
-                                                          description = "Application tier settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
-                                                          type        = any
+                                                          description = "Application tier settings: central services, application servers and web dispatchers. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          sid                            = string
+                                                                          enable_deployment              = optional(bool, false)
+                                                                          use_DHCP                       = optional(bool, false)
+                                                                          dual_network_interfaces        = optional(bool, false)
+                                                                          vm_sizing_dictionary_key       = optional(string, "")
+                                                                          user_assigned_identity_id      = optional(string, "")
+                                                                          authentication                 = optional(object({
+                                                                                                             type = optional(string, "key")
+                                                                                                           }), {})
+                                                                          application_server_count       = optional(number, 0)
+                                                                          app_sku                        = optional(string, "")
+                                                                          app_use_ppg                    = optional(bool, false)
+                                                                          app_use_avset                  = optional(bool, false)
+                                                                          avset_arm_ids                  = optional(list(string), [])
+                                                                          avset_arm_ids_count            = optional(number, 0)
+                                                                          app_zone_count                 = optional(number, 0)
+                                                                          app_zones                      = optional(list(string), [])
+                                                                          app_os                         = optional(object({
+                                                                                                             os_type         = optional(string, "LINUX")
+                                                                                                             type            = optional(string, "marketplace")
+                                                                                                             source_image_id = optional(string, "")
+                                                                                                             publisher       = optional(string, "")
+                                                                                                             offer           = optional(string, "")
+                                                                                                             sku             = optional(string, "")
+                                                                                                             version         = optional(string, "")
+                                                                                                           }), {})
+                                                                          app_nic_ips                    = optional(list(string), [])
+                                                                          app_nic_secondary_ips          = optional(list(string), [])
+                                                                          app_admin_nic_ips              = optional(list(string), [])
+                                                                          app_tags                       = optional(map(string), {})
+                                                                          scs_server_count               = optional(number, 0)
+                                                                          scs_high_availability          = optional(bool, false)
+                                                                          scs_cluster_type               = optional(string, "AFA")
+                                                                          scs_cluster_disk_lun           = optional(number, 5)
+                                                                          scs_cluster_disk_size          = optional(number, 128)
+                                                                          scs_cluster_disk_type          = optional(string, "Premium_ZRS")
+                                                                          scs_instance_number            = optional(string, "00")
+                                                                          ers_instance_number            = optional(string, "02")
+                                                                          scs_sku                        = optional(string, "")
+                                                                          scs_use_ppg                    = optional(bool, false)
+                                                                          scs_use_avset                  = optional(bool, false)
+                                                                          scs_zones                      = optional(list(string), [])
+                                                                          scs_os                         = optional(object({
+                                                                                                             os_type         = optional(string, "LINUX")
+                                                                                                             type            = optional(string, "marketplace")
+                                                                                                             source_image_id = optional(string, "")
+                                                                                                             publisher       = optional(string, "")
+                                                                                                             offer           = optional(string, "")
+                                                                                                             sku             = optional(string, "")
+                                                                                                             version         = optional(string, "")
+                                                                                                           }), {})
+                                                                          scs_nic_ips                    = optional(list(string), [])
+                                                                          scs_nic_secondary_ips          = optional(list(string), [])
+                                                                          scs_admin_nic_ips              = optional(list(string), [])
+                                                                          scs_server_loadbalancer_ips    = optional(list(string), [])
+                                                                          scs_tags                       = optional(map(string), {})
+                                                                          fence_kdump_disk_size          = optional(number, 0)
+                                                                          fence_kdump_lun_number         = optional(number, -1)
+                                                                          webdispatcher_count            = optional(number, 0)
+                                                                          web_instance_number            = optional(string, "00")
+                                                                          web_sku                        = optional(string, "")
+                                                                          web_use_ppg                    = optional(bool, false)
+                                                                          web_use_avset                  = optional(bool, false)
+                                                                          web_zones                      = optional(list(string), [])
+                                                                          web_os                         = optional(object({
+                                                                                                             os_type         = optional(string, "LINUX")
+                                                                                                             type            = optional(string, "marketplace")
+                                                                                                             source_image_id = optional(string, "")
+                                                                                                             publisher       = optional(string, "")
+                                                                                                             offer           = optional(string, "")
+                                                                                                             sku             = optional(string, "")
+                                                                                                             version         = optional(string, "")
+                                                                                                           }), {})
+                                                                          web_nic_ips                    = optional(list(string), [])
+                                                                          web_nic_secondary_ips          = optional(list(string), [])
+                                                                          web_admin_nic_ips              = optional(list(string), [])
+                                                                          webdispatcher_loadbalancer_ips = optional(list(string), [])
+                                                                          web_tags                       = optional(map(string), {})
+                                                                        })
                                                         }
 variable "cloudinit_growpart_config"                    {
                                                           description = "Rendered cloud-init configuration passed to virtual machines on first deployment, or null"
@@ -50,8 +129,58 @@ variable "idle_timeout_scs_ers"                         {
                                                           default     = 4
                                                         }
 variable "infrastructure"                               {
-                                                          description = "Infrastructure settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
-                                                          type        = any
+                                                          description = "Infrastructure settings of the SAP system. resource_group is empty unless an existing or explicitly named resource group is used. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          environment                   = string
+                                                                          region                        = string
+                                                                          patch_mode                    = optional(string, "ImageDefault")
+                                                                          patch_assessment_mode         = optional(string, "ImageDefault")
+                                                                          encryption_at_host_enabled    = optional(bool, false)
+                                                                          deploy_monitoring_extension   = optional(bool, false)
+                                                                          deploy_defender_extension     = optional(bool, false)
+                                                                          disk_controller_type_app_tier = optional(string, "SCSI")
+                                                                          configuration_settings        = optional(any, {})
+                                                                          resource_group                = optional(object({
+                                                                                                            name = optional(string, "")
+                                                                                                            id   = optional(string, "")
+                                                                                                          }), {})
+                                                                          virtual_networks              = object({
+                                                                                                            sap = object({
+                                                                                                                    subnet_app = optional(object({
+                                                                                                                                   name               = optional(string, "")
+                                                                                                                                   id                 = optional(string, "")
+                                                                                                                                   prefix             = optional(string, "")
+                                                                                                                                   defined            = optional(bool, false)
+                                                                                                                                   exists             = optional(bool, false)
+                                                                                                                                   exists_in_workload = optional(bool, false)
+                                                                                                                                   id_in_workload     = optional(string)
+                                                                                                                                   nsg                = optional(object({
+                                                                                                                                                          name               = optional(string, "")
+                                                                                                                                                          id                 = optional(string, "")
+                                                                                                                                                          exists             = optional(bool, false)
+                                                                                                                                                          exists_in_workload = optional(bool, false)
+                                                                                                                                                          id_in_workload     = optional(string)
+                                                                                                                                                        }), {})
+                                                                                                                                 }), {})
+                                                                                                                    subnet_web = optional(object({
+                                                                                                                                   name               = optional(string, "")
+                                                                                                                                   id                 = optional(string, "")
+                                                                                                                                   prefix             = optional(string, "")
+                                                                                                                                   defined            = optional(bool, false)
+                                                                                                                                   exists             = optional(bool, false)
+                                                                                                                                   exists_in_workload = optional(bool, false)
+                                                                                                                                   id_in_workload     = optional(string)
+                                                                                                                                   nsg                = optional(object({
+                                                                                                                                                          name               = optional(string, "")
+                                                                                                                                                          id                 = optional(string, "")
+                                                                                                                                                          exists             = optional(bool, false)
+                                                                                                                                                          exists_in_workload = optional(bool, false)
+                                                                                                                                                          id_in_workload     = optional(string)
+                                                                                                                                                        }), {})
+                                                                                                                                 }), {})
+                                                                                                                  })
+                                                                                                          })
+                                                                        })
                                                         }
 variable "landscape_tfstate"                            {
                                                           description = "Outputs of the workload zone Terraform state. Untyped until the workload zone publishes a versioned capability contract"
@@ -78,8 +207,13 @@ variable "NFS_provider"                                 {
                                                           type        = string
                                                         }
 variable "options"                                      {
-                                                          description = "Miscellaneous deployment options assembled by the root module's transform. Untyped: shared by five modules; it will be typed together with them"
-                                                          type        = any
+                                                          description = "Miscellaneous deployment options. disk_encryption_set_id is null unless a disk encryption set is used. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          nsg_asg_with_vnet      = optional(bool, false)
+                                                                          legacy_nic_order       = optional(bool, false)
+                                                                          resource_offset        = optional(number, 0)
+                                                                          disk_encryption_set_id = optional(string)
+                                                                        })
                                                         }
 variable "order_deployment"                             {
                                                           description = "Value used only to order this module after another one; its content is not read"
@@ -151,8 +285,11 @@ variable "use_msi_for_clusters"                         {
 #########################################################################################
 
 variable "dns_settings"                                 {
-                                                          description = "DNS Settings"
-                                                          type        = any
+                                                          description = "DNS settings. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          management_dns_resourcegroup_name = optional(string, "")
+                                                                          register_virtual_network_to_dns   = optional(bool, false)
+                                                                        })
                                                         }
 
 

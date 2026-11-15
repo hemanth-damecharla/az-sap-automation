@@ -41,8 +41,45 @@ variable "database_vm_db_nic_secondary_ips"             {
                                                           type        = list(string)
                                                         }
 variable "database"                                     {
-                                                          description = "Database tier settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
-                                                          type        = any
+                                                          description = "Database tier settings. use_avset and use_ppg are null when the caller leaves the placement decision open. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          platform                   = string
+                                                                          db_sizing_key              = optional(string, "Default")
+                                                                          database_vm_sku            = optional(string, "")
+                                                                          high_availability          = optional(bool, false)
+                                                                          dual_network_interfaces    = optional(bool, false)
+                                                                          instance                   = optional(object({
+                                                                                                         sid = optional(string)
+                                                                                                       }), {})
+                                                                          authentication             = optional(object({
+                                                                                                         type = optional(string, "key")
+                                                                                                       }), {})
+                                                                          os                         = optional(object({
+                                                                                                         os_type         = optional(string, "LINUX")
+                                                                                                         type            = optional(string, "marketplace")
+                                                                                                         source_image_id = optional(string, "")
+                                                                                                         publisher       = optional(string, "SUSE")
+                                                                                                         offer           = optional(string, "sles-sap-15-sp5")
+                                                                                                         sku             = optional(string, "gen2")
+                                                                                                         version         = optional(string, "latest")
+                                                                                                       }), {})
+                                                                          loadbalancer               = optional(object({
+                                                                                                         frontend_ips = optional(list(string), [])
+                                                                                                       }), {})
+                                                                          database_cluster_type      = optional(string, "AFA")
+                                                                          database_cluster_disk_lun  = optional(number, 8)
+                                                                          database_cluster_disk_size = optional(number, 128)
+                                                                          database_cluster_disk_type = optional(string, "Premium_ZRS")
+                                                                          fence_kdump_disk_size      = optional(number, 128)
+                                                                          fence_kdump_lun_number     = optional(number, -1)
+                                                                          use_DHCP                   = optional(bool, false)
+                                                                          use_avset                  = optional(bool)
+                                                                          use_ppg                    = optional(bool)
+                                                                          avset_arm_ids              = optional(list(string), [])
+                                                                          zones                      = optional(list(string), [])
+                                                                          user_assigned_identity_id  = optional(string, "")
+                                                                          tags                       = optional(map(string), {})
+                                                                        })
                                                         }
 variable "db_asg_id"                                    {
                                                           description = "Azure resource ID of the database application security group, or empty"
@@ -65,8 +102,17 @@ variable "fencing_role_name"                            {
                                                           type        = string
                                                         }
 variable "infrastructure"                               {
-                                                          description = "Infrastructure settings assembled by the root module's transform. Untyped: its attributes are conditional and shared by five modules; it will be typed together with them"
-                                                          type        = any
+                                                          description = "Infrastructure settings of the SAP system. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          region                             = string
+                                                                          patch_mode                         = optional(string, "ImageDefault")
+                                                                          patch_assessment_mode              = optional(string, "ImageDefault")
+                                                                          encryption_at_host_enabled         = optional(bool, false)
+                                                                          deploy_monitoring_extension        = optional(bool, false)
+                                                                          deploy_defender_extension          = optional(bool, false)
+                                                                          disk_controller_type_database_tier = optional(string, "SCSI")
+                                                                          configuration_settings             = optional(any, {})
+                                                                        })
                                                         }
 variable "landscape_tfstate"                            {
                                                           description = "Outputs of the workload zone Terraform state. Untyped until the workload zone publishes a versioned capability contract"
@@ -85,8 +131,12 @@ variable "observer_vm_tags"                             {
                                                           type        = map(string)
                                                         }
 variable "options"                                      {
-                                                          description = "Miscellaneous deployment options assembled by the root module's transform. Untyped: shared by five modules; it will be typed together with them"
-                                                          type        = any
+                                                          description = "Miscellaneous deployment options. disk_encryption_set_id is null unless a disk encryption set is used. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          legacy_nic_order       = optional(bool, false)
+                                                                          resource_offset        = optional(number, 0)
+                                                                          disk_encryption_set_id = optional(string)
+                                                                        })
                                                         }
 variable "order_deployment"                             {
                                                           description = "Value used only to order this module after another one; its content is not read"
@@ -170,8 +220,11 @@ variable "use_secondary_ips"                            {
 #########################################################################################
 
 variable "dns_settings"                                 {
-                                                          description = "DNS Settings"
-                                                          type        = any
+                                                          description = "DNS settings. Only the attributes this module reads are declared; Terraform discards the rest."
+                                                          type        = object({
+                                                                          management_dns_resourcegroup_name = optional(string, "")
+                                                                          register_virtual_network_to_dns   = optional(bool, false)
+                                                                        })
                                                         }
 
 #########################################################################################

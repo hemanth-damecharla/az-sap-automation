@@ -73,7 +73,7 @@ locals {
   enable_xdb_deployment                = contains(["ORACLE", "ORACLE-ASM", "DB2", "SQLSERVER", "SYBASE"], upper(var.database.platform))
   enable_db_deployment                 = local.enable_xdb_deployment || local.enable_hdb_deployment
 
-  dbnode_per_site                      = length(try(var.database.dbnodes, [{}]))
+  dbnode_per_site                      = 1
 
   default_filepath                     = format("%s%s",
                                            path.module,
@@ -432,7 +432,7 @@ locals {
                                            local.resourcegroup_name
                                          )
 
-  use_local_credentials                = length(var.authentication) > 0
+  use_local_credentials                = anytrue([for value in values(var.authentication) : length(value) > 0])
 
   // If local credentials are used then try the parameter file.
   // If the username is empty retrieve it from the keyvault
