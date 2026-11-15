@@ -576,7 +576,7 @@ locals {
   iscsi_auth_password                             = local.enable_iscsi_auth_password ? (
                                                       local.iscsi_pwd_exist ? (
                                                         data.azurerm_key_vault_secret.iscsi_password[0].value) : (
-                                                        try(var.infrastructure.iscsi.authentication.password, random_password.iscsi_password[0].result)
+                                                        coalesce(try(var.infrastructure.iscsi.authentication.password, null), random_password.iscsi_password[0].result)
                                                       )) : (
                                                       null
                                                     )

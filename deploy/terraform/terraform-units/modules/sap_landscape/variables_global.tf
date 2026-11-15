@@ -3,231 +3,545 @@
 
 #######################################4#######################################8
 #                                                                              #
-# This file contains the input variables for the SAP landscape module          #
+#                         Module interface contract                           #
+#                                                                              #
+#  Every input is typed. Attributes that a caller may leave out are declared   #
+#  with optional() and the default the module applies. A reference inside the  #
+#  module to an attribute that is not part of the contract is a static error,  #
+#  and a value of the wrong type is rejected where the module is called.       #
+#                                                                              #
+#  Terraform discards attributes that are not declared in an object type, so   #
+#  an attribute a caller adds has no effect until it is declared here.         #
+#                                                                              #
+#  infrastructure.resource_group and infrastructure.iscsi are null when the    #
+#  caller leaves them out; the module then names its own resource group and    #
+#  deploys no iSCSI devices.                                                   #
 #                                                                              #
 #######################################4#######################################8
 
+variable "infrastructure"              {
+                                         description = "Details of the Azure infrastructure to deploy the SAP landscape into"
+                                         type        = object({
+                                                         environment                    = string
+                                                         region                         = string
+                                                         codename                       = optional(string, "")
+                                                         workload_zone_name             = optional(string, "")
+                                                         control_plane_name             = optional(string, "")
+                                                         tags                           = optional(map(string), {})
+                                                         additional_network_id          = optional(string, "")
+                                                         additional_subnet_id           = optional(string, "")
+                                                         deploy_defender_extension      = optional(bool, false)
+                                                         deploy_monitoring_extension    = optional(bool, false)
+                                                         encryption_at_host_enabled     = optional(bool, false)
+                                                         patch_assessment_mode          = optional(string, "ImageDefault")
+                                                         patch_mode                     = optional(string, "ImageDefault")
+                                                         platform_updates               = optional(string, "")
+                                                         shared_access_key_enabled      = optional(bool, false)
+                                                         shared_access_key_enabled_nfs  = optional(bool, false)
+                                                         user_assigned_identity_id      = optional(string, "")
+                                                         application_configuration_id   = optional(string, "")
+                                                         use_application_configuration  = optional(bool, false)
+                                                         terraform_storage_account_name = optional(string, "")
+                                                         terraform_storage_account_id   = string
+                                                         resource_group                 = optional(object({
+                                                                                            name = optional(string, "")
+                                                                                            id   = optional(string, "")
+                                                                                          }))
+                                                         ams_instance                   = optional(object({
+                                                                                            name                = optional(string, "")
+                                                                                            create_ams_instance = optional(bool, false)
+                                                                                            ams_laws_id         = optional(string, "")
+                                                                                          }), {})
+                                                         nat_gateway                    = optional(object({
+                                                                                            create_nat_gateway      = optional(bool, false)
+                                                                                            name                    = optional(string, "")
+                                                                                            id                      = optional(string, "")
+                                                                                            region                  = optional(string, "")
+                                                                                            public_ip_zones         = optional(list(string), [])
+                                                                                            public_ip_id            = optional(string, "")
+                                                                                            idle_timeout_in_minutes = optional(number, 4)
+                                                                                            ip_tags                 = optional(map(string))
+                                                                                          }), {})
+                                                         iscsi                          = optional(object({
+                                                                                            iscsi_count               = optional(number, 0)
+                                                                                            use_DHCP                  = optional(bool, true)
+                                                                                            iscsi_nic_ips             = optional(list(string), [])
+                                                                                            size                      = optional(string, "Standard_D2s_v3")
+                                                                                            os                        = optional(object({
+                                                                                                                          source_image_id = optional(string, "")
+                                                                                                                          publisher       = optional(string, "")
+                                                                                                                          offer           = optional(string, "")
+                                                                                                                          sku             = optional(string, "")
+                                                                                                                          version         = optional(string, "")
+                                                                                                                        }), {
+                                                                                                                          publisher = "SUSE"
+                                                                                                                          offer     = "sles-sap-15-sp5"
+                                                                                                                          sku       = "gen2"
+                                                                                                                          version   = "latest"
+                                                                                                                        })
+                                                                                            authentication            = optional(object({
+                                                                                                                          type     = optional(string, "key")
+                                                                                                                          username = optional(string, "azureadm")
+                                                                                                                          password = optional(string)
+                                                                                                                        }), {})
+                                                                                            zones                     = optional(list(string), [])
+                                                                                            user_assigned_identity_id = optional(string, "")
+                                                                                          }))
+                                                         virtual_networks               = object({
+                                                                                            sap = object({
+                                                                                                    name                     = optional(string, "")
+                                                                                                    logical_name             = optional(string, "")
+                                                                                                    flow_timeout_in_minutes  = optional(number)
+                                                                                                    enable_route_propagation = optional(bool, true)
+                                                                                                    id                       = optional(string, "")
+                                                                                                    exists                   = optional(bool, false)
+                                                                                                    address_space            = optional(list(string), [""])
+                                                                                        subnet_admin    = optional(object({
+                                                                                                           name    = optional(string, "")
+                                                                                                           id      = optional(string, "")
+                                                                                                           prefix  = optional(string, "")
+                                                                                                           defined = optional(bool, false)
+                                                                                                           exists  = optional(bool, false)
+                                                                                                           nsg     = optional(object({
+                                                                                                                       name   = optional(string, "")
+                                                                                                                       id     = optional(string, "")
+                                                                                                                       exists = optional(bool, false)
+                                                                                                                     }), {})
+                                                                                                         }), {})
+                                                                                        subnet_db       = optional(object({
+                                                                                                           name    = optional(string, "")
+                                                                                                           id      = optional(string, "")
+                                                                                                           prefix  = optional(string, "")
+                                                                                                           defined = optional(bool, false)
+                                                                                                           exists  = optional(bool, false)
+                                                                                                           nsg     = optional(object({
+                                                                                                                       name   = optional(string, "")
+                                                                                                                       id     = optional(string, "")
+                                                                                                                       exists = optional(bool, false)
+                                                                                                                     }), {})
+                                                                                                         }), {})
+                                                                                        subnet_app      = optional(object({
+                                                                                                           name    = optional(string, "")
+                                                                                                           id      = optional(string, "")
+                                                                                                           prefix  = optional(string, "")
+                                                                                                           defined = optional(bool, false)
+                                                                                                           exists  = optional(bool, false)
+                                                                                                           nsg     = optional(object({
+                                                                                                                       name   = optional(string, "")
+                                                                                                                       id     = optional(string, "")
+                                                                                                                       exists = optional(bool, false)
+                                                                                                                     }), {})
+                                                                                                         }), {})
+                                                                                        subnet_endpoint = optional(object({
+                                                                                                           name    = optional(string, "")
+                                                                                                           id      = optional(string, "")
+                                                                                                           prefix  = optional(string, "")
+                                                                                                           defined = optional(bool, false)
+                                                                                                           exists  = optional(bool, false)
+                                                                                                           nsg     = optional(object({
+                                                                                                                       name   = optional(string, "")
+                                                                                                                       id     = optional(string, "")
+                                                                                                                       exists = optional(bool, false)
+                                                                                                                     }), {})
+                                                                                                         }), {})
+                                                                                        subnet_web      = optional(object({
+                                                                                                           name    = optional(string, "")
+                                                                                                           id      = optional(string, "")
+                                                                                                           prefix  = optional(string, "")
+                                                                                                           defined = optional(bool, false)
+                                                                                                           exists  = optional(bool, false)
+                                                                                                           nsg     = optional(object({
+                                                                                                                       name   = optional(string, "")
+                                                                                                                       id     = optional(string, "")
+                                                                                                                       exists = optional(bool, false)
+                                                                                                                     }), {})
+                                                                                                         }), {})
+                                                                                        subnet_storage  = optional(object({
+                                                                                                           name    = optional(string, "")
+                                                                                                           id      = optional(string, "")
+                                                                                                           prefix  = optional(string, "")
+                                                                                                           defined = optional(bool, false)
+                                                                                                           exists  = optional(bool, false)
+                                                                                                           nsg     = optional(object({
+                                                                                                                       name   = optional(string, "")
+                                                                                                                       id     = optional(string, "")
+                                                                                                                       exists = optional(bool, false)
+                                                                                                                     }), {})
+                                                                                                         }), {})
+                                                                                        subnet_anf      = optional(object({
+                                                                                                           name    = optional(string, "")
+                                                                                                           id      = optional(string, "")
+                                                                                                           prefix  = optional(string, "")
+                                                                                                           defined = optional(bool, false)
+                                                                                                           exists  = optional(bool, false)
+                                                                                                           nsg     = optional(object({
+                                                                                                                       name   = optional(string, "")
+                                                                                                                       id     = optional(string, "")
+                                                                                                                       exists = optional(bool, false)
+                                                                                                                     }), {})
+                                                                                                         }), {})
+                                                                                        subnet_iscsi    = optional(object({
+                                                                                                           name    = optional(string, "")
+                                                                                                           id      = optional(string, "")
+                                                                                                           prefix  = optional(string, "")
+                                                                                                           defined = optional(bool, false)
+                                                                                                           exists  = optional(bool, false)
+                                                                                                           nsg     = optional(object({
+                                                                                                                       name   = optional(string, "")
+                                                                                                                       id     = optional(string, "")
+                                                                                                                       exists = optional(bool, false)
+                                                                                                                     }), {})
+                                                                                                         }), {})
+                                                                                        subnet_ams      = optional(object({
+                                                                                                           name    = optional(string, "")
+                                                                                                           id      = optional(string, "")
+                                                                                                           prefix  = optional(string, "")
+                                                                                                           defined = optional(bool, false)
+                                                                                                           exists  = optional(bool, false)
+                                                                                                           nsg     = optional(object({
+                                                                                                                       name   = optional(string, "")
+                                                                                                                       id     = optional(string, "")
+                                                                                                                       exists = optional(bool, false)
+                                                                                                                     }), {})
+                                                                                                         }), {})
+                                                                                                  })
+                                                                                          })
+                                                       })
 
+                                         validation {
+                                                      condition = (
+                                                        length(trimspace(var.infrastructure.region)) != 0
+                                                      )
+                                                      error_message = "The region must be specified in the infrastructure.region field."
+                                                    }
 
-#######################################4#######################################8
-#                                                                              #
-#                             Azure NetApp Volumes                             #
-#                                                                              #
-#######################################4#######################################8
+                                         validation {
+                                                      condition = (
+                                                        length(trimspace(var.infrastructure.environment)) != 0
+                                                      )
+                                                      error_message = "The environment must be specified in the infrastructure.environment field."
+                                                    }
 
-variable "infrastructure"                               {
-                                                           description = "Details of the Azure infrastructure to deploy the SAP landscape into"
-                                                           default     = {}
-                                                           validation {
-                                                             condition = (
-                                                               length(trimspace(try(var.infrastructure.region, ""))) != 0
-                                                             )
-                                                             error_message = "The region must be specified in the infrastructure.region field."
-                                                           }
+                                         validation {
+                                                      condition = (
+                                                        length(trimspace(var.infrastructure.virtual_networks.sap.logical_name)) != 0
+                                                      )
+                                                      error_message = "Please specify the logical VNet identifier in the infrastructure.virtual_networks.sap.name field. For deployments prior to version '2.3.3.1' please use the identifier 'sap'."
+                                                    }
 
-                                                           validation {
-                                                             condition = (
-                                                               length(trimspace(try(var.infrastructure.environment, ""))) != 0
-                                                             )
-                                                             error_message = "The environment must be specified in the infrastructure.environment field."
-                                                           }
+                                         validation {
+                                                      condition = (
+                                                        length(trimspace(var.infrastructure.virtual_networks.sap.id)) != 0 || length(try(var.infrastructure.virtual_networks.sap.address_space[0], "")) != 0
+                                                      )
+                                                      error_message = "Either the arm_id or (name and address_space) of the Virtual Network must be specified in the infrastructure.virtual_networks.sap block."
+                                                    }
 
-                                                           validation {
-                                                             condition = (
-                                                               length(trimspace(try(var.infrastructure.virtual_networks.sap.logical_name, ""))) != 0
-                                                             )
-                                                             error_message = "Please specify the logical VNet identifier in the infrastructure.virtual_networks.sap.name field. For deployments prior to version '2.3.3.1' please use the identifier 'sap'."
-                                                           }
+                                         validation {
+                                                      condition     = length(split("/", var.infrastructure.terraform_storage_account_id)) == 9
+                                                      error_message = "infrastructure.terraform_storage_account_id is required and needs to be the Azure resource ID of the storage account that holds the Terraform state and tfvars."
+                                                    }
 
-                                                           validation {
-                                                             condition = (
-                                                               length(trimspace(try(var.infrastructure.virtual_networks.sap.id, ""))) != 0 || length(var.infrastructure.virtual_networks.sap.address_space[0]) != 0
-                                                             )
-                                                             error_message = "Either the arm_id or (name and address_space) of the Virtual Network must be specified in the infrastructure.virtual_networks.sap block."
-                                                           }
+                                         validation {
+                                                      condition     = var.infrastructure.virtual_networks.sap.flow_timeout_in_minutes == null ? true : (var.infrastructure.virtual_networks.sap.flow_timeout_in_minutes >= 4 && var.infrastructure.virtual_networks.sap.flow_timeout_in_minutes <= 30)
+                                                      error_message = "The flow timeout in minutes must be between 4 and 30 if set."
+                                                    }
 
-                                                           validation {
-                                                             condition     = var.infrastructure.virtual_networks.sap.flow_timeout_in_minutes == null ? true : (var.infrastructure.virtual_networks.sap.flow_timeout_in_minutes >= 4 && var.infrastructure.virtual_networks.sap.flow_timeout_in_minutes <= 30)
-                                                             error_message = "The flow timeout in minutes must be between 4 and 30 if set."
-                                                           }
-                                                        }
+                                         validation {
+                                                      condition     = length(var.infrastructure.virtual_networks.sap.id) == 0 || length(split("/", var.infrastructure.virtual_networks.sap.id)) == 9
+                                                      error_message = "If specified, infrastructure.virtual_networks.sap.id needs to be a correctly formed Azure resource ID."
+                                                    }
 
-variable "options"                                      { description = "Configuration options" }
+                                         validation {
+                                                      condition = alltrue([
+                                                        for subnet in [
+                                                          var.infrastructure.virtual_networks.sap.subnet_admin,
+                                                          var.infrastructure.virtual_networks.sap.subnet_db,
+                                                          var.infrastructure.virtual_networks.sap.subnet_app,
+                                                          var.infrastructure.virtual_networks.sap.subnet_endpoint,
+                                                          var.infrastructure.virtual_networks.sap.subnet_web,
+                                                          var.infrastructure.virtual_networks.sap.subnet_storage,
+                                                          var.infrastructure.virtual_networks.sap.subnet_anf,
+                                                          var.infrastructure.virtual_networks.sap.subnet_iscsi,
+                                                          var.infrastructure.virtual_networks.sap.subnet_ams
+                                                        ] : length(subnet.id) == 0 || length(split("/", subnet.id)) == 11
+                                                      ])
+                                                      error_message = "If specified, each subnet id under infrastructure.virtual_networks.sap needs to be a correctly formed Azure subnet ID."
+                                                    }
+                                       }
 
-variable "authentication"                               {
-                                                          description = "Details of ssh key pair"
-                                                          default = {
-                                                                      username            = "azureadm",
-                                                                      password            = ""
-                                                                      path_to_public_key  = "",
-                                                                      path_to_private_key = ""
-                                                                    }
+variable "options"                     {
+                                         description = "Configuration options"
+                                         type        = object({
+                                                         enable_secure_transfer = optional(bool, true)
+                                                         use_spn                = bool
+                                                         assign_permissions     = bool
+                                                         spn_id                 = optional(string, "")
+                                                       })
+                                       }
 
-                                                          validation {
-                                                                       condition = (
-                                                                         length(var.authentication) >= 1
-                                                                       )
-                                                                       error_message = "Either ssh keys or user credentials must be specified."
-                                                                     }
-                                                          validation {
-                                                                       condition = (
-                                                                         length(trimspace(var.authentication.username)) != 0
-                                                                       )
-                                                                       error_message = "The default username for the Virtual machines must be specified."
-                                                                     }
-                                                        }
+variable "authentication"              {
+                                         description = "Credentials of the virtual machine administrator. A missing password or key path makes the module generate one"
+                                         type        = object({
+                                                         username            = optional(string, "azureadm")
+                                                         password            = optional(string)
+                                                         path_to_public_key  = optional(string, "")
+                                                         path_to_private_key = optional(string, "")
+                                                       })
+                                         default     = {}
 
-#######################################4#######################################8
-#                                                                              #
-#  Key Vault variables                                                         #
-#                                                                              #
-#######################################4#######################################8
+                                         validation {
+                                                      condition = (
+                                                        length(trimspace(var.authentication.username)) != 0
+                                                      )
+                                                      error_message = "The default username for the Virtual machines must be specified."
+                                                    }
+                                       }
 
-variable "key_vault"                                    {
-                                                          description = "The user brings existing Azure Key Vaults"
-                                                          default = {}
-                                                          validation {
-                                                                       condition = (
-                                                                         contains(keys(var.key_vault), "keyvault_id_for_deployment_credentials") ? (
-                                                                           (length(var.key_vault.keyvault_id_for_deployment_credentials) == 0 ? true : length(split("/", var.key_vault.keyvault_id_for_deployment_credentials)) == 9)) : (
-                                                                            true
-                                                                       ))
-                                                                       error_message = "If specified, the spn_keyvault_id needs to be a correctly formed Azure resource ID."
-                                                                     }
-                                                          validation {
-                                                                       condition = (
-                                                                         contains(keys(var.key_vault), "keyvault_id_for_system_credentials") ? (
-                                                                           (length(var.key_vault.keyvault_id_for_system_credentials) == 0 ? true : length(split("/", var.key_vault.keyvault_id_for_system_credentials)) == 9)) : (
-                                                                           true
-                                                                         )
-                                                                       )
-                                                                       error_message = "If specified, the user_keyvault_id needs to be a correctly formed Azure resource ID."
-                                                                     }
+variable "key_vault"                   {
+                                         description = "Key vault settings. Provide user.id to use an existing vault for the workload zone credentials; spn.id is the vault holding the deployment credentials"
+                                         type        = object({
+                                                         user                       = optional(object({
+                                                                                        id     = optional(string, "")
+                                                                                        exists = optional(bool, false)
+                                                                                      }), {})
+                                                         spn                        = optional(object({
+                                                                                        id     = optional(string, "")
+                                                                                        exists = optional(bool, false)
+                                                                                      }), {})
+                                                         exists                     = optional(bool, false)
+                                                         private_key_secret_name    = optional(string, "")
+                                                         public_key_secret_name     = optional(string, "")
+                                                         username_secret_name       = optional(string, "")
+                                                         password_secret_name       = optional(string, "")
+                                                         kv_iscsi_sshkey_pub        = optional(string, "")
+                                                         kv_iscsi_sshkey_prvt       = optional(string, "")
+                                                         kv_iscsi_pwd               = optional(string, "")
+                                                         kv_iscsi_username          = optional(string, "")
+                                                         enable_rbac_authorization  = optional(bool, true)
+                                                         set_secret_expiry          = optional(bool, false)
+                                                         enable_purge_control       = optional(bool, false)
+                                                         soft_delete_retention_days = optional(number, 7)
+                                                       })
+                                         default     = {}
 
-                                                          validation {
-                                                                       condition = (
-                                                                         contains(keys(var.key_vault), "kv_prvt_id") ? (
-                                                                           length(split("/", var.key_vault.kv_prvt_id)) == 9) : (
-                                                                           true
-                                                                         )
-                                                                       )
-                                                                       error_message = "If specified, the kv_prvt_id needs to be a correctly formed Azure resource ID."
-                                                                     }
+                                         validation {
+                                                      condition = alltrue([
+                                                        for id in [var.key_vault.user.id, var.key_vault.spn.id] : length(id) == 0 || length(split("/", id)) == 9
+                                                      ])
+                                                      error_message = "If specified, key_vault.user.id and key_vault.spn.id need to be correctly formed Azure resource IDs."
+                                                    }
 
-                                                        }
+                                         validation {
+                                                      condition     = var.key_vault.user.exists == (length(var.key_vault.user.id) > 0)
+                                                      error_message = "key_vault.user.exists must be true exactly when key_vault.user.id is provided."
+                                                    }
 
-variable "additional_users_to_add_to_keyvault_policies" { description = "Additional users to add to the key vault policies" }
+                                         validation {
+                                                      condition     = var.key_vault.soft_delete_retention_days >= 7 && var.key_vault.soft_delete_retention_days <= 90
+                                                      error_message = "key_vault.soft_delete_retention_days must be between 7 and 90, the range Azure Key Vault accepts."
+                                                    }
+                                       }
 
-variable "keyvault_private_endpoint_id"                 { description = "Existing private endpoint for key vault" }
+variable "additional_users_to_add_to_keyvault_policies"         {
+                                                                   description = "Additional users to add to the key vault policies"
+                                                                   type        = list(string)
+                                                                 }
 
+variable "keyvault_private_endpoint_id"         {
+                                                   description = "Existing private endpoint for key vault"
+                                                   type        = string
+                                                 }
 
+variable "diagnostics_storage_account" {
+                                         description = "Storage account information for diagnostics account. Provide id to use an existing account"
+                                         type        = object({
+                                                         id = optional(string, "")
+                                                       })
+                                         default     = {}
 
-#########################################################################################
-#                                                                                       #
-#  Storage Account Variables                                                            #
-#                                                                                       #
-#########################################################################################
+                                         validation {
+                                                      condition     = length(var.diagnostics_storage_account.id) == 0 || length(split("/", var.diagnostics_storage_account.id)) == 9
+                                                      error_message = "If specified, diagnostics_storage_account.id needs to be a correctly formed Azure resource ID."
+                                                    }
+                                       }
 
+variable "witness_storage_account" {
+                                         description = "Storage account information for witness storage account. Provide id to use an existing account"
+                                         type        = object({
+                                                         id = optional(string, "")
+                                                       })
+                                         default     = {}
 
-variable "diagnostics_storage_account"                  {
-                                                          description = "Storage account information for diagnostics account"
-                                                          default = {
-                                                                      arm_id = ""
-                                                                    }
-                                                        }
+                                         validation {
+                                                      condition     = length(var.witness_storage_account.id) == 0 || length(split("/", var.witness_storage_account.id)) == 9
+                                                      error_message = "If specified, witness_storage_account.id needs to be a correctly formed Azure resource ID."
+                                                    }
+                                       }
 
-variable "witness_storage_account"                      {
-                                                          description = "Storage account information for witness storage account"
-                                                          default = {
-                                                                      arm_id = ""
-                                                                    }
-                                                        }
+variable "create_transport_storage"         {
+                                               description = "Boolean file indicating if storage should be created for SAP transport"
+                                               type        = bool
+                                             }
 
-variable "create_transport_storage"                     { description = "Boolean file indicating if storage should be created for SAP transport" }
+variable "transport_volume_size"         {
+                                            description = "The volume size in GB for transport volume"
+                                            type        = number
+                                          }
 
-variable "transport_volume_size"                        { description = "The volume size in GB for transport volume" }
+variable "install_volume_size"         {
+                                          description = "The volume size in GB for install volume"
+                                          type        = number
+                                        }
 
-variable "install_volume_size"                          { description = "The volume size in GB for install volume" }
+variable "transport_storage_account_id"         {
+                                                   description = "Azure Resource Identifier for an existing storage account"
+                                                   type        = string
 
+                                                   validation {
+                                                                condition     = length(var.transport_storage_account_id) == 0 || length(split("/", var.transport_storage_account_id)) == 9
+                                                                error_message = "If specified, transport_storage_account_id needs to be a correctly formed Azure resource ID."
+                                                              }
+                                                 }
 
-variable "transport_storage_account_id"                 { description = "Azure Resource Identifier for an existing storage account" }
+variable "transport_private_endpoint_id"         {
+                                                    description = "Azure Resource Identifier for an private endpoint connection"
+                                                    type        = string
+                                                  }
 
-variable "transport_private_endpoint_id"                { description = "Azure Resource Identifier for an private endpoint connection" }
+variable "install_storage_account_id"         {
+                                                 description = "Azure Resource Identifier for an existing storage account"
+                                                 type        = string
 
-variable "install_storage_account_id"                   { description = "Azure Resource Identifier for an existing storage account" }
+                                                 validation {
+                                                              condition     = length(var.install_storage_account_id) == 0 || length(split("/", var.install_storage_account_id)) == 9
+                                                              error_message = "If specified, install_storage_account_id needs to be a correctly formed Azure resource ID."
+                                                            }
+                                               }
 
-variable "install_private_endpoint_id"                  { description = "Azure Resource Identifier for an private endpoint connection" }
-variable "install_always_create_fileshares"             { description = "Value indicating if file shares are created ehen using existing storage accounts" }
-variable "install_create_smb_shares"                    {
-                                                          description = "Value indicating if SMB shares should be created"
-                                                          default     = true
-                                                        }
-variable "storage_account_replication_type"             {
-                                                          description = "Storage account replication type"
-                                                          default     = "ZRS"
-                                                        }
+variable "install_private_endpoint_id"         {
+                                                  description = "Azure Resource Identifier for an private endpoint connection"
+                                                  type        = string
+                                                }
 
-#######################################4#######################################8
-#                                                                              #
-#  Miscellaneous variables                                                     #
-#                                                                              #
-#######################################4#######################################8
+variable "install_always_create_fileshares"         {
+                                                       description = "Value indicating if file shares are created ehen using existing storage accounts"
+                                                       type        = bool
+                                                     }
 
-variable "deployment"                                   {
-                                                          description = "The type of deployment"
-                                                          default     = "update"
-                                                        }
+variable "install_create_smb_shares"         {
+                                                description = "Value indicating if SMB shares should be created"
+                                                type        = bool
+                                                default     = true
+                                              }
 
-variable "terraform_template_version"                   { description = "The version of Terraform templates that were identified in the state file" }
+variable "storage_account_replication_type"         {
+                                                       description = "Storage account replication type"
+                                                       type        = string
+                                                       default     = "ZRS"
 
-variable "deployer_tfstate"                             { description = "Deployer remote tfstate file" }
+                                                       validation {
+                                                                    condition     = contains(["LRS", "ZRS", "GRS", "RAGRS", "GZRS", "RAGZRS"], var.storage_account_replication_type)
+                                                                    error_message = "storage_account_replication_type must be one of LRS, ZRS, GRS, RAGRS, GZRS or RAGZRS."
+                                                                  }
+                                                     }
 
-variable "naming"                                       { description = "Defines the names for the resources" }
+variable "deployment"                  {
+                                          description = "The type of deployment"
+                                          type        = string
+                                          default     = "update"
+                                        }
 
-variable "use_deployer"                                 { description = "Use the deployer" }
+variable "terraform_template_version"         {
+                                                 description = "The version of Terraform templates that were identified in the state file"
+                                                 type        = string
+                                               }
 
-variable "ANF_settings"                                 {
-                                                          description = "ANF settings"
-                                                          default = {
-                                                                      use                           = false
-                                                                      name                          = ""
-                                                                      arm_id                        = ""
-                                                                      pool_name                     = ""
-                                                                      use_existing_pool             = false
-                                                                      service_level                 = "Standard"
-                                                                      size_in_tb                    = 4
-                                                                      qos_type                      = "Manual"
-                                                                      use_existing_transport_volume = false
-                                                                      transport_volume_name         = ""
-                                                                      transport_volume_size         = 32
-                                                                      transport_volume_throughput   = 32
-                                                                      export_policy_client_access_list = []
-                                                                      use_existing_install_volume   = false
-                                                                      install_volume_name           = ""
-                                                                      install_volume_size           = 128
-                                                                      install_volume_throughput     = 32
-                                                                    }
-                                                        }
+variable "deployer_tfstate"            {
+                                          description = "Outputs of the deployer Terraform state. Untyped until the deployer publishes a versioned capability contract; only the attributes this module reads are used"
+                                          type        = any
+                                        }
 
+variable "naming"                      {
+                                          description = "Defines the names for the resources: the 'naming' output of the sap_namegenerator module, or a custom names file with the same structure"
+                                          type        = any
+                                        }
 
-variable "place_delete_lock_on_resources"                { description = "If defined, a delete lock will be placed on the key resources" }
+variable "use_deployer"                {
+                                          description = "Use the deployer"
+                                          type        = bool
+                                        }
 
-variable "additional_network_id"                         {
-                                                           description = "Agent Network resource ID"
-                                                           default     = ""
-                                                         }
-#########################################################################################
-#                                                                                       #
-#  DNS Settings                                                                         #
-#                                                                                       #
-#########################################################################################
+variable "ANF_settings"                {
+                                         description = "Azure NetApp Files settings. Provide id to use an existing NetApp account"
+                                         type        = object({
+                                                         use                              = optional(bool, false)
+                                                         name                             = optional(string, "")
+                                                         id                               = optional(string, "")
+                                                         pool_name                        = optional(string, "")
+                                                         use_existing_pool                = optional(bool, false)
+                                                         service_level                    = optional(string, "Standard")
+                                                         size_in_tb                       = optional(number, 4)
+                                                         qos_type                         = optional(string, "Manual")
+                                                         use_existing_transport_volume    = optional(bool, false)
+                                                         transport_volume_name            = optional(string, "")
+                                                         transport_volume_size            = optional(number, 32)
+                                                         transport_volume_throughput      = optional(number, 32)
+                                                         transport_volume_zone            = optional(string, "")
+                                                         export_policy_client_access_list = optional(list(string), [])
+                                                         use_existing_install_volume      = optional(bool, false)
+                                                         install_volume_name              = optional(string, "")
+                                                         install_volume_size              = optional(number, 128)
+                                                         install_volume_throughput        = optional(number, 32)
+                                                         install_volume_zone              = optional(string, "")
+                                                       })
+                                         default     = {}
 
+                                         validation {
+                                                      condition     = length(var.ANF_settings.id) == 0 || length(split("/", var.ANF_settings.id)) == 9
+                                                      error_message = "If specified, ANF_settings.id needs to be a correctly formed Azure resource ID."
+                                                    }
 
-variable "dns_settings"                                  {
-                                                           description = "DNS namespace"
-                                                         }
+                                         validation {
+                                                      condition     = contains(["Auto", "Manual"], var.ANF_settings.qos_type)
+                                                      error_message = "ANF_settings.qos_type must be Auto or Manual."
+                                                    }
+                                       }
 
+variable "place_delete_lock_on_resources"         {
+                                                     description = "If true, a delete lock will be placed on the key resources"
+                                                     type        = bool
+                                                   }
 
+variable "additional_network_id"         {
+                                            description = "Agent Network resource ID"
+                                            type        = string
+                                            default     = ""
+
+                                            validation {
+                                                         condition     = length(var.additional_network_id) == 0 || length(split("/", var.additional_network_id)) == 9
+                                                         error_message = "If specified, additional_network_id needs to be a correctly formed Azure resource ID."
+                                                       }
+                                          }
+
+variable "dns_settings"                {
+                                         description = "DNS details for the deployment"
+                                         type        = object({
+                                                         use_custom_dns_a_registration                = optional(bool, false)
+                                                         dns_label                                    = optional(string, "")
+                                                         dns_zone_names                               = optional(map(string), {})
+                                                         dns_server_list                              = optional(list(string), [])
+                                                         management_dns_resourcegroup_name            = optional(string, "")
+                                                         management_dns_subscription_id               = optional(string, "")
+                                                         privatelink_dns_resourcegroup_name           = optional(string, "")
+                                                         privatelink_dns_subscription_id              = optional(string, "")
+                                                         privatelink_file_id                          = optional(string, "")
+                                                         privatelink_keyvault_id                      = optional(string, "")
+                                                         privatelink_storage_id                       = optional(string, "")
+                                                         register_storage_accounts_keyvaults_with_dns = optional(bool, false)
+                                                         register_endpoints_with_dns                  = optional(bool, false)
+                                                         register_virtual_network_to_dns              = optional(bool, false)
+                                                       })
+                                       }
 
 variable "use_private_endpoint"                          {
                                                            description = "Boolean value indicating if private endpoint should be used for the deployment"
@@ -251,8 +565,10 @@ variable "use_service_endpoint"                          {
                                                            type        = bool
                                                          }
 
-
-variable "NFS_provider"                                  { description = "Describes the NFS solution used" }
+variable "NFS_provider"                {
+                                          description = "Describes the NFS solution used"
+                                          type        = string
+                                        }
 
 variable "Agent_IP"                                      {
                                                            description = "If provided, contains the IP address of the agent"
@@ -260,12 +576,27 @@ variable "Agent_IP"                                      {
                                                            default     = ""
                                                          }
 
-variable "vm_settings"                                   {
-                                                           description = "Details of the jumpbox to deploy"
-                                                           default = {
-                                                             count = 0
-                                                           }
-                                                         }
+variable "vm_settings"                 {
+                                         description = "Details of the utility virtual machines to deploy"
+                                         type        = object({
+                                                         count              = optional(number, 0)
+                                                         size               = optional(string, "")
+                                                         use_DHCP           = optional(bool, true)
+                                                         image              = optional(object({
+                                                                                os_type         = optional(string, "WINDOWS")
+                                                                                source_image_id = optional(string, "")
+                                                                                publisher       = optional(string, "")
+                                                                                offer           = optional(string, "")
+                                                                                sku             = optional(string, "")
+                                                                                version         = optional(string, "")
+                                                                              }), {})
+                                                         private_ip_address = optional(list(string), [])
+                                                         disk_size          = optional(number, 128)
+                                                         disk_type          = optional(string, "Premium_LRS")
+                                                         zones              = optional(list(string), [])
+                                                       })
+                                         default     = {}
+                                       }
 
 variable "utility_storage_settings"                      {
                                                            description = "List of utility storage account configurations normalized from transform.tf."
@@ -406,11 +737,20 @@ variable "utility_storage_settings"                      {
                                                            }
                                                          }
 
-variable "peer_with_control_plane_vnet"                  { description = "Defines in the SAP VNet will be peered with the controlplane VNet" }
+variable "peer_with_control_plane_vnet"         {
+                                                   description = "Defines in the SAP VNet will be peered with the controlplane VNet"
+                                                   type        = bool
+                                                 }
 
-variable "enable_firewall_for_keyvaults_and_storage"     { description = "Boolean value indicating if firewall should be enabled for key vaults and storage" }
+variable "enable_firewall_for_keyvaults_and_storage"         {
+                                                                description = "Boolean value indicating if firewall should be enabled for key vaults and storage"
+                                                                type        = bool
+                                                              }
 
-variable "public_network_access_enabled"                 { description = "Defines if the public access should be enabled for keyvaults and storage accounts" }
+variable "public_network_access_enabled"         {
+                                                    description = "Defines if the public access should be enabled for keyvaults and storage accounts"
+                                                    type        = bool
+                                                  }
 
 variable "use_AFS_for_shared_storage"                    {
                                                            description = "If true, will use AFS for installation media."
@@ -424,8 +764,10 @@ variable "AFS_enable_encryption_in_transit"              {
                                                            default     = false
                                                          }
 
-variable "tags"                                          { description = "List of tags to associate to all resources" }
-
+variable "tags"                        {
+                                          description = "List of tags to associate to all resources"
+                                          type        = map(string)
+                                        }
 
 variable "data_plane_available"                          {
                                                            description = "Boolean value indicating if storage account access is via data plane"

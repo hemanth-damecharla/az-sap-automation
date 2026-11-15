@@ -283,7 +283,7 @@ variables {
     disk_type         = "Premium_LRS"
     disk_size         = 128
     use_DHCP          = true
-    private_ip_address = ""
+    private_ip_address = []
     zones             = []
   }
 

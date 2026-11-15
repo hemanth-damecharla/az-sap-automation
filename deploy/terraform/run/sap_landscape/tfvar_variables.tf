@@ -972,7 +972,7 @@ variable "ANF_transport_volume_use_existing"       {
 
 variable "ANF_transport_volume_name"               {
                                                      description = "If defined provides the Transport volume name"
-                                                     default     = false
+                                                     default     = ""
                                                    }
 
 variable "ANF_transport_volume_throughput"         {
