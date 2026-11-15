@@ -1,0 +1,61 @@
+---
+- name: kdump | Install the fence_kdump agent
+  ansible.builtin.package:
+    name: "{{ __ha_pacemaker_fence_kdump_package }}"
+    state: present
+
+- name: kdump | Allow fence_kdump notifications through firewalld
+  ansible.posix.firewalld:
+    port: "{{ __ha_pacemaker_fence_kdump_port }}"
+    state: enabled
+    permanent: true
+    immediate: true
+
+# kdump.conf is owned by the distribution and carries site settings, so only
+# the two directives this role needs are managed.
+- name: kdump | Notify the peer node when a kernel dump starts
+  ansible.builtin.lineinfile:
+    path: "{{ __ha_pacemaker_fence_kdump_conf }}"
+    regexp: '^#?\s*fence_kdump_nodes\b'
+    line: "fence_kdump_nodes {{ __ha_pacemaker_fence_kdump_peers | join(' ') }}"
+    backup: true
+  notify: Restart kdump
+
+- name: kdump | Set the crash dump directory
+  ansible.builtin.lineinfile:
+    path: "{{ __ha_pacemaker_fence_kdump_conf }}"
+    regexp: '^path\s'
+    line: "path {{ ha_pacemaker_fence_kdump_dump_path }}"
+    backup: true
+  notify: Restart kdump
+
+- name: kdump | Enable and start kdump
+  ansible.builtin.service:
+    name: kdump
+    enabled: true
+    state: started
+
+- name: kdump | Rebuild the kdump initramfs when its configuration changed
+  ansible.builtin.meta: flush_handlers
+
+# No module inspects an initramfs. Read-only, so it also runs in check mode.
+- name: kdump | Read the content of the kdump initramfs
+  ansible.builtin.command:
+    argv:
+      - lsinitrd
+      - "/boot/initramfs-{{ ansible_facts['kernel'] }}kdump.img"
+  register: __ha_pacemaker_fence_kdump_initramfs
+  changed_when: false
+  check_mode: false
+
+- name: kdump | Check that the kdump initramfs can notify the peer
+  ansible.builtin.assert:
+    that:
+      - "'fence_kdump_send' in __ha_pacemaker_fence_kdump_initramfs['stdout']"
+      - "'etc/hosts' in __ha_pacemaker_fence_kdump_initramfs['stdout']"
+    fail_msg: >-
+      The kdump initramfs does not contain fence_kdump_send and the hosts
+      file; the peer would not learn that this node is writing a dump.
+    quiet: true
+  # In check mode the initramfs has not been rebuilt yet.
+  when: not ansible_check_mode

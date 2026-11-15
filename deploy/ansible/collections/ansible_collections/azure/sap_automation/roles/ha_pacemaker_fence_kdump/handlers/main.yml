@@ -1,0 +1,7 @@
+---
+# kdump rebuilds its initramfs on restart, which is what picks up the
+# fence_kdump settings.
+- name: Restart kdump
+  ansible.builtin.service:
+    name: kdump
+    state: restarted

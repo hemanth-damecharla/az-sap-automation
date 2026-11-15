@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  author: SAP Deployment Automation Framework contributors
+  description: Adds fence_kdump as the first fencing level of a Pacemaker cluster on RHEL
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: EL
+      versions:
+        - all
+  galaxy_tags:
+    - sap
+    - pacemaker
+dependencies: []

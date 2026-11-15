@@ -1,0 +1,18 @@
+<resources>
+  <primitive id="{{ ha_pacemaker_fence_kdump_resource_id }}" class="stonith" type="fence_kdump">
+    <instance_attributes>
+      <nvpair name="pcmk_reboot_action" value="off"/>
+      <nvpair name="pcmk_host_list" value="{{ __ha_pacemaker_fence_kdump_node_names | join(' ') }}"/>
+      <nvpair name="timeout" value="{{ ha_pacemaker_fence_kdump_timeout }}"/>
+    </instance_attributes>
+    <operations>
+      <op name="monitor" interval="3600"/>
+    </operations>
+  </primitive>
+</resources>
+<fencing-topology>
+{% for node in __ha_pacemaker_fence_kdump_node_names %}
+  <fencing-level target="{{ node }}" index="1" devices="{{ ha_pacemaker_fence_kdump_resource_id }}"/>
+  <fencing-level target="{{ node }}" index="2" devices="{{ ha_pacemaker_fence_kdump_fallback_devices | join(',') }}"/>
+{% endfor %}
+</fencing-topology>

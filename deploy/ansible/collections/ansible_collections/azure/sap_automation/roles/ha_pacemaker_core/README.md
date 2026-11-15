@@ -47,8 +47,7 @@ The role does not destroy a cluster. To remove what it configured: delete the
 ## Status against `roles-os/1.17-generic-pacemaker`
 
 Not yet migrated, and still served by the legacy role: package version
-pre-checks, SBD and iSCSI fencing, `fence_kdump`, service principal fencing,
-and RHEL 7. Instance metadata is no longer queried by the role; node addresses
+pre-checks, SBD and iSCSI fencing, service principal fencing, and RHEL 7. Instance metadata is no longer queried by the role; node addresses
 and VM names are inputs. Two legacy steps are intentionally dropped:
 `pcs quorum expected-votes` (a two-node `pcs cluster setup` already writes
 `two_node: 1`) and toggling maintenance mode around the scheduled events

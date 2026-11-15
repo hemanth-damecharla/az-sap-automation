@@ -238,3 +238,19 @@ def test_azure_events_agent(platform, pacemaker, clone_id, on_clone):
     rule = sections["constraints"].find("rsc_location/rule")
     assert rule.get("score-attribute") == "#health-azure"
     assert pairs(sections["crm_config"]) == {"node-health-strategy": "custom"}
+
+
+def test_kdump_fencing_topology():
+    sections = render("ha_pacemaker_fence_kdump", "kdump.xml.j2", "rhel9")
+    parameters = pairs(sections["resources"].find("primitive"))
+    assert parameters == {"pcmk_reboot_action": "off", "pcmk_host_list": "n1 n2", "timeout": "30"}
+    levels = [
+        (level.get("id"), level.get("devices"))
+        for level in sections["fencing-topology"].iter("fencing-level")
+    ]
+    assert levels == [
+        ("fl-n1-1", "rsc_st_kdump"),
+        ("fl-n1-2", "rsc_st_azure"),
+        ("fl-n2-1", "rsc_st_kdump"),
+        ("fl-n2-2", "rsc_st_azure"),
+    ]

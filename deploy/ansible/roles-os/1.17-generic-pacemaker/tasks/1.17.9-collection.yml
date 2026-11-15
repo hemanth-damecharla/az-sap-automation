@@ -25,8 +25,12 @@
                                             {{ ansible_play_hosts_all
                                                | map('extract', hostvars, 'az_instance_metadata_cluster_node') | list }}
     ha_pacemaker_config_node:               "{{ hostvars[primary_instance_name]['az_instance_metadata_cluster_node']['name'] }}"
-    ha_pacemaker_fence_roles:
-                                            - azure.sap_automation.ha_pacemaker_fence_azure_msi
+    ha_pacemaker_fence_roles: >-
+                                            {{ ['azure.sap_automation.ha_pacemaker_fence_azure_msi']
+                                               + (['azure.sap_automation.ha_pacemaker_fence_kdump']
+                                                  if use_fence_kdump | default(false) | bool
+                                                     and ansible_os_family | upper == 'REDHAT'
+                                                  else []) }}
     ha_pacemaker_ra_roles:                  []
     # Cluster names as created by the legacy tasks on each distribution.
     ha_pacemaker_core_cluster_name: >-

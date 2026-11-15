@@ -1,0 +1,15 @@
+---
+ha_pacemaker_fence_kdump_nodes: "{{ ha_pacemaker_nodes }}"
+ha_pacemaker_fence_kdump_config_node: "{{ ha_pacemaker_config_node }}"
+
+ha_pacemaker_fence_kdump_resource_id: rsc_st_kdump
+
+# Fencing devices used as the second level, after fence_kdump has timed out.
+ha_pacemaker_fence_kdump_fallback_devices:
+  - rsc_st_azure
+
+# Seconds fence_kdump waits for the kdump notification of the failed node.
+ha_pacemaker_fence_kdump_timeout: 30
+
+# Directory kdump writes crash dumps to.
+ha_pacemaker_fence_kdump_dump_path: /usr/crash

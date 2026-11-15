@@ -1,0 +1,14 @@
+---
+- name: Check that the platform is supported
+  ansible.builtin.assert:
+    that: ansible_facts['os_family'] == 'RedHat'
+    fail_msg: fence_kdump fencing is only implemented for RHEL.
+    quiet: true
+
+- name: Configure kdump on the node
+  ansible.builtin.import_tasks: kdump.yml
+
+- name: Configure the fencing device and topology
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/kdump.xml.j2') }}"
+  when: __ha_pacemaker_fence_kdump_is_config_node | bool

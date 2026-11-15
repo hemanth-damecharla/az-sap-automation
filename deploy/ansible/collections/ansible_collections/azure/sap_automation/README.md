@@ -27,6 +27,7 @@ The default behaviour of every playbook is unchanged.
 | [`ha_pacemaker`](roles/ha_pacemaker/README.md) | Entry point | Role ordering in `playbook_04_00_01_db_ha.yaml` |
 | [`ha_pacemaker_core`](roles/ha_pacemaker_core/README.md) | Cluster bootstrap | `roles-os/1.17-generic-pacemaker` (bootstrap, scheduled events, start delay) |
 | [`ha_pacemaker_fence_azure_msi`](roles/ha_pacemaker_fence_azure_msi/README.md) | Fencing provider | Azure fence agent tasks in `1.17.2.0-cluster-*.yml` |
+| [`ha_pacemaker_fence_kdump`](roles/ha_pacemaker_fence_kdump/README.md) | Fencing provider | `use_fence_kdump` tasks in `1.17.1-pre_checks.yml` and `1.17.2.0-cluster-RedHat.yml` |
 | [`az_instance_metadata`](roles/az_instance_metadata/README.md) | Azure facts | Instance metadata queries repeated in playbooks and roles |
 | [`ha_pacemaker_ra_hana_scaleup`](roles/ha_pacemaker_ra_hana_scaleup/README.md) | Resource agent provider | `roles-sap/5.5-hanadb-pacemaker/tasks/5.5.4.1-cluster-*.yml` |
 
@@ -47,7 +48,7 @@ Ansible finds the collection without further configuration because it sits in
 
 | Step | Collection is used when | Otherwise |
 | --- | --- | --- |
-| Cluster bootstrap and fencing (`roles-os/1.17-generic-pacemaker`) | HANA scale-up, `database_cluster_type` is `AFA`, `use_msi_for_clusters` is true, kdump fencing is off, RHEL 8 or later or SLES | Existing tasks |
+| Cluster bootstrap and fencing (`roles-os/1.17-generic-pacemaker`) | HANA scale-up, `database_cluster_type` is `AFA`, `use_msi_for_clusters` is true, RHEL 8 or later or SLES | Existing tasks |
 | HANA cluster resources (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.4.1) | No active/read-enabled secondary, `NFS_provider` is not `ANF`, RHEL 8 or later or SLES | Existing tasks |
 
 As before, both steps act only on a node where the cluster has not been

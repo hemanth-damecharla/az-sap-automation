@@ -1,0 +1,7 @@
+---
+__ha_pacemaker_fence_kdump_node_names: "{{ ha_pacemaker_fence_kdump_nodes | map(attribute='name') | list }}"
+__ha_pacemaker_fence_kdump_is_config_node: "{{ ansible_facts['hostname'] == ha_pacemaker_fence_kdump_config_node }}"
+__ha_pacemaker_fence_kdump_peers: "{{ __ha_pacemaker_fence_kdump_node_names | difference([ansible_facts['hostname']]) }}"
+__ha_pacemaker_fence_kdump_package: fence-agents-kdump
+__ha_pacemaker_fence_kdump_port: 7410/udp
+__ha_pacemaker_fence_kdump_conf: /etc/kdump.conf

@@ -1,0 +1,38 @@
+---
+argument_specs:
+  main:
+    short_description: fence_kdump as first fencing level on RHEL
+    description:
+      - Lets a crashing node finish writing its kernel dump before it is
+        fenced by the regular device.
+      - Creates the C(fence_kdump) STONITH resource, a two-level fencing
+        topology per node, and the matching kdump configuration.
+      - Run it after the role that creates the fallback fencing device.
+    options:
+      ha_pacemaker_fence_kdump_nodes:
+        description: Cluster nodes. Defaults to C(ha_pacemaker_nodes).
+        type: list
+        elements: dict
+        required: true
+      ha_pacemaker_fence_kdump_config_node:
+        description: Node on which the cluster configuration is applied.
+        type: str
+        required: true
+      ha_pacemaker_fence_kdump_resource_id:
+        description: ID of the C(fence_kdump) STONITH resource.
+        type: str
+        default: rsc_st_kdump
+      ha_pacemaker_fence_kdump_fallback_devices:
+        description: STONITH resource IDs used as fencing level 2.
+        type: list
+        elements: str
+        default:
+          - rsc_st_azure
+      ha_pacemaker_fence_kdump_timeout:
+        description: Seconds to wait for the kdump notification of the failed node.
+        type: int
+        default: 30
+      ha_pacemaker_fence_kdump_dump_path:
+        description: Directory kdump writes crash dumps to.
+        type: path
+        default: /usr/crash
