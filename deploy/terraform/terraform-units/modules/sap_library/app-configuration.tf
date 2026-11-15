@@ -15,7 +15,7 @@ resource "azurerm_private_dns_zone" "appconfig" {
                                          ]
   name                                 = var.dns_settings.dns_zone_names.appconfig_dns_zone_name
   resource_group_name                  = var.infrastructure.resource_group.exists ? (
-                                           split("/", var.infrastructure.resource_group.arm_id)[4]) : (
+                                           split("/", var.infrastructure.resource_group.id)[4]) : (
                                            azurerm_resource_group.library[0].name
                                          )
   tags                                 = var.infrastructure.tags
