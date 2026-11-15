@@ -180,6 +180,57 @@ run "rejects_soft_delete_retention_outside_key_vault_range" {
   expect_failures = [var.soft_delete_retention_days]
 }
 
+run "configured_private_ip_address_is_assigned_statically" {
+  command = plan
+
+  variables {
+    naming     = run.names.naming
+    naming_new = run.names.naming_new
+    deployer = {
+      size               = "Standard_D4ds_v4"
+      disk_type          = "Premium_LRS"
+      os                 = { publisher = "SUSE", offer = "sles-sap-15-sp5", sku = "gen2", version = "latest" }
+      private_ip_address = ["10.170.20.70"]
+    }
+  }
+
+  assert {
+    condition     = azurerm_network_interface.deployer[0].ip_configuration[0].private_ip_address == "10.170.20.70" && azurerm_network_interface.deployer[0].ip_configuration[0].private_ip_address_allocation == "Static"
+    error_message = "A configured address must be assigned statically to the matching deployer virtual machine."
+  }
+}
+
+run "without_configured_address_allocation_stays_dynamic" {
+  command = plan
+
+  variables {
+    naming     = run.names.naming
+    naming_new = run.names.naming_new
+  }
+
+  assert {
+    condition     = azurerm_network_interface.deployer[0].ip_configuration[0].private_ip_address_allocation == "Dynamic"
+    error_message = "Without a configured address the deployer network interface must keep dynamic allocation, as before."
+  }
+}
+
+run "rejects_invalid_private_ip_address" {
+  command = plan
+
+  variables {
+    naming     = run.names.naming
+    naming_new = run.names.naming_new
+    deployer = {
+      size               = "Standard_D4ds_v4"
+      disk_type          = "Premium_LRS"
+      os                 = { publisher = "SUSE", offer = "sles-sap-15-sp5", sku = "gen2", version = "latest" }
+      private_ip_address = ["10.170.20"]
+    }
+  }
+
+  expect_failures = [var.deployer]
+}
+
 run "rejects_unknown_authentication_type" {
   command = plan
 

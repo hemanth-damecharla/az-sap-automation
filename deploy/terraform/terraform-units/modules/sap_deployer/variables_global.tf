@@ -366,9 +366,7 @@ variable "deployer"                          {
                                                                                                        sku             = optional(string, "")
                                                                                                        version         = optional(string, "")
                                                                                                      })
-                                                               # Kept untyped: the module indexes this value per virtual machine, while
-                                                               # the root modules currently pass a single string.
-                                                               private_ip_address                  = optional(any, "")
+                                                               private_ip_address                  = optional(list(string), [])
                                                                deployer_diagnostics_account_arm_id = optional(string, "")
                                                                app_service_SKU                     = optional(string, "")
                                                                user_assigned_identity_id           = optional(string, "")
@@ -379,6 +377,11 @@ variable "deployer"                          {
                                                                license_type                        = optional(string, "")
                                                                tags                                = optional(map(string), { "Role" = "Deployer" })
                                                              })
+
+                                               validation {
+                                                            condition     = alltrue([for address in var.deployer.private_ip_address : can(cidrhost("${address}/32", 0))])
+                                                            error_message = "Each entry of deployer.private_ip_address must be a valid IPv4 address."
+                                                          }
 
                                                validation {
                                                             condition     = contains(["key", "password"], var.deployer.authentication.type)

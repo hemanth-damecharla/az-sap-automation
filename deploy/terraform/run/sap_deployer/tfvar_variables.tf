@@ -335,7 +335,7 @@ variable "license_type"                         {
 
 
 variable "deployer_private_ip_address"          {
-                                                  description = "If provides, the value of the deployer Virtual machine IPs"
+                                                  description = "If provided, the static private IP addresses of the deployer virtual machines, one per virtual machine in order. Machines without an entry use DHCP or a computed address"
                                                   default = [""]
                                                 }
 

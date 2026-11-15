@@ -156,10 +156,13 @@ locals {
                                                                      ), "")
                                                  }
 
-                                           private_ip_address = try(coalesce(
-                                                                  var.deployer_private_ip_address,
-                                                                  try(var.deployers[0].private_ip_address, "")
-                                                                ), "")
+                                           # Static addresses for the deployer virtual machines, one per machine in order.
+                                           # Accepts a list or a single address; the legacy deployers[0] value is used
+                                           # only when deployer_private_ip_address is empty.
+                                           private_ip_address = length(compact(flatten([var.deployer_private_ip_address]))) > 0 ? (
+                                                                  compact(flatten([var.deployer_private_ip_address]))) : (
+                                                                  compact(flatten([try(var.deployers[0].private_ip_address, "")]))
+                                                                )
 
                                            deployer_diagnostics_account_arm_id = var.deployer_diagnostics_account_arm_id
                                            app_service_SKU                     = var.app_service_SKU_name

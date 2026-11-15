@@ -693,6 +693,45 @@ run "deployers_legacy_use_dhcp_fallback" {
   }
 }
 
+run "deployer_private_ip_address_list_is_applied" {
+  command = plan
+
+  variables {
+    deployer_private_ip_address = ["10.0.0.10"]
+  }
+
+  assert {
+    condition     = module.sap_deployer.configured_deployer_private_ip_addresses == ["10.0.0.10"]
+    error_message = "A configured deployer_private_ip_address must be assigned to the deployer network interface."
+  }
+}
+
+run "deployer_private_ip_address_single_string_is_applied" {
+  command = plan
+
+  variables {
+    deployer_private_ip_address = "10.0.0.11"
+  }
+
+  assert {
+    condition     = module.sap_deployer.configured_deployer_private_ip_addresses == ["10.0.0.11"]
+    error_message = "A single address given as a string must be assigned to the deployer network interface."
+  }
+}
+
+run "deployers_legacy_private_ip_address_fallback" {
+  command = plan
+
+  variables {
+    deployers = [{ private_ip_address = "10.0.0.12" }]
+  }
+
+  assert {
+    condition     = module.sap_deployer.configured_deployer_private_ip_addresses == ["10.0.0.12"]
+    error_message = "The legacy deployers[0].private_ip_address must be used when deployer_private_ip_address is empty."
+  }
+}
+
 run "rejects_malformed_user_assigned_identity_id" {
   command = plan
 

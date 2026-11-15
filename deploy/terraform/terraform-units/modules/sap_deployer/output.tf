@@ -75,6 +75,11 @@ output "deployer_private_ip_address" {
   value                                = azurerm_network_interface.deployer[*].private_ip_address
 }
 
+output "configured_deployer_private_ip_addresses" {
+  description                          = "Private IP addresses configured on the deployer network interfaces; null for an interface that uses DHCP. Known at plan time, for terraform test diagnostics."
+  value                                = [for nic in azurerm_network_interface.deployer : nic.ip_configuration[0].private_ip_address]
+}
+
 output "deployer_system_assigned_identity" {
   description                          = "Deployer System Assigned Identity"
   value                                = try(azurerm_linux_virtual_machine.deployer[*].identity[0].principal_id, null)
