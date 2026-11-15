@@ -1,0 +1,43 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+---
+# Maps the framework's input variables to the azure.sap_automation cluster
+# roles. This file is the only place that knows both vocabularies.
+
+- name:                                     "1.17 Generic Pacemaker - Check the required cluster password is set"
+  ansible.builtin.assert:
+    that:
+                                            - password_ha_db_cluster is defined
+                                            - password_ha_db_cluster | trim | length > 0
+    fail_msg:                               "A highly available deployment requires that a cluster password is set"
+
+- name:                                     "1.17 Generic Pacemaker - Read the Azure instance metadata"
+  ansible.builtin.include_role:
+    name:                                   azure.sap_automation.az_instance_metadata
+    public:                                 true
+
+- name:                                     "1.17 Generic Pacemaker - Build the cluster with a managed identity fence agent"
+  ansible.builtin.include_role:
+    name:                                   azure.sap_automation.ha_pacemaker
+  vars:
+    ha_pacemaker_nodes: >-
+                                            {{ ansible_play_hosts_all
+                                               | map('extract', hostvars, 'az_instance_metadata_cluster_node') | list }}
+    ha_pacemaker_config_node:               "{{ hostvars[primary_instance_name]['az_instance_metadata_cluster_node']['name'] }}"
+    ha_pacemaker_fence_roles:
+                                            - azure.sap_automation.ha_pacemaker_fence_azure_msi
+    ha_pacemaker_ra_roles:                  []
+    # Cluster names as created by the legacy tasks on each distribution.
+    ha_pacemaker_core_cluster_name: >-
+                                            {{ ('hdb_' ~ (db_sid | upper)) if ansible_os_family | upper == 'SUSE'
+                                               else ((db_sid | upper) ~ '_cluster') }}
+    ha_pacemaker_core_hacluster_password:   "{{ password_ha_db_cluster }}"
+    ha_pacemaker_core_azure_events_enabled: >-
+                                            {{ ansible_os_family | upper == 'SUSE'
+                                               or cluster_use_scheduled_events_agent | default(true) | bool }}
+    ha_pacemaker_fence_azure_msi_subscription_id: "{{ az_instance_metadata_compute['subscription_id'] }}"
+    ha_pacemaker_fence_azure_msi_resource_group:  "{{ az_instance_metadata_compute['resource_group'] }}"
+    ha_pacemaker_fence_azure_msi_cloud:           "{{ az_instance_metadata_compute['cloud'] }}"
+
+...

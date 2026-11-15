@@ -1,0 +1,25 @@
+#!/usr/bin/env python3
+"""Test double for cibadmin backed by an XML file."""
+import os, sys
+import xml.etree.ElementTree as ET
+path = os.environ["FAKE_CIB"]
+tree = ET.parse(path); conf = tree.getroot().find("configuration")
+args = sys.argv[1:]; scope = args[args.index("--scope") + 1]
+if "--query" in args:
+    el = conf.find(scope)
+    if el is None:
+        sys.stderr.write("No such device or address\n"); sys.exit(105)
+    print(ET.tostring(el, encoding="unicode")); sys.exit(0)
+new = ET.fromstring(sys.stdin.read())
+ids = [e.get("id") for e in new.iter() if e.get("id")]
+if len(ids) != len(set(ids)):
+    sys.stderr.write("duplicate id\n"); sys.exit(203)
+if "--replace" in args:
+    old = conf.find(scope)
+    if old is None: sys.exit(105)
+    idx = list(conf).index(old); conf.remove(old); conf.insert(idx, new)
+elif "--create" in args:
+    if conf.find(new.tag) is not None: sys.exit(76)
+    conf.append(new)
+tree.write(path)
+with open(path + ".log", "a") as log: log.write(" ".join(args) + "\n")

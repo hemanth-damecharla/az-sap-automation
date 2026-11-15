@@ -1,0 +1,26 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+---
+# Maps the framework's input variables to the azure.sap_automation resource
+# agent role. This file is the only place that knows both vocabularies.
+
+- name:                                "5.5.4.2 HANA Cluster configuration - Read the Azure instance metadata"
+  ansible.builtin.include_role:
+    name:                              azure.sap_automation.az_instance_metadata
+    public:                            true
+
+- name:                                "5.5.4.2 HANA Cluster configuration - Configure the HANA resources"
+  ansible.builtin.include_role:
+    name:                              azure.sap_automation.ha_pacemaker_ra_hana_scaleup
+  vars:
+    ha_pacemaker_ra_hana_scaleup_nodes: >-
+                                       {{ ansible_play_hosts_all
+                                          | map('extract', hostvars, 'az_instance_metadata_cluster_node') | list }}
+    ha_pacemaker_ra_hana_scaleup_config_node:     "{{ hostvars[primary_instance_name]['az_instance_metadata_cluster_node']['name'] }}"
+    ha_pacemaker_ra_hana_scaleup_sid:             "{{ db_sid | upper }}"
+    ha_pacemaker_ra_hana_scaleup_instance_number: "{{ db_instance_number }}"
+    ha_pacemaker_ra_hana_scaleup_virtual_ip:      "{{ database_loadbalancer_ip }}"
+    ha_pacemaker_ra_hana_scaleup_flavor:          "{{ 'angi' if is_certified_for_hanasr_angi | default(false) | bool else 'classic' }}"
+
+...

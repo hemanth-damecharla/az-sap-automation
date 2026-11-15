@@ -210,3 +210,8 @@ def test_merge_section_rejects_wrong_child_and_bad_current_xml():
         cib.reconcile("<resources>", section("<resources/>", "resources"))
     with pytest.raises(cib.CibError, match="expected <resources>"):
         cib.reconcile("<constraints/>", section("<resources/>", "resources"))
+
+
+def test_template_indentation_is_not_written_to_the_cib():
+    new_xml, _ = cib.reconcile(None, section(PRIMITIVE, "resources"))
+    assert "\n" not in new_xml and "> <" not in new_xml

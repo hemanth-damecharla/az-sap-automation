@@ -100,3 +100,7 @@ __ha_pacemaker_ra_hana_scaleup_spec: >-
                __ha_pacemaker_ra_hana_scaleup_platform_common,
                __ha_pacemaker_ra_hana_scaleup_platform_flavors[ha_pacemaker_ra_hana_scaleup_flavor],
                recursive=true) }}
+
+# Whether pacemaker.service gets a drop-in that orders it after the systemd
+# unit of the SAP HANA instance.
+__ha_pacemaker_ra_hana_scaleup_service_dropin: false

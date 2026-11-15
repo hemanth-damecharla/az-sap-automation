@@ -3,7 +3,8 @@
 Resource agent provider for SAP HANA scale-up with system replication. It
 creates the topology and database clones, the virtual IP with its Azure load
 balancer probe, the colocation and order constraints, and the resource
-defaults.
+defaults. On RHEL 8.2 and later it also orders `pacemaker.service` after the
+systemd unit of the SAP HANA instance.
 
 ## Prerequisites
 
@@ -28,7 +29,7 @@ hold differences only and are merged recursively:
 | --- | --- |
 | `Suse.yml` | `ocf:suse` provider; classic uses `Master`/`Slave`, a fencing start operation on the IP, and `target-role` |
 | `SLES_SAP_12.yml` (linked as `SLES_12.yml`) | `<master>` element instead of a promotable clone |
-| `RedHat.yml` | pcs resource names for classic, probe before IP in the group, priorities, mandatory asymmetric order, 15s priority fencing delay |
+| `RedHat.yml` | systemd drop-in for `pacemaker.service`, pcs resource names for classic, probe before IP in the group, priorities, mandatory asymmetric order, 15s priority fencing delay |
 | `RedHat_10.yml` | `Promoted`/`Unpromoted` role names |
 
 Resource ids match those created by earlier SDAF releases, so an existing
@@ -59,5 +60,6 @@ secondary virtual IP, moving the primary back after configuration, RHEL 7,
 and everything outside the cluster resources (system replication, hook,
 sudoers, post-provision report).
 
-Linted and template-tested for RHEL 9 and 10 and SLES 12, 15 and 16; not yet
-executed against a live cluster.
+Linted, template-tested for RHEL 9 and 10 and SLES 12, 15 and 16, and run with
+real Ansible against stand-ins for the cluster tools. Not yet executed against
+a live cluster.

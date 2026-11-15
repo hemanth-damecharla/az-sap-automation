@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  author: SAP Deployment Automation Framework contributors
+  description: Reads Azure Instance Metadata Service data needed by other roles
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: EL
+      versions:
+        - all
+    - name: SLES
+      versions:
+        - all
+  galaxy_tags:
+    - sap
+    - azure
+dependencies: []

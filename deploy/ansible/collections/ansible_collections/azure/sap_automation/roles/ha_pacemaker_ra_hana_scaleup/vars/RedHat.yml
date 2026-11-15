@@ -73,3 +73,5 @@ __ha_pacemaker_ra_hana_scaleup_rhel_classic:
       priority: "10"
     monitor_promoted_interval: "59"
     timeouts: {start: "3600", stop: "3600", promote: "3600", demote: "3600", monitor: "700"}
+
+__ha_pacemaker_ra_hana_scaleup_service_dropin: "{{ ansible_facts['distribution_version'] is version('8.2', '>=') }}"

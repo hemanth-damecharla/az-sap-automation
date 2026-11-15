@@ -1,0 +1,21 @@
+---
+argument_specs:
+  main:
+    short_description: Read Azure Instance Metadata Service data
+    description:
+      - Queries the Azure Instance Metadata Service (IMDS) on the managed node
+        and publishes the values other roles need as facts.
+      - Sets C(az_instance_metadata_compute) with C(vm_name),
+        C(subscription_id), C(resource_group) and C(cloud) (V(public) or
+        V(usgov)).
+      - Sets C(az_instance_metadata_cluster_node) with C(name), C(address) and
+        C(vm_name), in the shape the C(ha_pacemaker) roles expect for a node.
+    options:
+      az_instance_metadata_url:
+        description: IMDS instance endpoint.
+        type: str
+        default: http://169.254.169.254/metadata/instance
+      az_instance_metadata_api_version:
+        description: IMDS API version.
+        type: str
+        default: "2021-02-01"

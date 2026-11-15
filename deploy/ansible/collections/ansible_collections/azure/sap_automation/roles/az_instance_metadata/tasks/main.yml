@@ -1,0 +1,28 @@
+---
+- name: Query the Azure Instance Metadata Service
+  ansible.builtin.uri:
+    url: "{{ az_instance_metadata_url }}?api-version={{ az_instance_metadata_api_version }}"
+    headers:
+      Metadata: "true"
+    use_proxy: false
+    return_content: true
+  register: __az_instance_metadata_response
+  # A read-only request; it must also run in check mode so that later tasks
+  # have their inputs.
+  check_mode: false
+
+- name: Publish the instance metadata as facts
+  ansible.builtin.set_fact:
+    az_instance_metadata_compute:
+      vm_name: "{{ __az_instance_metadata_response['json']['compute']['name'] }}"
+      subscription_id: "{{ __az_instance_metadata_response['json']['compute']['subscriptionId'] }}"
+      resource_group: "{{ __az_instance_metadata_response['json']['compute']['resourceGroupName'] }}"
+      cloud: >-
+        {{ 'usgov'
+           if (__az_instance_metadata_response['json']['compute']['azEnvironment'] | default('') | lower)
+              == 'azureusgovernmentcloud'
+           else 'public' }}
+    az_instance_metadata_cluster_node:
+      name: "{{ ansible_facts['hostname'] }}"
+      address: "{{ __az_instance_metadata_response['json']['network']['interface'][0]['ipv4']['ipAddress'][0]['privateIpAddress'] }}"
+      vm_name: "{{ __az_instance_metadata_response['json']['compute']['name'] }}"

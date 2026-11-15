@@ -283,6 +283,12 @@ custom_cluster_sap_mon_timeout:        ""
 
 use_fence_kdump:                       false
 
+# Opt-in to the azure.sap_automation collection for the areas it already
+# covers (currently: HANA scale-up Pacemaker cluster with the Azure fence agent
+# and a managed identity). Scenarios it does not cover keep using the existing
+# roles regardless of this setting.
+use_sap_automation_collection:         false
+
 # For new we default to false unless the user chooses to enable it, when using
 # the SAP HANA-SR ANGI (A New Generation Interface)
 use_hanasr_angi:                       false

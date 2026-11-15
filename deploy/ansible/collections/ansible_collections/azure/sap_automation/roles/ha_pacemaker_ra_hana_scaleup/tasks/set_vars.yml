@@ -1,7 +1,4 @@
 ---
-- name: set_vars | Collect installed package versions
-  ansible.builtin.package_facts:
-
 - name: set_vars | Load platform specific variables
   ansible.builtin.include_vars:
     file: "{{ role_path }}/vars/{{ __ha_pacemaker_ra_hana_scaleup_vars_file }}"

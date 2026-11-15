@@ -54,6 +54,15 @@ def _clean_id(value):
     return cleaned
 
 
+def _strip_whitespace(element):
+    """Drop the indentation that templates leave between elements."""
+    for node in element.iter():
+        if node.text is not None and not node.text.strip():
+            node.text = None
+        if node.tail is not None and not node.tail.strip():
+            node.tail = None
+
+
 def parse_desired(xml_text):
     """Return ``{section_name: Element}`` for a desired configuration.
 
@@ -65,6 +74,7 @@ def parse_desired(xml_text):
     except ET.ParseError as exc:
         raise CibError("xml is not well-formed: %s" % exc) from exc
 
+    _strip_whitespace(wrapper)
     children = list(wrapper)
     if len(children) == 1 and children[0].tag == "configuration":
         children = list(children[0])

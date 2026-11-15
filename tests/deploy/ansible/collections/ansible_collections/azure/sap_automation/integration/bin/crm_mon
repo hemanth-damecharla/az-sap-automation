@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+import os
+import xml.etree.ElementTree as ET
+conf = ET.parse(os.environ["FAKE_CIB"]).getroot().find("configuration")
+mm = "false"
+for p in conf.iter("nvpair"):
+    if p.get("name") == "maintenance-mode": mm = p.get("value")
+print('<pacemaker-result><summary><current_dc with_quorum="true"/><cluster_options maintenance-mode="%s"/></summary>'
+      '<nodes><node name="n1" online="true"/><node name="n2" online="true"/></nodes><resources/></pacemaker-result>' % mm)

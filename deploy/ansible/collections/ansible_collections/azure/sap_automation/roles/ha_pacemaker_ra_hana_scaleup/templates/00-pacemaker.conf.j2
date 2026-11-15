@@ -1,0 +1,5 @@
+{{ ansible_managed | comment }}
+[Unit]
+Description=Pacemaker needs the SAP HANA instance service
+Wants=SAP{{ __ha_pacemaker_ra_hana_scaleup_sid }}_{{ __ha_pacemaker_ra_hana_scaleup_nr }}.service
+After=SAP{{ __ha_pacemaker_ra_hana_scaleup_sid }}_{{ __ha_pacemaker_ra_hana_scaleup_nr }}.service

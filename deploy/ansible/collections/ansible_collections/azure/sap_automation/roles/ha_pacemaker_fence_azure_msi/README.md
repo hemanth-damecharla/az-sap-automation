@@ -50,5 +50,8 @@ cluster without fencing is not supported for SAP workloads.
 ## Status
 
 Covers the managed identity branch of the legacy Azure fence agent tasks for
-RHEL 8 and later and SLES 12 SP5 and later. Linted and template-tested; not
-yet executed against a live cluster.
+RHEL 8 and later and SLES 12 SP5 and later.
+
+Linted, template-tested for RHEL 9 and 10 and SLES 12, 15 and 16, and run with
+real Ansible against stand-ins for the cluster tools. Not yet executed against
+a live cluster.

@@ -1,0 +1,17 @@
+---
+- name: systemd | Create the Pacemaker drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/pacemaker.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: systemd | Make Pacemaker start after the SAP HANA instance service
+  ansible.builtin.template:
+    src: 00-pacemaker.conf.j2
+    dest: /etc/systemd/system/pacemaker.service.d/00-pacemaker.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
