@@ -1,0 +1,44 @@
+---
+- name: backup | Create the backup directory
+  ansible.builtin.file:
+    path: "{{ sap_db_hana_hsr_backup_path }}"
+    state: directory
+    owner: "{{ __sap_db_hana_hsr_admin_user }}"
+    mode: "0755"
+  become: true
+
+- name: backup | Look for an existing initial backup
+  azure.sap_automation.hana_sql:
+    sid: "{{ __sap_db_hana_hsr_sid }}"
+    instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+    user: "{{ sap_db_hana_hsr_system_user }}"
+    password: "{{ sap_db_hana_hsr_system_password }}"
+    database: "{{ __sap_db_hana_hsr_backup['database'] }}"
+    read_only: true
+    query: "{{ __sap_db_hana_hsr_backup_exists_query }}"
+  loop: "{{ __sap_db_hana_hsr_backups }}"
+  loop_control:
+    loop_var: __sap_db_hana_hsr_backup
+    label: "{{ __sap_db_hana_hsr_backup['database'] }}"
+  register: __sap_db_hana_hsr_backup_catalog
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+  when: __sap_db_hana_hsr_backup['database'] in __sap_db_hana_hsr_databases['rows'] | flatten
+
+- name: backup | Take the initial data backup
+  azure.sap_automation.hana_sql:
+    sid: "{{ __sap_db_hana_hsr_sid }}"
+    instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+    user: "{{ sap_db_hana_hsr_system_user }}"
+    password: "{{ sap_db_hana_hsr_system_password }}"
+    database: "{{ __sap_db_hana_hsr_result['__sap_db_hana_hsr_backup']['database'] }}"
+    query: "BACKUP DATA USING FILE ('{{ __sap_db_hana_hsr_result['__sap_db_hana_hsr_backup']['file'] }}')"
+  loop: "{{ __sap_db_hana_hsr_backup_catalog['results'] }}"
+  loop_control:
+    loop_var: __sap_db_hana_hsr_result
+    label: "{{ __sap_db_hana_hsr_result['__sap_db_hana_hsr_backup']['database'] }}"
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+  when:
+    - __sap_db_hana_hsr_result is not skipped
+    - __sap_db_hana_hsr_result['rows'] | length == 0

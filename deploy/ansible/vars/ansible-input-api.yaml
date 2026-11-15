@@ -284,8 +284,8 @@ custom_cluster_sap_mon_timeout:        ""
 use_fence_kdump:                       false
 
 # Opt-in to the azure.sap_automation collection for the areas it already
-# covers (currently: HANA scale-up Pacemaker cluster with the Azure fence agent
-# and a managed identity). Scenarios it does not cover keep using the existing
+# covers (currently: HANA scale-up system replication, and the Pacemaker
+# cluster with the Azure fence agent and a managed identity). Scenarios it does not cover keep using the existing
 # roles regardless of this setting.
 use_sap_automation_collection:         false
 

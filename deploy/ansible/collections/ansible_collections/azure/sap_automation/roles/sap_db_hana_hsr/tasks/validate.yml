@@ -1,0 +1,20 @@
+---
+- name: validate | Wait for replication to become active
+  azure.sap_automation.hana_hsr_info:
+    sid: "{{ __sap_db_hana_hsr_sid }}"
+    instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+    host_name: "{{ sap_db_hana_hsr_host_name }}"
+    replication_status: true
+  register: __sap_db_hana_hsr_status
+  until: __sap_db_hana_hsr_status['overall_status'] | default('') == 'ACTIVE'
+  retries: "{{ sap_db_hana_hsr_status_retries }}"
+  delay: "{{ sap_db_hana_hsr_status_delay }}"
+  failed_when:
+    - sap_db_hana_hsr_require_active | bool
+    - __sap_db_hana_hsr_status['overall_status'] | default('') != 'ACTIVE'
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+
+- name: validate | Report the overall replication status
+  ansible.builtin.debug:
+    msg: "System replication status: {{ __sap_db_hana_hsr_status['overall_status'] | default('UNKNOWN') }}"

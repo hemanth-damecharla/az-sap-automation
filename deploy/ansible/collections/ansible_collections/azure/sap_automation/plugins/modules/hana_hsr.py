@@ -52,6 +52,13 @@ options:
     type: str
     choices: [logreplay, logreplay_readaccess, delta_datashipping]
     default: logreplay
+  host_name:
+    description:
+      - Host name HANA was installed with, which names the host directory
+        below the instance directory.
+      - Defaults to the short host name of the managed node. Set it when HANA
+        uses a virtual host name.
+    type: str
 attributes:
   check_mode:
     support: full
@@ -146,6 +153,7 @@ def main():
         argument_spec={
             "sid": {"type": "str", "required": True},
             "instance_number": {"type": "str", "required": True},
+            "host_name": {"type": "str"},
             "state": {
                 "type": "str",
                 "required": True,
@@ -177,7 +185,7 @@ def main():
     if error:
         module.fail_json(msg=error)
 
-    env = hana_environment(sid, number)
+    env = hana_environment(sid, number, params["host_name"])
     hdbnsutil = "%s/exe/hdbnsutil" % instance_dir(sid, number)
 
     rc, out, err = module.run_command(
@@ -190,13 +198,13 @@ def main():
     command = planned_command(params, current)
     if command is None:
         module.exit_json(changed=False, replication=current)
+    if module.check_mode:
+        module.exit_json(changed=True, replication=current)
     if params["state"] == "secondary" and current["online"]:
         module.fail_json(
             msg="HANA must be stopped on this site before it can be registered as a secondary",
             replication=current,
         )
-    if module.check_mode:
-        module.exit_json(changed=True, replication=current)
 
     rc, out, err = module.run_command([hdbnsutil] + command, environ_update=env)
     if rc != 0:

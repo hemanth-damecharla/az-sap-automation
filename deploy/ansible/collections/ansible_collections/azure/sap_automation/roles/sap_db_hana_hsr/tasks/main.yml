@@ -1,0 +1,30 @@
+---
+- name: Check the starting state
+  ansible.builtin.import_tasks: preflight.yml
+
+- name: Align the secure store of the secondary with the primary
+  ansible.builtin.import_tasks: ssfs.yml
+
+- name: Configure the inifile checker
+  ansible.builtin.import_tasks: global_ini.yml
+  when: sap_db_hana_hsr_inifile_checker | bool
+
+- name: Take the initial backups
+  ansible.builtin.import_tasks: backup.yml
+  when:
+    - __sap_db_hana_hsr_is_primary | bool
+    - not __sap_db_hana_hsr_state['replication']['enabled']
+
+- name: Enable replication on the primary
+  ansible.builtin.import_tasks: primary.yml
+  when: __sap_db_hana_hsr_is_primary | bool
+
+- name: Register the secondary
+  ansible.builtin.import_tasks: secondary.yml
+  when: not (__sap_db_hana_hsr_is_primary | bool)
+
+- name: Report the replication status
+  ansible.builtin.import_tasks: validate.yml
+  when:
+    - __sap_db_hana_hsr_is_primary | bool
+    - not ansible_check_mode

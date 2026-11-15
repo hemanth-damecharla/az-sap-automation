@@ -31,6 +31,19 @@ def test_environment_points_at_instance_executables():
     assert "/usr/sap/HDB/HDB03/exe" in env["PATH"]
 
 
+def test_environment_selects_host_directory(monkeypatch):
+    monkeypatch.setattr(hana.socket, "gethostname", lambda: "node1.contoso.com")
+    assert hana.hana_environment("HDB", "03")["SAP_RETRIEVAL_PATH"] == "/usr/sap/HDB/HDB03/node1"
+    virtual = hana.hana_environment("HDB", "03", "hdb-virtual")
+    assert virtual["SECUDIR"] == "/usr/sap/HDB/HDB03/hdb-virtual/sec"
+
+
+def test_sql_rows_are_parsed():
+    text = '"SYSTEMDB","YES"\n"X00", "NO"\n\n2 rows selected (overall time 1 ms)\n'
+    assert hana.parse_sql_rows(text) == [["SYSTEMDB", "YES"], ["X00", "NO"]]
+    assert hana.parse_sql_rows("0 rows selected\n") == []
+
+
 def test_sr_state_is_parsed_and_summarized():
     summary = hana.summarize_sr_state(hana.parse_key_values(SR_STATE))
     assert summary == {

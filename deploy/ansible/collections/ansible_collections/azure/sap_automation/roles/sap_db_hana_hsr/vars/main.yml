@@ -1,0 +1,52 @@
+---
+__sap_db_hana_hsr_sid: "{{ sap_db_hana_hsr_sid | upper }}"
+__sap_db_hana_hsr_admin_user: "{{ sap_db_hana_hsr_sid | lower }}adm"
+__sap_db_hana_hsr_is_primary: "{{ inventory_hostname == sap_db_hana_hsr_primary }}"
+
+__sap_db_hana_hsr_global_dir: "/usr/sap/{{ __sap_db_hana_hsr_sid }}/SYS/global"
+__sap_db_hana_hsr_global_ini: "/hana/shared/{{ __sap_db_hana_hsr_sid }}/global/hdb/custom/config/global.ini"
+
+# Secure store files that must be identical on both sites. The XSA files only
+# exist when XS Advanced is installed.
+__sap_db_hana_hsr_ssfs_files:
+  - name: "SSFS_{{ __sap_db_hana_hsr_sid }}.DAT"
+    directory: "{{ __sap_db_hana_hsr_global_dir }}/security/rsecssfs/data"
+    mode: "0640"
+    required: true
+  - name: "SSFS_{{ __sap_db_hana_hsr_sid }}.KEY"
+    directory: "{{ __sap_db_hana_hsr_global_dir }}/security/rsecssfs/key"
+    mode: "0600"
+    required: true
+  - name: "SSFS_{{ __sap_db_hana_hsr_sid }}.DAT"
+    directory: "{{ __sap_db_hana_hsr_global_dir }}/xsa/security/ssfs/data"
+    mode: "0640"
+    required: false
+  - name: "SSFS_{{ __sap_db_hana_hsr_sid }}.KEY"
+    directory: "{{ __sap_db_hana_hsr_global_dir }}/xsa/security/ssfs/key"
+    mode: "0600"
+    required: false
+
+__sap_db_hana_hsr_inifile_checker:
+  enable: "true"
+  interval: "3600"
+  replicate: "true"
+  fixed_exclusion_global.ini/SYSTEM: >-
+    storage/*, persistence/*path*, internal_hostname_resolution/*,
+    public_hostname_resolution/*, system_replication*, multidb/mode,
+    system_landscape_hostname_virtualization/sldsystemhome
+
+__sap_db_hana_hsr_backups:
+  - database: SYSTEMDB
+    file: "{{ sap_db_hana_hsr_backup_path }}/INITIAL_SYSTEMDB_BACKUP"
+  - database: "{{ sap_db_hana_hsr_tenant_database }}"
+    file: "{{ sap_db_hana_hsr_backup_path }}/INITIAL_{{ sap_db_hana_hsr_tenant_database }}_BACKUP"
+
+__sap_db_hana_hsr_backup_exists_query: >-
+  SELECT C.BACKUP_ID FROM SYS.M_BACKUP_CATALOG C
+  INNER JOIN SYS.M_BACKUP_CATALOG_FILES F ON C.ENTRY_ID = F.ENTRY_ID
+  WHERE C.STATE_NAME = 'successful'
+  AND C.ENTRY_TYPE_NAME = 'complete data backup'
+  AND F.DESTINATION_PATH LIKE '{{ __sap_db_hana_hsr_backup['file'] }}%'
+__sap_db_hana_hsr_log_mode_query: >-
+  SELECT VALUE FROM M_INIFILE_CONTENTS WHERE FILE_NAME = 'global.ini'
+  AND LAYER_NAME = 'DEFAULT' AND SECTION = 'persistence' AND KEY = 'log_mode'

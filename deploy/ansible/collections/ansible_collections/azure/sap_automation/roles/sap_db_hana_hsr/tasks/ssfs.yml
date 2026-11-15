@@ -1,0 +1,62 @@
+---
+# The files are binary, so they travel through a private temporary directory
+# on the controller instead of through variables. The directory is created
+# even in check mode, because the comparison on the secondary needs the files.
+# Staging is not a change to a managed node, so it never reports one.
+- name: ssfs | Transfer the secure store files
+  block:
+    - name: ssfs | Create a private staging directory on the controller
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: hana_ssfs_
+      register: __sap_db_hana_hsr_staging
+      delegate_to: localhost
+      run_once: true
+      become: false
+      check_mode: false
+      changed_when: false
+
+    - name: ssfs | Fetch the secure store files from the primary
+      ansible.builtin.fetch:
+        src: "{{ __sap_db_hana_hsr_file['directory'] }}/{{ __sap_db_hana_hsr_file['name'] }}"
+        dest: "{{ __sap_db_hana_hsr_staging['path'] }}/{{ __sap_db_hana_hsr_index }}/"
+        flat: true
+        fail_on_missing: "{{ __sap_db_hana_hsr_file['required'] }}"
+      loop: "{{ __sap_db_hana_hsr_ssfs_files }}"
+      loop_control:
+        loop_var: __sap_db_hana_hsr_file
+        index_var: __sap_db_hana_hsr_index
+        label: "{{ __sap_db_hana_hsr_file['directory'] }}"
+      delegate_to: "{{ sap_db_hana_hsr_primary }}"
+      run_once: true
+      become: true
+      check_mode: false
+      changed_when: false
+
+    - name: ssfs | Install the secure store files on the secondary
+      ansible.builtin.copy:
+        src: "{{ __sap_db_hana_hsr_staging['path'] }}/{{ __sap_db_hana_hsr_index }}/{{ __sap_db_hana_hsr_file['name'] }}"
+        dest: "{{ __sap_db_hana_hsr_file['directory'] }}/{{ __sap_db_hana_hsr_file['name'] }}"
+        owner: "{{ __sap_db_hana_hsr_admin_user }}"
+        group: "{{ sap_db_hana_hsr_group }}"
+        mode: "{{ __sap_db_hana_hsr_file['mode'] }}"
+      loop: "{{ __sap_db_hana_hsr_ssfs_files }}"
+      loop_control:
+        loop_var: __sap_db_hana_hsr_file
+        index_var: __sap_db_hana_hsr_index
+        label: "{{ __sap_db_hana_hsr_file['directory'] }}"
+      become: true
+      when:
+        - not (__sap_db_hana_hsr_is_primary | bool)
+        - (__sap_db_hana_hsr_staging['path'] ~ '/' ~ __sap_db_hana_hsr_index ~ '/' ~ __sap_db_hana_hsr_file['name']) is file
+  always:
+    - name: ssfs | Remove the staging directory from the controller
+      ansible.builtin.file:
+        path: "{{ __sap_db_hana_hsr_staging['path'] }}"
+        state: absent
+      delegate_to: localhost
+      run_once: true
+      become: false
+      check_mode: false
+      changed_when: false
+      when: __sap_db_hana_hsr_staging['path'] is defined

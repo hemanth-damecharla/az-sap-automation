@@ -7,7 +7,9 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type  # pylint: disable=invalid-name
 
+import csv
 import re
+import socket
 
 SID_PATTERN = re.compile(r"^[A-Z][A-Z0-9]{2}$")
 INSTANCE_PATTERN = re.compile(r"^[0-9]{2}$")
@@ -32,21 +34,47 @@ def instance_dir(sid, instance_number):
     return "/usr/sap/%s/HDB%s" % (sid, instance_number)
 
 
-def hana_environment(sid, instance_number):
+def hana_environment(sid, instance_number, host_name=None):
     """Minimal environment the HANA command line tools need.
 
     The <sid>adm login shell is frequently csh and is not sourced by Ansible
     privilege escalation, so the required variables are passed explicitly.
+    ``host_name`` selects the host directory of the instance; it differs from
+    the operating system host name when HANA uses a virtual host name.
     """
     base = instance_dir(sid, instance_number)
     exe = "%s/exe" % base
+    host_dir = "%s/%s" % (base, host_name or socket.gethostname().split(".")[0])
     return {
         "PATH": "/usr/bin:/bin:%s:%s" % (base, exe),
         "HOME": "/usr/sap/%s/home" % sid,
         "DIR_LIBRARY": exe,
         "LD_LIBRARY_PATH": exe,
         "SAPSYSTEMNAME": sid,
+        "SAP_RETRIEVAL_PATH": host_dir,
+        "SECUDIR": "%s/sec" % host_dir,
     }
+
+
+# Exit codes of systemReplicationStatus.py.
+REPLICATION_STATUS = {
+    10: "NONE",
+    11: "ERROR",
+    12: "UNKNOWN",
+    13: "INITIALIZING",
+    14: "SYNCING",
+    15: "ACTIVE",
+}
+
+
+def parse_sql_rows(text):
+    """Parse ``hdbsql -x -a`` output into a list of rows of strings."""
+    lines = [
+        line
+        for line in text.splitlines()
+        if line.strip() and not re.match(r"^\d+ rows? selected", line.strip())
+    ]
+    return [[value.strip() for value in row] for row in csv.reader(lines, skipinitialspace=True)]
 
 
 def parse_key_values(text):

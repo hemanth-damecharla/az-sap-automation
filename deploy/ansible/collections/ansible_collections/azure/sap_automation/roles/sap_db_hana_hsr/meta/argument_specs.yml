@@ -1,0 +1,85 @@
+---
+argument_specs:
+  main:
+    short_description: Configure SAP HANA System Replication between two sites
+    description:
+      - Takes the initial backups, enables replication on the primary, copies
+        the secure store keys, registers every other host as a secondary and
+        reports the replication status.
+      - Supports SAP HANA 2.0 multitenant systems with a SYSTEMDB.
+    options:
+      sap_db_hana_hsr_sid:
+        description: SAP HANA system ID.
+        type: str
+        required: true
+      sap_db_hana_hsr_instance_number:
+        description: Two-digit instance number.
+        type: str
+        required: true
+      sap_db_hana_hsr_primary:
+        description: Inventory host name of the node that becomes the replication primary.
+        type: str
+        required: true
+      sap_db_hana_hsr_primary_host:
+        description: Host name secondaries register against. Defaults to the host name of the primary.
+        type: str
+      sap_db_hana_hsr_host_name:
+        description: Host name this node's HANA instance was installed with. Defaults to the node's host name.
+        type: str
+      sap_db_hana_hsr_system_user:
+        description: Database user used for checks and backups.
+        type: str
+        default: SYSTEM
+      sap_db_hana_hsr_system_password:
+        description: Password of that user. Never logged.
+        type: str
+        required: true
+        no_log: true
+      sap_db_hana_hsr_tenant_database:
+        description: Name of the tenant database. Defaults to the system ID.
+        type: str
+      sap_db_hana_hsr_site_name:
+        description: Replication site name of this node. Defaults to SITEA on the primary and SITEB elsewhere.
+        type: str
+      sap_db_hana_hsr_replication_mode:
+        description: Replication mode of the secondary.
+        type: str
+        choices: [sync, syncmem, async]
+        default: sync
+      sap_db_hana_hsr_operation_mode:
+        description: Operation mode of the secondary. Use V(logreplay_readaccess) for an active/read-enabled secondary.
+        type: str
+        choices: [logreplay, logreplay_readaccess, delta_datashipping]
+        default: logreplay
+      sap_db_hana_hsr_backup_path:
+        description: Directory for the initial data backups.
+        type: path
+        default: /hana/backup
+      sap_db_hana_hsr_group:
+        description: Group owning the secure store files.
+        type: str
+        default: sapsys
+      sap_db_hana_hsr_inifile_checker:
+        description: Whether to configure the inifile checker in C(global.ini).
+        type: bool
+        default: true
+      sap_db_hana_hsr_stop_start_timeout:
+        description: Seconds to wait for HANA to stop or start.
+        type: int
+        default: 600
+      sap_db_hana_hsr_stop_start_delay:
+        description: Seconds between polls while waiting for HANA to stop or start.
+        type: int
+        default: 10
+      sap_db_hana_hsr_status_retries:
+        description: Number of polls of the overall replication status.
+        type: int
+        default: 30
+      sap_db_hana_hsr_status_delay:
+        description: Seconds between those polls.
+        type: int
+        default: 10
+      sap_db_hana_hsr_require_active:
+        description: Fail when replication is not ACTIVE after polling.
+        type: bool
+        default: false

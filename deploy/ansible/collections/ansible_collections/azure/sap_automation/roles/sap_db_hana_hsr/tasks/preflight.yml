@@ -1,0 +1,58 @@
+---
+- name: preflight | Make sure HANA is running
+  azure.sap_automation.hana_system:
+    sid: "{{ __sap_db_hana_hsr_sid }}"
+    instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+    state: started
+    timeout: "{{ sap_db_hana_hsr_stop_start_timeout }}"
+    delay: "{{ sap_db_hana_hsr_stop_start_delay }}"
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+
+- name: preflight | Read the replication state
+  azure.sap_automation.hana_hsr_info:
+    sid: "{{ __sap_db_hana_hsr_sid }}"
+    instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+    host_name: "{{ sap_db_hana_hsr_host_name }}"
+  register: __sap_db_hana_hsr_state
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+
+- name: preflight | Check that the primary can become a replication source
+  when:
+    - __sap_db_hana_hsr_is_primary | bool
+    - not __sap_db_hana_hsr_state['replication']['enabled']
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+  block:
+    - name: preflight | List the databases
+      azure.sap_automation.hana_sql:
+        sid: "{{ __sap_db_hana_hsr_sid }}"
+        instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+        user: "{{ sap_db_hana_hsr_system_user }}"
+        password: "{{ sap_db_hana_hsr_system_password }}"
+        read_only: true
+        query: SELECT DATABASE_NAME FROM SYS.M_DATABASES
+      register: __sap_db_hana_hsr_databases
+
+    - name: preflight | Read the log mode
+      azure.sap_automation.hana_sql:
+        sid: "{{ __sap_db_hana_hsr_sid }}"
+        instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+        user: "{{ sap_db_hana_hsr_system_user }}"
+        password: "{{ sap_db_hana_hsr_system_password }}"
+        read_only: true
+        query: "{{ __sap_db_hana_hsr_log_mode_query }}"
+      register: __sap_db_hana_hsr_log_mode
+
+    - name: preflight | Check database layout and log mode
+      ansible.builtin.assert:
+        that:
+          - "'SYSTEMDB' in __sap_db_hana_hsr_databases['rows'] | flatten"
+          - "'normal' in __sap_db_hana_hsr_log_mode['rows'] | flatten"
+        fail_msg: >-
+          System replication needs a multitenant system with a SYSTEMDB and
+          log_mode 'normal'. Found databases
+          {{ __sap_db_hana_hsr_databases['rows'] | flatten | join(', ') }} and log mode
+          {{ __sap_db_hana_hsr_log_mode['rows'] | flatten | join(', ') }}.
+        quiet: true

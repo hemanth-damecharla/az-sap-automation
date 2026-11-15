@@ -1,0 +1,32 @@
+---
+- name: primary | Enable system replication
+  azure.sap_automation.hana_hsr:
+    sid: "{{ __sap_db_hana_hsr_sid }}"
+    instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+    host_name: "{{ sap_db_hana_hsr_host_name }}"
+    state: primary
+    site_name: "{{ sap_db_hana_hsr_site_name }}"
+  register: __sap_db_hana_hsr_enable
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+
+# Enabling replication and the inifile checker only take full effect after a
+# restart. The restart is ordered here, before any secondary registers, so it
+# cannot be a handler.
+- name: primary | Restart HANA to activate the configuration
+  azure.sap_automation.hana_system:
+    sid: "{{ __sap_db_hana_hsr_sid }}"
+    instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+    state: "{{ __sap_db_hana_hsr_run_state }}"
+    timeout: "{{ sap_db_hana_hsr_stop_start_timeout }}"
+    delay: "{{ sap_db_hana_hsr_stop_start_delay }}"
+  loop:
+    - stopped
+    - started
+  loop_control:
+    loop_var: __sap_db_hana_hsr_run_state
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+  when: >-
+    __sap_db_hana_hsr_enable['changed']
+    or (__sap_db_hana_hsr_global_ini_result | default({}))['changed'] | default(false)

@@ -1,0 +1,41 @@
+---
+- name: secondary | Determine whether this site must be registered
+  azure.sap_automation.hana_hsr: &sap_db_hana_hsr_register
+    sid: "{{ __sap_db_hana_hsr_sid }}"
+    instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+    host_name: "{{ sap_db_hana_hsr_host_name }}"
+    state: secondary
+    site_name: "{{ sap_db_hana_hsr_site_name }}"
+    remote_host: "{{ sap_db_hana_hsr_primary_host }}"
+    replication_mode: "{{ sap_db_hana_hsr_replication_mode }}"
+    operation_mode: "{{ sap_db_hana_hsr_operation_mode }}"
+  check_mode: true
+  register: __sap_db_hana_hsr_plan
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+
+# Stop, register and start must happen here, in this order, before the status
+# check; a handler would run too late.
+- name: secondary | Register this site with the primary  # noqa: no-handler
+  when: __sap_db_hana_hsr_plan['changed']
+  become: true
+  become_user: "{{ __sap_db_hana_hsr_admin_user }}"
+  block:
+    - name: secondary | Stop HANA
+      azure.sap_automation.hana_system:
+        sid: "{{ __sap_db_hana_hsr_sid }}"
+        instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+        state: stopped
+        timeout: "{{ sap_db_hana_hsr_stop_start_timeout }}"
+        delay: "{{ sap_db_hana_hsr_stop_start_delay }}"
+
+    - name: secondary | Register as secondary
+      azure.sap_automation.hana_hsr: *sap_db_hana_hsr_register
+
+    - name: secondary | Start HANA
+      azure.sap_automation.hana_system:
+        sid: "{{ __sap_db_hana_hsr_sid }}"
+        instance_number: "{{ sap_db_hana_hsr_instance_number }}"
+        state: started
+        timeout: "{{ sap_db_hana_hsr_stop_start_timeout }}"
+        delay: "{{ sap_db_hana_hsr_stop_start_delay }}"

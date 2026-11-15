@@ -4,6 +4,7 @@ import pytest
 from ansible_collections.azure.sap_automation.plugins.modules import (
     hana_hsr,
     hana_hsr_info,
+    hana_sql,
     hana_system,
 )
 
@@ -100,6 +101,9 @@ def test_hsr_registers_secondary_only_when_stopped(run_module):
     run_module.commands.add(out=sr_state(online="true"))
     assert "must be stopped" in run_module(hana_hsr.main, SECONDARY)["msg"]
 
+    run_module.commands.add(out=sr_state(online="true"))
+    assert run_module(hana_hsr.main, SECONDARY, check_mode=True)["changed"]
+
     run_module.commands.add(out=sr_state("sync", "true", "SITEB", "hdb1", "logreplay"))
     assert not run_module(hana_hsr.main, SECONDARY)["changed"]
 
@@ -141,3 +145,48 @@ def test_hsr_info(run_module):
     run_module.commands.add(rc=1, err="down")
     assert run_module(hana_hsr_info.main, IDENTITY)["failed"]
     assert run_module(hana_hsr_info.main, {"sid": "x", "instance_number": "00"})["failed"]
+
+
+def test_hsr_info_reports_overall_status_and_uses_virtual_host(run_module):
+    run_module.commands.add(out=sr_state("primary", "true", "SITEA")).add(rc=15)
+    args = dict(IDENTITY, replication_status=True, host_name="hdb-virtual")
+    result = run_module(hana_hsr_info.main, args)
+    assert result["overall_status"] == "ACTIVE"
+    argv, kwargs = run_module.commands.calls[1]
+    assert argv == ["/usr/sap/HDB/HDB00/HDBSettings.sh", "systemReplicationStatus.py"]
+    assert kwargs["environ_update"]["SAP_RETRIEVAL_PATH"] == "/usr/sap/HDB/HDB00/hdb-virtual"
+
+    run_module.commands.add(out=sr_state()).add(rc=1)
+    assert run_module(hana_hsr_info.main, args)["overall_status"] == "UNKNOWN"
+
+
+SQL = dict(IDENTITY, query="SELECT 1 FROM DUMMY", user="SYSTEM", password="secret")
+
+
+def test_sql_query_returns_rows_without_change(run_module):
+    run_module.commands.add(out='"1"\n')
+    result = run_module(hana_sql.main, dict(SQL, read_only=True), check_mode=True)
+    assert result["rows"] == [["1"]] and not result["changed"]
+    argv = run_module.commands.argv[0]
+    assert argv[0] == "/usr/sap/HDB/HDB00/exe/hdbsql"
+    assert argv[-3:] == ["-d", "SYSTEMDB", "SELECT 1 FROM DUMMY"] and "secret" in argv
+
+
+def test_sql_statement_changes_and_respects_check_mode(run_module):
+    assert run_module(hana_sql.main, SQL, check_mode=True)["changed"]
+    assert run_module.commands.calls == []
+
+    run_module.commands.add()
+    assert run_module(hana_sql.main, SQL)["changed"]
+
+
+def test_sql_userstore_key_and_failures(run_module):
+    run_module.commands.add(out="")
+    args = dict(IDENTITY, query="SELECT 1 FROM DUMMY", userstore_key="BACKUP", read_only=True)
+    run_module(hana_sql.main, args)
+    assert "-U" in run_module.commands.argv[0] and "-p" not in run_module.commands.argv[0]
+
+    run_module.commands.add(rc=3, err="authentication failed")
+    assert "authentication failed" in run_module(hana_sql.main, SQL)["msg"]
+    assert run_module(hana_sql.main, dict(SQL, sid="bad"))["failed"]
+    assert run_module(hana_sql.main, dict(IDENTITY, query="x"))["failed"]

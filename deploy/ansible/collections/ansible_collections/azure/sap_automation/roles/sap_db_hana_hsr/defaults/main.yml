@@ -1,0 +1,44 @@
+---
+# sap_db_hana_hsr_sid:
+# sap_db_hana_hsr_instance_number:
+
+# Inventory host name of the node that becomes the replication primary. Every
+# other host the role runs on is registered as a secondary.
+# sap_db_hana_hsr_primary:
+
+# Host name secondaries register against. Set it when HANA uses a virtual
+# host name.
+sap_db_hana_hsr_primary_host: "{{ hostvars[sap_db_hana_hsr_primary]['ansible_facts']['hostname'] }}"
+
+# Host name this node's HANA instance was installed with.
+sap_db_hana_hsr_host_name: "{{ ansible_facts['hostname'] }}"
+
+# Database user with BACKUP and CATALOG READ privileges, and its password.
+# The password has no default; supply it from Azure Key Vault or Ansible Vault.
+sap_db_hana_hsr_system_user: SYSTEM
+# sap_db_hana_hsr_system_password:
+
+sap_db_hana_hsr_tenant_database: "{{ sap_db_hana_hsr_sid | upper }}"
+
+sap_db_hana_hsr_site_name: "{{ 'SITEA' if inventory_hostname == sap_db_hana_hsr_primary else 'SITEB' }}"
+sap_db_hana_hsr_replication_mode: sync
+sap_db_hana_hsr_operation_mode: logreplay
+
+# Directory for the initial data backups that replication requires.
+sap_db_hana_hsr_backup_path: /hana/backup
+
+sap_db_hana_hsr_group: sapsys
+
+# Keep global.ini of both sites aligned through the inifile checker.
+sap_db_hana_hsr_inifile_checker: true
+
+sap_db_hana_hsr_stop_start_timeout: 600
+sap_db_hana_hsr_stop_start_delay: 10
+
+# Polling of the overall replication status after configuration.
+sap_db_hana_hsr_status_retries: 30
+sap_db_hana_hsr_status_delay: 10
+# Fail when replication is not ACTIVE after polling. When false the last
+# status is only reported, because the initial synchronisation of a large
+# database can outlast any reasonable wait.
+sap_db_hana_hsr_require_active: false

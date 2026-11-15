@@ -24,6 +24,19 @@ options:
     description: Two-digit instance number.
     type: str
     required: true
+  replication_status:
+    description:
+      - Also run C(systemReplicationStatus.py) and return RV(overall_status).
+      - Only meaningful on the primary site.
+    type: bool
+    default: false
+  host_name:
+    description:
+      - Host name HANA was installed with, which names the host directory
+        below the instance directory.
+      - Defaults to the short host name of the managed node. Set it when HANA
+        uses a virtual host name.
+    type: str
 attributes:
   check_mode:
     support: full
@@ -57,6 +70,13 @@ replication:
       C(operation_mode) and C(primary_masters).
   returned: always
   type: dict
+overall_status:
+  description:
+    - Overall replication status reported by C(systemReplicationStatus.py),
+      one of C(NONE), C(ERROR), C(UNKNOWN), C(INITIALIZING), C(SYNCING) or
+      C(ACTIVE).
+  returned: when O(replication_status=true)
+  type: str
 raw:
   description: Every key and value reported by C(hdbnsutil -sr_state --sapcontrol=1).
   returned: always
@@ -66,6 +86,7 @@ raw:
 from ansible.module_utils.basic import AnsibleModule
 
 from ansible_collections.azure.sap_automation.plugins.module_utils.hana import (
+    REPLICATION_STATUS,
     hana_environment,
     instance_dir,
     parse_key_values,
@@ -79,6 +100,8 @@ def main():
         argument_spec={
             "sid": {"type": "str", "required": True},
             "instance_number": {"type": "str", "required": True},
+            "host_name": {"type": "str"},
+            "replication_status": {"type": "bool", "default": False},
         },
         supports_check_mode=True,
     )
@@ -87,14 +110,25 @@ def main():
     if error:
         module.fail_json(msg=error)
 
+    env = hana_environment(sid, number, module.params["host_name"])
+    base = instance_dir(sid, number)
     rc, out, err = module.run_command(
-        ["%s/exe/hdbnsutil" % instance_dir(sid, number), "-sr_state", "--sapcontrol=1"],
-        environ_update=hana_environment(sid, number),
+        ["%s/exe/hdbnsutil" % base, "-sr_state", "--sapcontrol=1"], environ_update=env
     )
     if rc != 0:
         module.fail_json(msg="hdbnsutil -sr_state failed: %s" % (err.strip() or out.strip()))
     raw = parse_key_values(out)
-    module.exit_json(changed=False, replication=summarize_sr_state(raw), raw=raw)
+    result = {"changed": False, "replication": summarize_sr_state(raw), "raw": raw}
+
+    if module.params["replication_status"]:
+        # The exit code carries the status; HDBSettings.sh provides the
+        # Python environment the script needs.
+        rc, _out, _err = module.run_command(
+            ["%s/HDBSettings.sh" % base, "systemReplicationStatus.py"], environ_update=env
+        )
+        result["overall_status"] = REPLICATION_STATUS.get(rc, "UNKNOWN")
+
+    module.exit_json(**result)
 
 
 if __name__ == "__main__":

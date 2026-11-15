@@ -1,0 +1,16 @@
+---
+- name: global_ini | Configure the inifile checker
+  community.general.ini_file:
+    path: "{{ __sap_db_hana_hsr_global_ini }}"
+    section: inifile_checker
+    option: "{{ __sap_db_hana_hsr_option['key'] }}"
+    value: "{{ __sap_db_hana_hsr_option['value'] }}"
+    owner: "{{ __sap_db_hana_hsr_admin_user }}"
+    group: "{{ sap_db_hana_hsr_group }}"
+    mode: "0644"
+  loop: "{{ __sap_db_hana_hsr_inifile_checker | dict2items }}"
+  loop_control:
+    loop_var: __sap_db_hana_hsr_option
+    label: "{{ __sap_db_hana_hsr_option['key'] }}"
+  register: __sap_db_hana_hsr_global_ini_result
+  become: true

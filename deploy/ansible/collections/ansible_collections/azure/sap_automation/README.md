@@ -19,6 +19,7 @@ The default behaviour of every playbook is unchanged.
 | `pacemaker_cluster_info` | Cluster, node and resource state as structured data |
 | `pacemaker_attribute` | Node attributes |
 | `hana_system` | Start or stop a HANA instance or system |
+| `hana_sql` | Run an SQL statement through `hdbsql` |
 | `hana_hsr` | Enable, register or disable HANA System Replication |
 | `hana_hsr_info` | Replication state for validation |
 
@@ -28,6 +29,7 @@ The default behaviour of every playbook is unchanged.
 | [`ha_pacemaker_core`](roles/ha_pacemaker_core/README.md) | Cluster bootstrap | `roles-os/1.17-generic-pacemaker` (bootstrap, scheduled events, start delay) |
 | [`ha_pacemaker_fence_azure_msi`](roles/ha_pacemaker_fence_azure_msi/README.md) | Fencing provider | Azure fence agent tasks in `1.17.2.0-cluster-*.yml` |
 | [`ha_pacemaker_fence_kdump`](roles/ha_pacemaker_fence_kdump/README.md) | Fencing provider | `use_fence_kdump` tasks in `1.17.1-pre_checks.yml` and `1.17.2.0-cluster-RedHat.yml` |
+| [`sap_db_hana_hsr`](roles/sap_db_hana_hsr/README.md) | Database function | `roles-db/4.0.1-hdb-hsr` |
 | [`az_instance_metadata`](roles/az_instance_metadata/README.md) | Azure facts | Instance metadata queries repeated in playbooks and roles |
 | [`ha_pacemaker_ra_hana_scaleup`](roles/ha_pacemaker_ra_hana_scaleup/README.md) | Resource agent provider | `roles-sap/5.5-hanadb-pacemaker/tasks/5.5.4.1-cluster-*.yml` |
 
@@ -49,12 +51,14 @@ Ansible finds the collection without further configuration because it sits in
 | Step | Collection is used when | Otherwise |
 | --- | --- | --- |
 | Cluster bootstrap and fencing (`roles-os/1.17-generic-pacemaker`) | HANA scale-up, `database_cluster_type` is `AFA`, `use_msi_for_clusters` is true, RHEL 8 or later or SLES | Existing tasks |
+| System replication (`roles-db/4.0.1-hdb-hsr`) | HANA scale-up | Existing tasks |
 | HANA cluster resources (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.4.1) | No active/read-enabled secondary, `NFS_provider` is not `ANF`, RHEL 8 or later or SLES | Existing tasks |
 
-As before, both steps act only on a node where the cluster has not been
-configured yet, so a cluster built by the existing tasks is not rewritten.
-The two files that translate the framework's variables into role inputs are
-`1.17.9-collection.yml` and `5.5.4.2-cluster-collection.yml`.
+As before, the two cluster steps act only on a node where the cluster has not
+been configured yet, so a cluster built by the existing tasks is not
+rewritten. The files that translate the framework's variables into role
+inputs are `1.17.9-collection.yml`, `4.0.1.9-collection.yml` and
+`5.5.4.2-cluster-collection.yml`.
 
 ## Extending without changing the collection
 
@@ -91,5 +95,5 @@ The Python tests cover the modules, render every CIB template for RHEL 9 and
 real Ansible against stand-ins for `cibadmin`, `crm_mon` and the instance
 metadata service (check mode, apply, and an unchanged second run).
 
-No role has been run against a live cluster yet, and `ha_pacemaker_core` has
-only been linted and template-tested; see the status section of each role.
+No role has been run against a live cluster or a real HANA system yet, and
+`ha_pacemaker_core` has only been linted and template-tested; see the status section of each role.

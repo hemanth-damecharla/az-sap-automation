@@ -1,0 +1,38 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+---
+# Maps the framework's input variables to the azure.sap_automation system
+# replication role. This file is the only place that knows both vocabularies.
+
+- name:                                "HANA HSR: - Add {{ db_sid | lower }}adm to sudoers"
+  ansible.builtin.include_role:
+    name:                              roles-os/1.11-accounts
+    tasks_from:                        setup_hanausers_sudoers.yml
+
+- name:                                "HANA HSR: - Load the disk configuration settings"
+  ansible.builtin.include_vars:        disks_config.yml
+
+- name:                                "HANA HSR: - Configure system replication"
+  ansible.builtin.include_role:
+    name:                              azure.sap_automation.sap_db_hana_hsr
+  vars:
+    sap_db_hana_hsr_sid:               "{{ db_sid | upper }}"
+    sap_db_hana_hsr_instance_number:   "{{ db_instance_number }}"
+    sap_db_hana_hsr_primary:           "{{ primary_instance_name }}"
+    sap_db_hana_hsr_primary_host:      "{{ hostvars[primary_instance_name]['virtual_host'] }}"
+    sap_db_hana_hsr_host_name:         "{{ virtual_host }}"
+    sap_db_hana_hsr_system_password:   "{{ main_password }}"
+    sap_db_hana_hsr_replication_mode:  "{{ hana_replication_mode | default('sync') }}"
+    sap_db_hana_hsr_operation_mode: >-
+                                       {{ 'logreplay_readaccess' if database_active_active | default(false) | bool
+                                          else hana_operation_mode | default('logreplay') }}
+    # As before: without a dedicated backup disk the backup goes to the data volume.
+    sap_db_hana_hsr_backup_path: >-
+                                       {{ hana_backup_path
+                                          if disks | selectattr('host', 'defined')
+                                                   | selectattr('host', 'equalto', inventory_hostname)
+                                                   | selectattr('type', 'equalto', 'backup') | list | length > 0
+                                          else '/hana/data/backup' }}
+
+...
