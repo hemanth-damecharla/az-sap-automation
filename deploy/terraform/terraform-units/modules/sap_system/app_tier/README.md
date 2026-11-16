@@ -128,7 +128,7 @@ No modules.
 | <a name="input_resource_group"></a> [resource\_group](#input\_resource\_group) | The resource group of the SAP system, as returned by the common\_infrastructure module | `any` | n/a | yes |
 | <a name="input_route_table_id"></a> [route\_table\_id](#input\_route\_table\_id) | Azure resource ID of the route table of the SAP virtual network, or empty | `string` | n/a | yes |
 | <a name="input_sap_sid"></a> [sap\_sid](#input\_sap\_sid) | The SAP system ID | `string` | n/a | yes |
-| <a name="input_scale_set_id"></a> [scale\_set\_id](#input\_scale\_set\_id) | Azure resource ID of the flexible virtual machine scale set, or null | `string` | n/a | yes |
+| <a name="input_scale_set_id"></a> [scale\_set\_id](#input\_scale\_set\_id) | Azure resource ID of the flexible virtual machine scale set, or empty | `string` | n/a | yes |
 | <a name="input_sdu_public_key"></a> [sdu\_public\_key](#input\_sdu\_public\_key) | Public SSH key of the SAP system administrator | `string` | n/a | yes |
 | <a name="input_sid_keyvault_user_id"></a> [sid\_keyvault\_user\_id](#input\_sid\_keyvault\_user\_id) | Azure resource ID of the key vault holding the SAP system credentials | `string` | n/a | yes |
 | <a name="input_sid_password"></a> [sid\_password](#input\_sid\_password) | Password of the SAP system administrator | `string` | n/a | yes |

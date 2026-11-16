@@ -238,7 +238,7 @@ variable "use_scalesets_for_deployment"                 {
                                                           type        = bool
                                                         }
 variable "scale_set_id"                                 {
-                                                          description = "Azure resource ID of the flexible virtual machine scale set, or null"
+                                                          description = "Azure resource ID of the flexible virtual machine scale set, or empty"
                                                           type        = string
                                                         }
 

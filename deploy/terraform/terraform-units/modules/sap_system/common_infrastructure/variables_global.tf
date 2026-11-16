@@ -86,7 +86,7 @@ variable "database"                              {
                                                      })
                                        validation {
                                                     condition = (
-                                                      length(trimspace(try(var.database.platform, ""))) != 7
+                                                      length(trimspace(var.database.platform)) != 0
                                                     )
                                                     error_message = "The platform (HANA, SQLSERVER, ORACLE, ORACLE-ASM, DB2, SYBASE) must be specified."
                                                   }
