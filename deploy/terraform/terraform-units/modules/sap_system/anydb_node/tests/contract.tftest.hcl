@@ -34,14 +34,11 @@ variables {
   db_server_count = 1
 
   # The smallest input the module plans with: one database server and every
-  # optional attribute left to its declared default. The sizing key is the
-  # exception: only the SQL Server sizing file has the "Default" entry the
-  # attribute defaults to, so every other platform has to name a size.
+  # optional attribute left to its declared default.
   database = {
-    platform      = "DB2"
-    db_sizing_key = "512"
-    use_avset     = false
-    use_ppg       = false
+    platform  = "DB2"
+    use_avset = false
+    use_ppg   = false
   }
   infrastructure = { region = "westeurope" }
   options        = {}
@@ -137,6 +134,99 @@ run "minimal_input_takes_documented_defaults" {
   assert {
     condition     = length(output.database_shared_disks) == 0
     error_message = "No shared cluster disk may be planned without high availability."
+  }
+}
+
+# Every platform sizing file has the "Default" entry the sizing key defaults to.
+run "oracle_plans_with_the_default_sizing_key" {
+  command = plan
+
+  variables {
+    naming = run.names.naming
+    database = {
+      platform  = "ORACLE"
+      use_avset = false
+      use_ppg   = false
+    }
+  }
+
+  assert {
+    condition     = length(output.database_server_ips) == 1
+    error_message = "One database server must be planned with the default sizing key."
+  }
+
+  assert {
+    condition     = length(output.database_disks) > 0
+    error_message = "The default sizing key must resolve to a disk layout."
+  }
+}
+
+run "oracle_asm_plans_with_the_default_sizing_key" {
+  command = plan
+
+  variables {
+    naming = run.names.naming
+    database = {
+      platform  = "ORACLE-ASM"
+      use_avset = false
+      use_ppg   = false
+    }
+  }
+
+  assert {
+    condition     = length(output.database_server_ips) == 1
+    error_message = "One database server must be planned with the default sizing key."
+  }
+
+  assert {
+    condition     = length(output.database_disks) > 0
+    error_message = "The default sizing key must resolve to a disk layout."
+  }
+}
+
+run "sybase_plans_with_the_default_sizing_key" {
+  command = plan
+
+  variables {
+    naming = run.names.naming
+    database = {
+      platform  = "SYBASE"
+      use_avset = false
+      use_ppg   = false
+    }
+  }
+
+  assert {
+    condition     = length(output.database_server_ips) == 1
+    error_message = "One database server must be planned with the default sizing key."
+  }
+
+  assert {
+    condition     = length(output.database_disks) > 0
+    error_message = "The default sizing key must resolve to a disk layout."
+  }
+}
+
+run "sql_server_plans_with_the_default_sizing_key" {
+  command = plan
+
+  variables {
+    naming = run.names.naming
+    database = {
+      platform  = "SQLSERVER"
+      use_avset = false
+      use_ppg   = false
+    }
+  }
+
+  assert {
+    condition     = length(output.database_server_ips) == 1
+    error_message = "One database server must be planned with the default sizing key."
+  }
+
+  assert {
+    condition     = length(output.database_disks) > 0
+    error_message = "The default sizing key must resolve to a disk layout."
   }
 }
 
