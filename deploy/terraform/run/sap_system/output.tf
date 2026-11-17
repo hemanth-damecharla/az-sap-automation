@@ -314,3 +314,89 @@ output "resolved_privatelink_dns_subscription_id" {
                                          description = "Private Link DNS subscription ID resolved from var/landscape fallback chain"
                                          value       = local.dns_settings.privatelink_dns_subscription_id
                                        }
+
+#######################################4#######################################8
+#                                                                              #
+#                            Capability contract                               #
+#                                                                              #
+#######################################4#######################################8
+
+
+output "capabilities"                            {
+                                                   description = "Versioned contract of the SAP system for later deployment stages and add-ons. The attributes repeat the individual outputs above in a stable, grouped form; secrets are never included. contract_version changes only when an attribute is removed or changes meaning"
+                                                   value       = {
+                                                                   contract_version       = "1.0"
+                                                                   stage                  = "sap_system"
+                                                                   automation_version     = local.version_label
+                                                                   naming                 = {
+                                                                                              environment                      = local.infrastructure.environment
+                                                                                              region                           = local.infrastructure.region
+                                                                                              sid                              = local.application_tier.sid
+                                                                                              random_id                        = substr(coalesce(var.custom_random_id, module.common_infrastructure.random_id), 0, 3)
+                                                                                              workload_zone_automation_version = data.terraform_remote_state.landscape.outputs.automation_version
+                                                                                            }
+                                                                   resource_group         = {
+                                                                                              id              = module.common_infrastructure.created_resource_group_id
+                                                                                              name            = module.common_infrastructure.created_resource_group_name
+                                                                                              subscription_id = module.common_infrastructure.created_resource_group_subscription_id
+                                                                                            }
+                                                                   hosts                  = {
+                                                                                              application      = {
+                                                                                                                   vm_ids         = module.app_tier.app_vm_ids
+                                                                                                                   ips            = module.app_tier.application_server_ips
+                                                                                                                   subnet_netmask = module.app_tier.app_subnet_netmask
+                                                                                                                 }
+                                                                                              central_services = {
+                                                                                                                   vm_ids           = module.app_tier.scs_vm_ids
+                                                                                                                   loadbalancer_id  = module.app_tier.scs_server_loadbalancer_id
+                                                                                                                   loadbalancer_ips = [module.app_tier.scs_server_loadbalancer_ips]
+                                                                                                                 }
+                                                                                              web_dispatcher   = {
+                                                                                                                   vm_ids = module.app_tier.webdispatcher_server_vm_ids
+                                                                                                                 }
+                                                                                              database         = {
+                                                                                                                   hana_vm_ids     = module.hdb_node.hanadb_vm_ids
+                                                                                                                   anydb_vm_ids    = module.anydb_node.database_server_vm_ids
+                                                                                                                   ips             = upper(try(local.database.platform, "HANA")) == "HANA" ? (
+                                                                                                                                       module.hdb_node.database_server_ips) : (
+                                                                                                                                       module.anydb_node.database_server_ips
+                                                                                                                                     ) #TODO Change to use Admin IP
+                                                                                                                   admin_ips       = upper(try(local.database.platform, "HANA")) == "HANA" ? (
+                                                                                                                                       module.hdb_node.db_admin_ips) : (
+                                                                                                                                       [])
+                                                                                                                   secondary_ips   = upper(try(local.database.platform, "HANA")) == "HANA" ? (
+                                                                                                                                       module.hdb_node.database_server_secondary_ips) : (
+                                                                                                                                       module.anydb_node.database_server_secondary_ips
+                                                                                                                                     )
+                                                                                                                   loadbalancer_id = upper(try(local.database.platform, "HANA")) == "HANA" ? module.hdb_node.database_loadbalancer_id : module.anydb_node.database_loadbalancer_id
+                                                                                                                   loadbalancer_ip = upper(try(local.database.platform, "HANA")) == "HANA" ? module.hdb_node.database_loadbalancer_ip : module.anydb_node.database_loadbalancer_ip
+                                                                                                                 }
+                                                                                            }
+                                                                   network                = {
+                                                                                              application_security_group_ids = coalesce([
+                                                                                                                               try(module.common_infrastructure.db_asg_id, ""),
+                                                                                                                               try(module.app_tier.app_asg_id, ""),
+                                                                                                                               try(module.app_tier.web_asg_id, ""),
+                                                                                                                               ])
+                                                                                            }
+                                                                   dns                    = {
+                                                                                              use_custom_a_registration      = try(data.terraform_remote_state.landscape.outputs.use_custom_dns_a_registration, true)
+                                                                                              management_subscription_id     = try(data.terraform_remote_state.landscape.outputs.management_dns_subscription_id, null)
+                                                                                              management_resource_group_name = try(data.terraform_remote_state.landscape.outputs.management_dns_resourcegroup_name, local.tfstate_storage_account_resource_group_name)
+                                                                                              records                        = {
+                                                                                                                                 application               = module.app_tier.dns_info_vms
+                                                                                                                                 application_loadbalancers = module.app_tier.dns_info_loadbalancers
+                                                                                                                                 hana                      = module.hdb_node.dns_info_vms
+                                                                                                                                 hana_loadbalancers        = module.hdb_node.dns_info_loadbalancers
+                                                                                                                                 anydb                     = module.anydb_node.dns_info_vms
+                                                                                                                                 anydb_loadbalancers       = module.anydb_node.dns_info_loadbalancers
+                                                                                                                               }
+                                                                                            }
+                                                                   storage                = {
+                                                                                              disks                = compact(concat(module.hdb_node.database_disks, module.anydb_node.database_disks, module.app_tier.apptier_disks))
+                                                                                              sapmnt_path          = module.common_infrastructure.sapmnt_path
+                                                                                              hana_shared_afs_path = module.hdb_node.hana_shared_afs_path
+                                                                                            }
+                                                                   configuration_settings = var.configuration_settings
+                                                                 }
+                                                 }

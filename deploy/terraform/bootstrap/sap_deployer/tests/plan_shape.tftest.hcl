@@ -596,3 +596,30 @@ run "normal_mode_honors_deployer_count" {
     error_message = "When dev_center_deployment is false, bootstrap/sap_deployer must plan one VM per requested deployer_count."
   }
 }
+
+# Capability contract. Only attributes known at plan time are compared here;
+# tests/deploy/terraform/test_capabilities_contract.py checks that every
+# attribute repeats the expression of the individual output it stands for.
+run "capabilities_contract_is_published" {
+  command = plan
+
+  assert {
+    condition     = output.capabilities.contract_version == "1.0" && output.capabilities.stage == "deployer"
+    error_message = "The capability contract must identify its version and its deployment stage."
+  }
+
+  assert {
+    condition     = output.capabilities.automation_version == output.automation_version
+    error_message = "capabilities.automation_version must equal the automation_version output."
+  }
+
+  assert {
+    condition = alltrue([
+      output.capabilities.naming.environment                    == output.environment,
+      output.capabilities.network.public_network_access_enabled == output.public_network_access_enabled,
+      output.capabilities.network_security_perimeter.deployed   == output.network_security_perimeter_deployment,
+      output.capabilities.web_app.deployed                      == output.app_service_deployment,
+    ])
+    error_message = "The capability contract must repeat the individual outputs."
+  }
+}

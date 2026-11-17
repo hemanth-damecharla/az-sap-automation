@@ -457,3 +457,128 @@ output "resolved_privatelink_dns_subscription_id"  {
                                                      description = "Private Link DNS subscription ID resolved from coalesce(var → management_dns → tfstate fallback)"
                                                      value       = coalesce(var.privatelink_dns_subscription_id, var.management_dns_subscription_id, local.tfstate_storage_account_subscription_id)
                                                    }
+
+#######################################4#######################################8
+#                                                                              #
+#                            Capability contract                               #
+#                                                                              #
+#######################################4#######################################8
+
+
+output "capabilities"                            {
+                                                   description = "Versioned contract of the workload zone for later deployment stages and add-ons. The attributes repeat the individual outputs above in a stable, grouped form; secrets are never included. contract_version changes only when an attribute is removed or changes meaning"
+                                                   value       = {
+                                                                   contract_version          = "1.0"
+                                                                   stage                     = "workload_zone"
+                                                                   automation_version        = local.version_label
+                                                                   naming                    = {
+                                                                                                 workload_zone_name        = local.workload_zone_name
+                                                                                                 workload_zone_prefix      = module.sap_namegenerator.naming.prefix.WORKLOAD_ZONE
+                                                                                                 control_plane_name        = var.control_plane_name
+                                                                                                 control_plane_environment = try(data.terraform_remote_state.deployer[0].outputs.environment, "")
+                                                                                                 random_id                 = substr(coalesce(var.custom_random_id, module.sap_landscape.random_id),0,3)
+                                                                                               }
+                                                                   resource_group            = {
+                                                                                                 id              = module.sap_landscape.created_resource_group_id
+                                                                                                 name            = module.sap_landscape.created_resource_group_name
+                                                                                                 subscription_id = module.sap_landscape.created_resource_group_subscription_id
+                                                                                               }
+                                                                   network                   = {
+                                                                                                 vnet_id                       = length(var.network_arm_id) > 0 ? var.network_arm_id : module.sap_landscape.vnet_sap_id
+                                                                                                 route_table_id                = module.sap_landscape.route_table_id
+                                                                                                 management_subnet_id          = module.sap_landscape.subnet_mgmt_id
+                                                                                                 public_network_access_enabled = var.public_network_access_enabled || !var.use_private_endpoint
+                                                                                                 use_separate_storage_subnet   = var.use_separate_storage_subnet
+                                                                                                 subnets                       = {
+                                                                                                                                   admin    = {
+                                                                                                                                                id     = length(var.admin_subnet_arm_id) > 0 ? var.admin_subnet_arm_id : module.sap_landscape.admin_subnet_id
+                                                                                                                                                nsg_id = length(var.admin_subnet_nsg_arm_id) > 0 ? var.admin_subnet_nsg_arm_id : module.sap_landscape.admin_nsg_id
+                                                                                                                                              }
+                                                                                                                                   db       = {
+                                                                                                                                                id     = length(var.db_subnet_arm_id) > 0 ? var.db_subnet_arm_id : module.sap_landscape.db_subnet_id
+                                                                                                                                                nsg_id = length(var.db_subnet_nsg_arm_id) > 0 ? var.db_subnet_nsg_arm_id : module.sap_landscape.db_nsg_id
+                                                                                                                                              }
+                                                                                                                                   app      = {
+                                                                                                                                                id     = length(var.app_subnet_arm_id) > 0 ? var.app_subnet_arm_id : module.sap_landscape.app_subnet_id
+                                                                                                                                                nsg_id = length(var.app_subnet_nsg_arm_id) > 0 ? var.app_subnet_nsg_arm_id : module.sap_landscape.app_nsg_id
+                                                                                                                                              }
+                                                                                                                                   web      = {
+                                                                                                                                                id     = length(var.web_subnet_arm_id) > 0 ? var.web_subnet_arm_id : module.sap_landscape.web_subnet_id
+                                                                                                                                                nsg_id = length(var.web_subnet_nsg_arm_id) > 0 ? var.web_subnet_nsg_arm_id : module.sap_landscape.web_nsg_id
+                                                                                                                                              }
+                                                                                                                                   storage  = {
+                                                                                                                                                id     = length(var.storage_subnet_arm_id) > 0 ? var.storage_subnet_arm_id : module.sap_landscape.storage_subnet_id
+                                                                                                                                                nsg_id = length(var.storage_subnet_nsg_arm_id) > 0 ? var.storage_subnet_nsg_arm_id : module.sap_landscape.storage_nsg_id
+                                                                                                                                              }
+                                                                                                                                   endpoint = {
+                                                                                                                                                id     = length(var.endpoint_subnet_arm_id) > 0 ? var.endpoint_subnet_arm_id : module.sap_landscape.endpoint_subnet_id
+                                                                                                                                                nsg_id = length(var.endpoint_subnet_nsg_arm_id) > 0 ? var.endpoint_subnet_nsg_arm_id : module.sap_landscape.endpoint_nsg_id
+                                                                                                                                              }
+                                                                                                                                   ams      = {
+                                                                                                                                                id = length(var.ams_subnet_arm_id) > 0 ? var.ams_subnet_arm_id : module.sap_landscape.ams_subnet_id
+                                                                                                                                              }
+                                                                                                                                 }
+                                                                                               }
+                                                                   identity                  = {
+                                                                                                 use_spn = var.use_spn
+                                                                                               }
+                                                                   key_vault                 = {
+                                                                                                 user_id                    = length(trimspace(var.user_keyvault_id)) > 0 ? var.user_keyvault_id : module.sap_landscape.kv_user
+                                                                                                 private_id                 = try(module.sap_landscape.kv_prvt, "")
+                                                                                                 spn_id                     = var.spn_keyvault_id
+                                                                                                 name                       = length(var.user_keyvault_id) > 0 ? split("/", var.user_keyvault_id)[8] : try(split("/", module.sap_landscape.kv_user)[8], "")
+                                                                                                 user_credential_vault_id   = module.sap_landscape.user_credential_vault_id
+                                                                                                 spn_credential_vault_id    = local.key_vault.spn.id
+                                                                                                 sid_username_secret_name   = module.sap_landscape.sid_username_secret_name
+                                                                                                 sid_password_secret_name   = try(module.sap_landscape.sid_password_secret_name, "")
+                                                                                                 sid_public_key_secret_name = try(module.sap_landscape.sid_public_key_secret_name, "")
+                                                                                               }
+                                                                   dns                       = {
+                                                                                                 label                                    = var.dns_label
+                                                                                                 resource_group_name                      = local.tfstate_storage_account_resource_group_name
+                                                                                                 management_resource_group_name           = coalesce(var.management_dns_resourcegroup_name, local.tfstate_storage_account_resource_group_name)
+                                                                                                 management_subscription_id               = coalesce(var.management_dns_subscription_id, local.tfstate_storage_account_subscription_id)
+                                                                                                 privatelink_resource_group_name          = coalesce(var.privatelink_dns_resourcegroup_name, var.management_dns_resourcegroup_name, local.tfstate_storage_account_resource_group_name)
+                                                                                                 privatelink_subscription_id              = coalesce(var.privatelink_dns_subscription_id, var.management_dns_subscription_id, local.tfstate_storage_account_subscription_id)
+                                                                                                 privatelink_file_id                      = module.sap_landscape.privatelink_file_id
+                                                                                                 register_virtual_network                 = var.register_virtual_network_to_dns
+                                                                                                 register_storage_accounts_and_key_vaults = var.register_storage_accounts_keyvaults_with_dns
+                                                                                                 use_custom_a_registration                = var.use_custom_dns_a_registration
+                                                                                               }
+                                                                   storage                   = {
+                                                                                                 diagnostics_account_name        = try(module.sap_landscape.storageaccount_name, "")
+                                                                                                 diagnostics_resource_group_name = module.sap_landscape.storageaccount_resourcegroup_name
+                                                                                                 transport_account_id            = module.sap_landscape.transport_storage_account_id
+                                                                                                 witness_account                 = module.sap_landscape.witness_storage_account
+                                                                                                 utility_account_ids             = module.sap_landscape.utility_storage_account_ids
+                                                                                                 utility_account_names           = module.sap_landscape.utility_storage_account_names
+                                                                                                 install_path                    = var.export_install_path ? module.sap_landscape.install_path : ""
+                                                                                                 transport_path                  = var.export_transport_path && var.create_transport_storage ? module.sap_landscape.saptransport_path : ""
+                                                                                                 netapp_pool                     = module.sap_landscape.ANF_pool_settings
+                                                                                               }
+                                                                   iscsi                     = {
+                                                                                                 authentication_type     = try(module.sap_landscape.iscsi_authentication_type, "")
+                                                                                                 authentication_username = try(module.sap_landscape.iscsi_authentication_username, "")
+                                                                                                 private_ips             = try(module.sap_landscape.nics_iscsi[*].private_ip_address, [])
+                                                                                                 server_ips              = var.iscsi_count > 0 ? (
+                                                                                                                           module.sap_landscape.iSCSI_server_ips) : (
+                                                                                                                           []
+                                                                                                                           )
+                                                                                                 server_names            = var.iscsi_count > 0 ? (
+                                                                                                                           length(var.name_override_file) > 0 ? local.custom_names.virtualmachine_names.ISCSI_COMPUTERNAME : module.sap_namegenerator.naming.virtualmachine_names.ISCSI_COMPUTERNAME
+                                                                                                                           ) :    []
+                                                                                                 servers                 = var.iscsi_count > 0 ? (
+                                                                                                                           module.sap_landscape.iSCSI_servers) : (
+                                                                                                                           []
+                                                                                                                           )
+                                                                                                 dns_records             = module.sap_landscape.dns_info_vms
+                                                                                               }
+                                                                   application_configuration = {
+                                                                                                 id   = local.infrastructure.application_configuration_id
+                                                                                                 name = length(local.infrastructure.application_configuration_id) > 0 ? (
+                                                                                                          local.infrastructure.application_configuration_id) : (
+                                                                                                          ""
+                                                                                                        )
+                                                                                               }
+                                                                 }
+                                                 }

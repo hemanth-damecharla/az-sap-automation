@@ -1025,3 +1025,29 @@ run "utility_storage_filestorage_account_drops_version_level_immutability" {
     error_message = "FileStorage utility accounts must never plan an account immutability policy."
   }
 }
+
+# Capability contract. Only attributes known at plan time are compared here;
+# tests/deploy/terraform/test_capabilities_contract.py checks that every
+# attribute repeats the expression of the individual output it stands for.
+run "capabilities_contract_is_published" {
+  command = plan
+
+  assert {
+    condition     = output.capabilities.contract_version == "1.0" && output.capabilities.stage == "workload_zone"
+    error_message = "The capability contract must identify its version and its deployment stage."
+  }
+
+  assert {
+    condition     = output.capabilities.automation_version == output.automation_version
+    error_message = "capabilities.automation_version must equal the automation_version output."
+  }
+
+  assert {
+    condition = alltrue([
+      output.capabilities.naming.workload_zone_name == output.workload_zone_name,
+      output.capabilities.identity.use_spn          == output.use_spn,
+      output.capabilities.dns.label                 == output.dns_label,
+    ])
+    error_message = "The capability contract must repeat the individual outputs."
+  }
+}

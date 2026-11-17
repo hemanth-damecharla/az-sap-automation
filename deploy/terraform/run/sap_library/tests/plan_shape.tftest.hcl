@@ -975,3 +975,27 @@ run "apply_cross_subscription_kv_with_spn_credential_retrieval" {
     error_message = "When use_spn=true with a cross-subscription key vault, the azuread_service_principal data source must be instantiated for the resolved SPN."
   }
 }
+
+# Capability contract. Only attributes known at plan time are compared here;
+# tests/deploy/terraform/test_capabilities_contract.py checks that every
+# attribute repeats the expression of the individual output it stands for.
+run "capabilities_contract_is_published" {
+  command = plan
+
+  assert {
+    condition     = output.capabilities.contract_version == "1.0" && output.capabilities.stage == "library"
+    error_message = "The capability contract must identify its version and its deployment stage."
+  }
+
+  assert {
+    condition     = output.capabilities.automation_version == output.automation_version
+    error_message = "capabilities.automation_version must equal the automation_version output."
+  }
+
+  assert {
+    condition = alltrue([
+      output.capabilities.naming.environment == output.saplibrary_environment,
+    ])
+    error_message = "The capability contract must repeat the individual outputs."
+  }
+}

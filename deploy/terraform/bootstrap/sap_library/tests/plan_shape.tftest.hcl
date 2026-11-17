@@ -395,3 +395,27 @@ run "custom_naming_override_propagates_to_library_module" {
     error_message = "When name_override_file is empty, the resource group name must also incorporate the sap_namegenerator LIBRARY prefix."
   }
 }
+
+# Capability contract. Only attributes known at plan time are compared here;
+# tests/deploy/terraform/test_capabilities_contract.py checks that every
+# attribute repeats the expression of the individual output it stands for.
+run "capabilities_contract_is_published" {
+  command = plan
+
+  assert {
+    condition     = output.capabilities.contract_version == "1.0" && output.capabilities.stage == "library"
+    error_message = "The capability contract must identify its version and its deployment stage."
+  }
+
+  assert {
+    condition     = output.capabilities.automation_version == output.automation_version
+    error_message = "capabilities.automation_version must equal the automation_version output."
+  }
+
+  assert {
+    condition = alltrue([
+      output.capabilities.naming.environment == output.saplibrary_environment,
+    ])
+    error_message = "The capability contract must repeat the individual outputs."
+  }
+}

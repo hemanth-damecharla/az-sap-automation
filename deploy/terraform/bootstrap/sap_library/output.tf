@@ -75,3 +75,33 @@ output "sa_connection_string"                    {
                                                    value       = module.sap_library.sa_connection_string
                                                  }
 
+#######################################4#######################################8
+#                                                                              #
+#                            Capability contract                               #
+#                                                                              #
+#######################################4#######################################8
+
+
+output "capabilities"                            {
+                                                   description = "Versioned contract of the SAP library for later deployment stages and add-ons. The attributes repeat the individual outputs above in a stable, grouped form; secrets are never included. contract_version changes only when an attribute is removed or changes meaning"
+                                                   value       = {
+                                                                   contract_version   = "1.0"
+                                                                   stage              = "library"
+                                                                   automation_version = local.version_label
+                                                                   naming             = {
+                                                                                          environment = local.infrastructure.environment
+                                                                                          random_id   = substr(coalesce(var.custom_random_id, module.sap_library.random_id), 0, 3)
+                                                                                        }
+                                                                   resource_group     = {
+                                                                                          id              = module.sap_library.created_resource_group_id
+                                                                                          name            = module.sap_library.created_resource_group_name
+                                                                                          subscription_id = module.sap_library.created_resource_group_subscription_id
+                                                                                        }
+                                                                   storage            = {
+                                                                                          tfstate_account_id          = module.sap_library.tfstate_resource_id
+                                                                                          tfstate_account_name        = module.sap_library.remote_state_storage_account_name
+                                                                                          sapbits_account_name        = module.sap_library.sapbits_storage_account_name
+                                                                                          sapbits_resource_group_name = module.sap_library.sapbits_sa_resource_group_name
+                                                                                        }
+                                                                 }
+                                                 }

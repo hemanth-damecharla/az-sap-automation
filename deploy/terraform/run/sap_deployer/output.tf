@@ -328,3 +328,90 @@ output "network_security_access_mode"          {
                                                   description = "The access mode for the network security perimeter association. Possible values are Audit, Enforced, and Learning."
                                                   value       = var.network_security_access_mode
                                                 }
+
+#######################################4#######################################8
+#                                                                              #
+#                            Capability contract                               #
+#                                                                              #
+#######################################4#######################################8
+
+
+output "capabilities"                            {
+                                                   description = "Versioned contract of the control plane deployer for later deployment stages and add-ons. The attributes repeat the individual outputs above in a stable, grouped form; secrets are never included. contract_version changes only when an attribute is removed or changes meaning"
+                                                   value       = {
+                                                                   contract_version           = "1.0"
+                                                                   stage                      = "deployer"
+                                                                   automation_version         = local.version_label
+                                                                   naming                     = {
+                                                                                                  environment          = var.environment
+                                                                                                  location_short       = module.sap_namegenerator.naming_new.location_short
+                                                                                                  network_logical_name = var.management_network_logical_name
+                                                                                                  control_plane_name   = module.sap_namegenerator.naming.prefix.DEPLOYER
+                                                                                                  random_id            = substr(coalesce(var.custom_random_id, module.sap_deployer.random_id), 0, 3)
+                                                                                                }
+                                                                   resource_group             = {
+                                                                                                  id              = module.sap_deployer.created_resource_group_id
+                                                                                                  name            = module.sap_deployer.created_resource_group_name
+                                                                                                  subscription_id = module.sap_deployer.created_resource_group_subscription_id
+                                                                                                  location        = module.sap_deployer.created_resource_group_location
+                                                                                                }
+                                                                   network                    = {
+                                                                                                  vnet_id                                    = module.sap_deployer.vnet_mgmt_id
+                                                                                                  management_subnet_id                       = module.sap_deployer.subnet_mgmt_id
+                                                                                                  management_subnet_address_prefixes         = module.sap_deployer.subnet_mgmt_address_prefixes
+                                                                                                  bastion_subnet_address_prefixes            = module.sap_deployer.subnet_bastion_address_prefixes
+                                                                                                  webapp_subnet_id                           = module.sap_deployer.subnet_webapp_id
+                                                                                                  endpoint_subnet_id                         = module.sap_deployer.endpoint_subnet_id
+                                                                                                  additional_network_id                      = length(var.additional_network_id) > 0 ? provider::azurerm::normalise_resource_id(split("/subnets/",var.additional_network_id)[0]) : ""
+                                                                                                  firewall_allowed_subnet_ids                = compact(concat(var.subnets_to_add_to_firewall_for_keyvaults_and_storage, [module.sap_deployer.agent_subnet_id]))
+                                                                                                  agent_ip                                   = var.Agent_IP
+                                                                                                  public_network_access_enabled              = var.public_network_access_enabled
+                                                                                                  firewall_for_keyvaults_and_storage_enabled = var.enable_firewall_for_keyvaults_and_storage
+                                                                                                  firewall_id                                = module.sap_deployer.firewall_id
+                                                                                                  firewall_ip                                = module.sap_deployer.firewall_ip
+                                                                                                }
+                                                                   network_security_perimeter = {
+                                                                                                  deployed    = var.network_security_perimeter_deployment
+                                                                                                  id          = var.network_security_perimeter_deployment ? module.sap_deployer.network_security_perimeter_id : ""
+                                                                                                  access_mode = var.network_security_access_mode
+                                                                                                }
+                                                                   identity                   = {
+                                                                                                  principal_id                    = module.sap_deployer.deployer_uai.principal_id
+                                                                                                  user_assigned                   = {
+                                                                                                                                      principal_id = module.sap_deployer.deployer_uai.principal_id
+                                                                                                                                      tenant_id    = module.sap_deployer.deployer_uai.tenant_id
+                                                                                                                                    }
+                                                                                                  user_assigned_identity_id       = module.sap_deployer.deployer_user_assigned_identity
+                                                                                                  client_id                       = module.sap_deployer.deployer_client_id
+                                                                                                  system_assigned                 = module.sap_deployer.deployer_system_assigned_identity
+                                                                                                  system_assigned_enabled         = var.add_system_assigned_identity
+                                                                                                  devops_infrastructure_object_id = var.DevOpsInfrastructure_object_id
+                                                                                                }
+                                                                   key_vault                  = {
+                                                                                                  id                  = module.sap_deployer.deployer_keyvault_user_arm_id
+                                                                                                  name                = module.sap_deployer.user_vault_name
+                                                                                                  ssh_key_secret_name = module.sap_deployer.ppk_secret_name
+                                                                                                  set_secret_expiry   = var.set_secret_expiry
+                                                                                                }
+                                                                   virtual_machines           = {
+                                                                                                  ids                 = module.sap_deployer.deployer_id
+                                                                                                  public_ip_addresses = module.sap_deployer.deployer_public_ip_address
+                                                                                                  username            = var.deployer_authentication_username
+                                                                                                  extension_ids       = module.sap_deployer.extension_ids
+                                                                                                }
+                                                                   application_configuration  = {
+                                                                                                  deployed = var.application_configuration_deployment
+                                                                                                  id       = module.sap_deployer.application_configuration_id
+                                                                                                  name     = module.sap_deployer.application_configuration_name
+                                                                                                }
+                                                                   web_app                    = {
+                                                                                                  deployed = var.app_service_deployment
+                                                                                                  id       = var.app_service_deployment ? module.sap_deployer.webapp_id : ""
+                                                                                                  url_base = var.app_service_deployment ? module.sap_deployer.webapp_url_base : ""
+                                                                                                  identity = var.app_service_deployment ? module.sap_deployer.webapp_identity : ""
+                                                                                                }
+                                                                   diagnostics                = {
+                                                                                                  storage_account_id = module.sap_deployer.diagnostics_account_id
+                                                                                                }
+                                                                 }
+                                                 }
