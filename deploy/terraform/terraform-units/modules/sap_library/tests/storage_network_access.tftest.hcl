@@ -26,7 +26,7 @@ override_resource {
 variables {
   bootstrap                      = false
   place_delete_lock_on_resources = false
-  naming                         = {}
+  naming                         = { separator = "-" }
   infrastructure = {
     environment        = "DEV"
     region             = "westeurope"

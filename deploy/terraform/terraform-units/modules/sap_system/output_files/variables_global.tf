@@ -259,7 +259,7 @@ variable "management_dns_subscription_id"       {
                                                 }
 
 variable "naming"                               {
-                                                  description = "Defines the names for the resources: the output of the sap_namegenerator module, or a custom names file with the same structure"
+                                                  description = "Defines the names for the resources: the output of the sap_namegenerator module, or a custom names file with the same structure. Left untyped because the module also writes the whole structure to the naming information file"
                                                   type        = any
                                                 }
 variable "NFS_provider"                         {

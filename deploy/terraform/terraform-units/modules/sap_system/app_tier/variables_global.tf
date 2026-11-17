@@ -191,8 +191,15 @@ variable "license_type"                                 {
                                                           type        = string
                                                         }
 variable "naming"                                       {
-                                                          description = "Defines the names for the resources: the output of the sap_namegenerator module, or a custom names file with the same structure"
-                                                          type        = any
+                                                          description = "Defines the names for the resources: the 'naming' output of the sap_namegenerator module, or a custom names file with the same structure. Only the groups this module reads are declared; Terraform discards the rest. The groups are maps and lists, so a custom names file may leave out entries the deployment does not use."
+                                                          type        = object({
+                                                                          separator             = string
+                                                                          prefix                = optional(map(string), {})
+                                                                          resource_prefixes     = optional(map(string), {})
+                                                                          resource_suffixes     = optional(map(string), {})
+                                                                          virtualmachine_names  = optional(map(list(string)), {})
+                                                                          availabilityset_names = optional(map(list(string)), {})
+                                                                        })
                                                         }
 variable "network_location"                             {
                                                           description = "Azure region of the SAP virtual network"

@@ -27,11 +27,12 @@ override_resource {
 }
 
 # The smallest input the module can plan with. Everything else takes its
-# default. Without a naming structure the resource group name must be given,
-# and without a deployer state the management network must be given.
+# default. With only the separator in the naming structure the resource group
+# name must be given, and without a deployer state the management network must
+# be given.
 variables {
   bootstrap = false
-  naming    = {}
+  naming    = { separator = "-" }
   infrastructure = {
     environment    = "DEV"
     region         = "westeurope"

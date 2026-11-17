@@ -187,13 +187,25 @@ variable "infrastructure"                    {
                                              }
 
 variable "naming"                            {
-                                               description = "Defines the names for the resources: the 'naming' output of the sap_namegenerator module, or a custom names file with the same structure"
-                                               type        = any
+                                               description = "Defines the names for the resources: the 'naming' output of the sap_namegenerator module, or a custom names file with the same structure. Only the groups this module reads are declared; Terraform discards the rest. The groups are maps and lists, so a custom names file may leave out entries the deployment does not use."
+                                               type        = object({
+                                                               separator            = string
+                                                               prefix               = optional(map(string), {})
+                                                               resource_prefixes    = optional(map(string), {})
+                                                               resource_suffixes    = optional(map(string), {})
+                                                               keyvault_names       = optional(map(map(string)), {})
+                                                               virtualmachine_names = optional(map(list(string)), {})
+                                                               storageaccount_names = optional(object({
+                                                                                        DEPLOYER = optional(string)
+                                                                                      }), {})
+                                                             })
                                              }
 
 variable "naming_new"                        {
-                                               description = "Defines the additional names for the resources: the 'naming_new' output of the sap_namegenerator module"
-                                               type        = any
+                                               description = "Defines the additional names for the resources: the 'naming_new' output of the sap_namegenerator module. Only the attributes this module reads are declared; Terraform discards the rest."
+                                               type        = object({
+                                                               location_short = string
+                                                             })
                                              }
 
 variable "options"                           {

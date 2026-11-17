@@ -462,8 +462,24 @@ variable "deployer_tfstate"            {
                                         }
 
 variable "naming"                      {
-                                          description = "Defines the names for the resources: the 'naming' output of the sap_namegenerator module, or a custom names file with the same structure"
-                                          type        = any
+                                          description = "Defines the names for the resources: the 'naming' output of the sap_namegenerator module, or a custom names file with the same structure. Only the groups this module reads are declared; Terraform discards the rest. The groups are maps and lists, so a custom names file may leave out entries the deployment does not use."
+                                          type        = object({
+                                                          separator            = string
+                                                          prefix               = optional(map(string), {})
+                                                          resource_prefixes    = optional(map(string), {})
+                                                          resource_suffixes    = optional(map(string), {})
+                                                          keyvault_names       = optional(map(map(string)), {})
+                                                          virtualmachine_names = optional(map(list(string)), {})
+                                                          storageaccount_names = optional(object({
+                                                                                   WORKLOAD_ZONE = optional(object({
+                                                                                     landscape_storageaccount_name                   = optional(string)
+                                                                                     witness_storageaccount_name                     = optional(string)
+                                                                                     landscape_shared_transport_storage_account_name = optional(string)
+                                                                                     landscape_shared_install_storage_account_name   = optional(string)
+                                                                                     landscape_utility_storage_account_names         = optional(list(string), [])
+                                                                                   }))
+                                                                                 }), {})
+                                                        })
                                         }
 
 variable "use_deployer"                {

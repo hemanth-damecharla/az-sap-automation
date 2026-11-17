@@ -227,8 +227,19 @@ variable "key_vault"                   {
                                        }
 
 variable "naming"                     {
-                                        description = "Naming convention data structure: the 'naming' output of the sap_namegenerator module, or a custom names file with the same structure"
-                                        type        = any
+                                        description = "Defines the names for the resources: the 'naming' output of the sap_namegenerator module, or a custom names file with the same structure. Only the groups this module reads are declared; Terraform discards the rest. The groups are maps and lists, so a custom names file may leave out entries the deployment does not use."
+                                        type        = object({
+                                                        separator            = string
+                                                        prefix               = optional(map(string), {})
+                                                        resource_prefixes    = optional(map(string), {})
+                                                        resource_suffixes    = optional(map(string), {})
+                                                        storageaccount_names = optional(object({
+                                                                                 LIBRARY = optional(object({
+                                                                                   library_storageaccount_name        = optional(string)
+                                                                                   terraformstate_storageaccount_name = optional(string)
+                                                                                 }))
+                                                                               }), {})
+                                                      })
                                       }
 
 variable "deployer_tfstate"           {

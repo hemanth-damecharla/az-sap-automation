@@ -81,7 +81,7 @@ No modules.
 | <a name="input_is_use_fence_kdump"></a> [is\_use\_fence\_kdump](#input\_is\_use\_fence\_kdump) | Configure fencing device based on the fence agent fence\_kdump for both SCS and DB clusters | `bool` | n/a | yes |
 | <a name="input_landscape_tfstate"></a> [landscape\_tfstate](#input\_landscape\_tfstate) | Outputs of the workload zone Terraform state. Untyped until the workload zone publishes a versioned capability contract | `any` | n/a | yes |
 | <a name="input_loadbalancers"></a> [loadbalancers](#input\_loadbalancers) | Load balancers of the database tier, as returned by the hdb\_node module | `any` | n/a | yes |
-| <a name="input_naming"></a> [naming](#input\_naming) | Defines the names for the resources: the output of the sap\_namegenerator module, or a custom names file with the same structure | `any` | n/a | yes |
+| <a name="input_naming"></a> [naming](#input\_naming) | Defines the names for the resources: the output of the sap\_namegenerator module, or a custom names file with the same structure. Left untyped because the module also writes the whole structure to the naming information file | `any` | n/a | yes |
 | <a name="input_observer_ips"></a> [observer\_ips](#input\_observer\_ips) | IP addresses of the observer virtual machines | `list(string)` | n/a | yes |
 | <a name="input_observer_shared_disks"></a> [observer\_shared\_disks](#input\_observer\_shared\_disks) | Shared disks of the observer virtual machines, as returned by the database modules | `any` | n/a | yes |
 | <a name="input_observer_vms"></a> [observer\_vms](#input\_observer\_vms) | Observer virtual machines, as returned by the database modules | `any` | n/a | yes |
