@@ -79,7 +79,7 @@ module "common_infrastructure" {
   custom_prefix                                 = var.use_prefix ? var.custom_prefix : " "
   database                                      = local.database
   deploy_application_security_groups            = var.deploy_application_security_groups
-  deployer_tfstate                              = length(var.deployer_tfstate_key) > 0 ? module.sap_capabilities.deployer : null
+  deployer_tfstate                              = module.sap_capabilities.deployer
   deployment                                    = var.deployment
   enable_purge_control_for_keyvaults            = var.enable_purge_control_for_keyvaults
   ha_validator                                  = format("%d%d-%s",
@@ -148,7 +148,7 @@ module "hdb_node" {
   db_asg_id                                     = module.common_infrastructure.db_asg_id
   db_subnet                                     = module.common_infrastructure.db_subnet
   deploy_application_security_groups            = var.deploy_application_security_groups
-  deployer_tfstate                              = try(module.sap_capabilities.deployer, {})
+  deployer_tfstate                              = module.sap_capabilities.deployer
   deployment                                    = var.deployment
   dns_settings                                  = local.dns_settings
   enable_firewall_for_keyvaults_and_storage     = var.enable_firewall_for_keyvaults_and_storage

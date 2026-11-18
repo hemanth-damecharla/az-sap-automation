@@ -131,7 +131,7 @@ resource "azurerm_network_interface_application_security_group_association" "db"
 
 resource "azurerm_network_interface" "nics_dbnodes_storage" {
   provider                             = azurerm.main
-  count                                = local.enable_deployment && try(var.landscape_tfstate.use_separate_storage_subnet, local.enable_storage_subnet) && var.enable_storage_nic ? (
+  count                                = local.enable_deployment && (var.landscape_tfstate.use_separate_storage_subnet != null ? var.landscape_tfstate.use_separate_storage_subnet : local.enable_storage_subnet) && var.enable_storage_nic ? (
                                             var.database_server_count
                                          ) : (
                                            0

@@ -175,3 +175,63 @@ run "enabled_tier_takes_documented_defaults" {
     error_message = "The operating system type must default to LINUX."
   }
 }
+
+# The workload zone state is typed. A state written before the DNS attributes
+# existed takes their empty defaults, so no DNS record is registered even when
+# registration is switched on.
+run "state_without_dns_attributes_registers_no_dns_record" {
+  command = plan
+
+  variables {
+    naming       = run.names.naming
+    dns_settings = { register_virtual_network_to_dns = true }
+    application_tier = {
+      sid                      = "ABC"
+      enable_deployment        = true
+      application_server_count = 1
+      scs_server_count         = 1
+      app_os                   = { publisher = "SUSE", offer = "sles-sap-15-sp5", sku = "gen2", version = "latest" }
+      scs_os                   = { publisher = "SUSE", offer = "sles-sap-15-sp5", sku = "gen2", version = "latest" }
+    }
+    landscape_tfstate = {
+      vnet_sap_arm_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01"
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_a_record.scs) == 0 && length(azurerm_private_dns_a_record.ers) == 0
+    error_message = "Without a DNS label in the workload zone state no DNS record may be planned."
+  }
+}
+
+run "state_with_dns_label_registers_the_central_services_records" {
+  command = plan
+
+  variables {
+    naming       = run.names.naming
+    dns_settings = { register_virtual_network_to_dns = true }
+    application_tier = {
+      sid                      = "ABC"
+      enable_deployment        = true
+      application_server_count = 1
+      scs_server_count         = 1
+      app_os                   = { publisher = "SUSE", offer = "sles-sap-15-sp5", sku = "gen2", version = "latest" }
+      scs_os                   = { publisher = "SUSE", offer = "sles-sap-15-sp5", sku = "gen2", version = "latest" }
+    }
+    landscape_tfstate = {
+      vnet_sap_arm_id         = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01"
+      dns_label               = "sap.contoso.net"
+      dns_resource_group_name = "rg-dns"
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_a_record.scs) == 1 && length(azurerm_private_dns_a_record.ers) == 1
+    error_message = "With a DNS label in the workload zone state the central services load balancer must be registered."
+  }
+
+  assert {
+    condition     = azurerm_private_dns_a_record.scs[0].zone_name == "sap.contoso.net" && azurerm_private_dns_a_record.scs[0].resource_group_name == "rg-dns"
+    error_message = "The DNS record must use the zone and resource group from the workload zone state."
+  }
+}

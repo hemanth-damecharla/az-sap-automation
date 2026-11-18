@@ -440,3 +440,101 @@ run "rejects_workload_zone_state_without_virtual_network" {
 
   expect_failures = [var.landscape_tfstate]
 }
+
+# The upstream states are typed. A workload zone state written before most of
+# its attributes existed still plans. The virtual network, the diagnostics
+# storage account and the public key secret name were always required; the
+# user name and password secret names fall back to names built from the
+# workload zone prefix, and the rest take their declared defaults.
+run "older_workload_zone_state_takes_defaults" {
+  command = plan
+
+  variables {
+    naming = run.names.naming
+    landscape_tfstate = {
+      vnet_sap_arm_id            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01"
+      storageaccount_name        = "stlandscapediag"
+      storageaccount_rg_name     = "rg-landscape"
+      sid_public_key_secret_name = "sid-public-key"
+    }
+  }
+
+  assert {
+    condition     = data.azurerm_key_vault_secret.sid_username[0].name == "DEV-WEEU-SAP01-sid-username" && data.azurerm_key_vault_secret.sid_password[0].name == "DEV-WEEU-SAP01-sid-password"
+    error_message = "Without the secret names in the workload zone state the names built from the workload zone prefix must be used."
+  }
+
+  assert {
+    condition     = output.route_table_id == ""
+    error_message = "Without a route table in the workload zone state the route table id must be empty."
+  }
+
+  assert {
+    condition     = length(azurerm_subnet_route_table_association.db) == 0
+    error_message = "Without a route table in the workload zone state no route table association may be planned."
+  }
+}
+
+run "deployer_state_reaches_the_firewall_and_perimeter" {
+  command = plan
+
+  override_data {
+    target = data.azurerm_network_security_perimeter.perimeter
+    values = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/networkSecurityPerimeters/nsp-dev"
+    }
+  }
+
+  variables {
+    naming = run.names.naming
+    deployer_tfstate = {
+      firewall_id                           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/azureFirewalls/fw-dev"
+      network_security_perimeter_deployment = true
+      network_security_perimeter_id         = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/networkSecurityPerimeters/nsp-dev"
+      network_security_access_mode          = "Learning"
+    }
+  }
+
+  assert {
+    condition     = output.firewall_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/azureFirewalls/fw-dev"
+    error_message = "The firewall id must be read from the deployer state."
+  }
+
+  assert {
+    condition     = data.azurerm_network_security_perimeter.perimeter[0].name == "nsp-dev" && data.azurerm_network_security_perimeter.perimeter[0].resource_group_name == "rg-mgmt"
+    error_message = "The perimeter must be looked up by the name and resource group in the deployer state."
+  }
+}
+
+# This is the object the workload zone publishes when it does not use Azure
+# NetApp Files: empty strings, size_in_tb as a string, and no qos_type. It must
+# keep converting to the declared type, which happens whatever the NFS provider.
+run "workload_zone_without_netapp_files_converts" {
+  command = plan
+
+  variables {
+    naming = run.names.naming
+    landscape_tfstate = {
+      vnet_sap_arm_id            = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01"
+      storageaccount_name        = "stlandscapediag"
+      storageaccount_rg_name     = "rg-landscape"
+      sid_public_key_secret_name = "sid-public-key"
+      ANF_pool_settings = {
+        use_ANF             = false
+        account_name        = ""
+        account_id          = ""
+        pool_name           = ""
+        service_level       = ""
+        size_in_tb          = ""
+        subnet_id           = ""
+        resource_group_name = ""
+        location            = ""
+      }
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_netapp_volume.sapmnt) == 0
+    error_message = "No sapmnt volume may be planned when the workload zone does not use Azure NetApp Files."
+  }
+}

@@ -115,8 +115,14 @@ variable "db_subnet"                                    {
                                                           type        = any
                                                         }
 variable "deployer_tfstate"                             {
-                                                          description = "Outputs of the deployer Terraform state. Untyped until the deployer publishes a versioned capability contract"
-                                                          type        = any
+                                                          description = "Outputs of the deployer state, as returned by the sap_capabilities module, or an empty object when no deployer state is used. Only the attributes this module reads are declared; Terraform discards the rest. An attribute missing from an older state takes its default"
+                                                          type        = object({
+                                                                          network_security_perimeter_deployment = optional(bool, false)
+                                                                          network_security_perimeter_id         = optional(string, "")
+                                                                          network_security_access_mode          = optional(string, "")
+                                                                        })
+                                                          default     = {}
+                                                          nullable    = false
                                                         }
 variable "deploy_application_security_groups"           {
                                                           description = "Defines if application security groups should be deployed"
@@ -198,8 +204,31 @@ variable "infrastructure"                               {
                                                                         })
                                                         }
 variable "landscape_tfstate"                            {
-                                                          description = "Outputs of the workload zone Terraform state. Untyped until the workload zone publishes a versioned capability contract"
-                                                          type        = any
+                                                          description = "Outputs of the workload zone state, as returned by the sap_capabilities module. Only the attributes this module reads are declared; Terraform discards the rest. An attribute missing from an older state takes its default. use_separate_storage_subnet is null in a state that predates it, and ANF_pool_settings holds empty strings when the workload zone does not use Azure NetApp Files"
+                                                          type        = object({
+                                                                          automation_version          = optional(string)
+                                                                          admin_subnet_id             = optional(string, "")
+                                                                          app_subnet_id               = optional(string, "")
+                                                                          db_subnet_id                = optional(string, "")
+                                                                          web_subnet_id               = optional(string, "")
+                                                                          subnet_mgmt_id              = optional(string, "")
+                                                                          dns_label                   = optional(string, "")
+                                                                          dns_resource_group_name     = optional(string, "")
+                                                                          privatelink_file_id         = optional(string, "")
+                                                                          use_separate_storage_subnet = optional(bool)
+                                                                          ANF_pool_settings           = optional(object({
+                                                                                                          account_id          = optional(string, "")
+                                                                                                          account_name        = optional(string, "")
+                                                                                                          location            = optional(string, "")
+                                                                                                          pool_name           = optional(string, "")
+                                                                                                          qos_type            = optional(string, "MANUAL")
+                                                                                                          resource_group_name = optional(string, "")
+                                                                                                          service_level       = optional(string, "")
+                                                                                                          subnet_id           = optional(string, "")
+                                                                                                        }), {})
+                                                                        })
+                                                          default     = {}
+                                                          nullable    = false
                                                         }
 variable "license_type"                                 {
                                                           description = "Specifies the license type for the OS"

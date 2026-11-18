@@ -255,3 +255,44 @@ run "hana_platform_plans_no_database_servers" {
     error_message = "No disks may be planned for the HANA platform."
   }
 }
+
+# The workload zone state is typed. A state written before the DNS attributes
+# existed takes their empty defaults, so no DNS record is registered even when
+# registration is switched on.
+run "state_without_dns_attributes_registers_no_dns_record" {
+  command = plan
+
+  variables {
+    naming            = run.names.naming
+    dns_settings      = { register_virtual_network_to_dns = true }
+    landscape_tfstate = {}
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_a_record.db) == 0
+    error_message = "Without a DNS label in the workload zone state no DNS record may be planned."
+  }
+}
+
+run "state_with_dns_label_registers_the_database_record" {
+  command = plan
+
+  variables {
+    naming       = run.names.naming
+    dns_settings = { register_virtual_network_to_dns = true }
+    landscape_tfstate = {
+      dns_label               = "sap.contoso.net"
+      dns_resource_group_name = "rg-dns"
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_a_record.db) == 1
+    error_message = "With a DNS label in the workload zone state the database load balancer must be registered."
+  }
+
+  assert {
+    condition     = azurerm_private_dns_a_record.db[0].zone_name == "sap.contoso.net" && azurerm_private_dns_a_record.db[0].resource_group_name == "rg-dns"
+    error_message = "The DNS record must use the zone and resource group from the workload zone state."
+  }
+}

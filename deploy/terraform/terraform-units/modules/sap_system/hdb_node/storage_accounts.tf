@@ -113,7 +113,7 @@ resource "azurerm_private_endpoint" "hanashared" {
   resource_group_name                  = var.resource_group[0].name
   location                             = var.resource_group[0].location
 
-  subnet_id                            = try(var.landscape_tfstate.use_separate_storage_subnet, false) ? (
+  subnet_id                            = var.landscape_tfstate.use_separate_storage_subnet == true ? (
                                          coalesce(var.infrastructure.virtual_networks.sap.subnet_endpoint.id, var.infrastructure.virtual_networks.sap.subnet_endpoint.id_in_workload, var.infrastructure.virtual_networks.sap.subnet_storage.id, var.infrastructure.virtual_networks.sap.subnet_storage.id_in_workload) ) : (
                                          coalesce(var.infrastructure.virtual_networks.sap.subnet_endpoint.id, var.infrastructure.virtual_networks.sap.subnet_endpoint.id_in_workload, var.infrastructure.virtual_networks.sap.subnet_db.id, var.infrastructure.virtual_networks.sap.subnet_db.id_in_workload, var.infrastructure.virtual_networks.sap.subnet_app.id, var.infrastructure.virtual_networks.sap.subnet_app.id_in_workload)
                                        )

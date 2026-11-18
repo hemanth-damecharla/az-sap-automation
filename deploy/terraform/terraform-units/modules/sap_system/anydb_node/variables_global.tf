@@ -115,8 +115,13 @@ variable "infrastructure"                               {
                                                                         })
                                                         }
 variable "landscape_tfstate"                            {
-                                                          description = "Outputs of the workload zone Terraform state. Untyped until the workload zone publishes a versioned capability contract"
-                                                          type        = any
+                                                          description = "Outputs of the workload zone state, as returned by the sap_capabilities module. Only the attributes this module reads are declared; Terraform discards the rest. An attribute missing from an older state takes its default"
+                                                          type        = object({
+                                                                          dns_label               = optional(string, "")
+                                                                          dns_resource_group_name = optional(string, "")
+                                                                        })
+                                                          default     = {}
+                                                          nullable    = false
                                                         }
 variable "license_type"                                 {
                                                           description = "Specifies the license type for the OS"

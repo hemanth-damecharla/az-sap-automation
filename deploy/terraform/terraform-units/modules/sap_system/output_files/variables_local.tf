@@ -13,7 +13,6 @@ locals {
   key_vault_resource_group             = split("/", var.sid_keyvault_user_id)[4]
   key_vault_subscription_id            = split("/", var.sid_keyvault_user_id)[2]
 
-  landscape_tfstate                    = var.landscape_tfstate
   ips_dbnodes_admin                    = var.database_admin_ips
 
 

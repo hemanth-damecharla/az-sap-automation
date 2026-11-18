@@ -358,8 +358,15 @@ variable "is_single_node_hana"                   {
                                                  }
 
 variable "deployer_tfstate"                      {
-                                                   description = "Outputs of the deployer Terraform state. Untyped until the deployer publishes a versioned capability contract"
-                                                   type        = any
+                                                   description = "Outputs of the deployer state, as returned by the sap_capabilities module, or an empty object when no deployer state is used. Only the attributes this module reads are declared; Terraform discards the rest. An attribute missing from an older state takes its default"
+                                                   type        = object({
+                                                                   network_security_perimeter_deployment = optional(bool, false)
+                                                                   network_security_perimeter_id         = optional(string, "")
+                                                                   network_security_access_mode          = optional(string, "")
+                                                                   firewall_id                           = optional(string, "")
+                                                                 })
+                                                   default     = {}
+                                                   nullable    = false
                                                  }
 
 variable "naming"                                {
@@ -496,8 +503,36 @@ variable "deploy_application_security_groups"    {
 
 
 variable "landscape_tfstate"                     {
-                                                    description = "Landscape remote tfstate file"
-                                                    type        = any
+                                                    description = "Outputs of the workload zone state, as returned by the sap_capabilities module. Only the attributes this module reads are declared; Terraform discards the rest. An attribute missing from an older state takes its default. use_separate_storage_subnet, ANF_pool_settings and the SID secret names are null in a state that predates them"
+                                                    type        = object({
+                                                                    vnet_sap_arm_id                 = optional(string, "")
+                                                                    route_table_id                  = optional(string, "")
+                                                                    public_network_access_enabled   = optional(bool, true)
+                                                                    use_separate_storage_subnet     = optional(bool)
+                                                                    admin_subnet_id                 = optional(string, "")
+                                                                    app_subnet_id                   = optional(string, "")
+                                                                    db_subnet_id                    = optional(string, "")
+                                                                    web_subnet_id                   = optional(string, "")
+                                                                    subnet_mgmt_id                  = optional(string, "")
+                                                                    privatelink_file_id             = optional(string, "")
+                                                                    storageaccount_name             = optional(string, "")
+                                                                    storageaccount_rg_name          = optional(string, "")
+                                                                    landscape_key_vault_user_arm_id = optional(string, "")
+                                                                    sid_username_secret_name        = optional(string)
+                                                                    sid_password_secret_name        = optional(string)
+                                                                    sid_public_key_secret_name      = optional(string, "")
+                                                                    ANF_pool_settings               = optional(object({
+                                                                                                        account_name        = optional(string, "")
+                                                                                                        location            = optional(string, "")
+                                                                                                        pool_name           = optional(string, "")
+                                                                                                        qos_type            = optional(string, "MANUAL")
+                                                                                                        resource_group_name = optional(string, "")
+                                                                                                        service_level       = optional(string, "")
+                                                                                                        subnet_id           = optional(string, "")
+                                                                                                      }))
+                                                                  })
+                                                    default     = {}
+                                                    nullable    = false
                                                     validation {
                                                                  condition = (
                                                                      length(trimspace(try(var.landscape_tfstate.vnet_sap_arm_id, ""))) != 0

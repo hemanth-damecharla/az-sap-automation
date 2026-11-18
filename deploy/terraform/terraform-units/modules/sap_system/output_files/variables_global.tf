@@ -240,8 +240,12 @@ variable "iSCSI_servers"                        {
                                                   default     = []
                                                 }
 variable "landscape_tfstate"                    {
-                                                  description = "Outputs of the workload zone Terraform state. Untyped until the workload zone publishes a versioned capability contract"
-                                                  type        = any
+                                                  description = "Outputs of the workload zone state, as returned by the sap_capabilities module. Only the attributes this module reads are declared; Terraform discards the rest. An attribute missing from an older state takes its default"
+                                                  type        = object({
+                                                                  dns_label = optional(string, "")
+                                                                })
+                                                  default     = {}
+                                                  nullable    = false
                                                 }
 variable "loadbalancers"                        {
                                                   description = "Load balancers of the database tier, as returned by the hdb_node module"

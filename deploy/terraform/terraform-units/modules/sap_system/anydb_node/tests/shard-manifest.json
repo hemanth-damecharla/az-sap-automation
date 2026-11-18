@@ -1,7 +1,7 @@
 {
   "module": "deploy/terraform/terraform-units/modules/sap_system/anydb_node",
   "shards": [
-    { "file": "contract.tftest.hcl", "runs": 7 }
+    { "file": "contract.tftest.hcl", "runs": 9 }
   ],
-  "total_runs": 7
+  "total_runs": 9
 }

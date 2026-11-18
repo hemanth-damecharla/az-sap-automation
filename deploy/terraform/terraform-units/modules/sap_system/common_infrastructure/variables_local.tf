@@ -386,7 +386,7 @@ locals {
   sapmnt_private_endpoint_subnet_id    = local.create_sapmnt_private_endpoint ? (
                                           var.infrastructure.virtual_networks.sap.subnet_endpoint.defined ? (
                                             azurerm_subnet.endpoint[0].id) : (
-                                            try(var.landscape_tfstate.use_separate_storage_subnet, false) ? (
+                                            var.landscape_tfstate.use_separate_storage_subnet == true ? (
                                               coalesce(var.infrastructure.virtual_networks.sap.subnet_endpoint.id, var.infrastructure.virtual_networks.sap.subnet_endpoint.id_in_workload, var.infrastructure.virtual_networks.sap.subnet_storage.id, var.infrastructure.virtual_networks.sap.subnet_storage.id_in_workload)) : (
                                               coalesce(var.infrastructure.virtual_networks.sap.subnet_endpoint.id, var.infrastructure.virtual_networks.sap.subnet_endpoint.id_in_workload, var.infrastructure.virtual_networks.sap.subnet_app.id, var.infrastructure.virtual_networks.sap.subnet_app.id_in_workload)
                                             )

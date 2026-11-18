@@ -17,8 +17,8 @@ data "azurerm_key_vault_secret" "sid_pk" {
 
 data "azurerm_key_vault_secret" "sid_username" {
   count                                = local.use_local_credentials ? 0 : 1
-  name                                 = try(
-                                           var.landscape_tfstate.sid_username_secret_name,
+  name                                 = var.landscape_tfstate.sid_username_secret_name != null ? (
+                                           var.landscape_tfstate.sid_username_secret_name) : (
                                            trimprefix(format("%s-sid-username", var.naming.prefix.WORKLOAD_ZONE), "-")
                                          )
   key_vault_id                         = var.key_vault.user.id
@@ -26,8 +26,8 @@ data "azurerm_key_vault_secret" "sid_username" {
 
 data "azurerm_key_vault_secret" "sid_password" {
   count                                = local.use_local_credentials ? 0 : 1
-  name                                 = try(
-                                           var.landscape_tfstate.sid_password_secret_name,
+  name                                 = var.landscape_tfstate.sid_password_secret_name != null ? (
+                                           var.landscape_tfstate.sid_password_secret_name) : (
                                            trimprefix(format("%s-sid-password", var.naming.prefix.WORKLOAD_ZONE), "-")
                                          )
   key_vault_id                         = var.key_vault.user.id

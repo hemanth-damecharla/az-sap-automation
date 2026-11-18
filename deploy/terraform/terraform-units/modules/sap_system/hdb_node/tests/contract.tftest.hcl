@@ -203,3 +203,131 @@ run "other_platform_plans_no_database_servers" {
     error_message = "No DNS records may be reported for another database platform."
   }
 }
+
+# The upstream states are typed. A deployer state that is absent (null) or empty
+# and a workload zone state written before these attributes existed take the
+# declared defaults.
+run "absent_and_older_states_take_defaults" {
+  command = plan
+
+  variables {
+    naming            = run.names.naming
+    deployer_tfstate  = {}
+    landscape_tfstate = {}
+  }
+
+  assert {
+    condition     = length(data.azurerm_network_security_perimeter.perimeter) == 0
+    error_message = "Without a deployer state no network security perimeter may be looked up."
+  }
+
+  assert {
+    condition     = length(output.database_server_vm_names) == 1
+    error_message = "The database server must still be planned from an empty workload zone state."
+  }
+}
+
+# The deployer state switches the network security perimeter on.
+run "deployer_state_with_perimeter_looks_up_the_perimeter" {
+  command = plan
+
+  override_data {
+    target = data.azurerm_network_security_perimeter.perimeter
+    values = {
+      id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/networkSecurityPerimeters/nsp-dev"
+    }
+  }
+
+  variables {
+    naming = run.names.naming
+    deployer_tfstate = {
+      network_security_perimeter_deployment = true
+      network_security_perimeter_id         = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/networkSecurityPerimeters/nsp-dev"
+      network_security_access_mode          = "Learning"
+    }
+  }
+
+  assert {
+    condition     = length(data.azurerm_network_security_perimeter.perimeter) == 1
+    error_message = "A deployer state with a network security perimeter must make the module look it up."
+  }
+
+  assert {
+    condition     = data.azurerm_network_security_perimeter.perimeter[0].name == "nsp-dev" && data.azurerm_network_security_perimeter.perimeter[0].resource_group_name == "rg-mgmt"
+    error_message = "The perimeter must be looked up by the name and resource group in the deployer state."
+  }
+}
+
+# This is the object the workload zone publishes when it does not use Azure
+# NetApp Files: empty strings, size_in_tb as a string, and no qos_type. It must
+# keep converting to the declared type.
+run "workload_zone_without_netapp_files_converts" {
+  command = plan
+
+  variables {
+    naming = run.names.naming
+    landscape_tfstate = {
+      ANF_pool_settings = {
+        use_ANF             = false
+        account_name        = ""
+        account_id          = ""
+        pool_name           = ""
+        service_level       = ""
+        size_in_tb          = ""
+        subnet_id           = ""
+        resource_group_name = ""
+        location            = ""
+      }
+    }
+  }
+
+  assert {
+    condition     = length(output.hana_data_ANF_volumes) == 0 && length(output.hana_log_ANF_volumes) == 0
+    error_message = "No Azure NetApp Files volume may be planned when the workload zone does not use them."
+  }
+}
+
+# use_separate_storage_subnet decides whether the storage interfaces are
+# planned. A state that predates the attribute leaves it null, and the module
+# then falls back to its own scale-out storage subnet rule.
+run "separate_storage_subnet_plans_storage_interfaces" {
+  command = plan
+
+  variables {
+    naming             = run.names.naming
+    enable_storage_nic = true
+    storage_subnet_id  = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01/subnets/storage"
+    landscape_tfstate  = { use_separate_storage_subnet = true }
+    infrastructure = {
+      region = "westeurope"
+      virtual_networks = {
+        sap = {
+          subnet_storage = {
+            id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01/subnets/storage"
+            prefix = "10.1.2.0/24"
+          }
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_network_interface.nics_dbnodes_storage) == 1
+    error_message = "With a separate storage subnet in the workload zone one storage interface per server must be planned."
+  }
+}
+
+run "state_without_storage_subnet_flag_uses_the_module_rule" {
+  command = plan
+
+  variables {
+    naming             = run.names.naming
+    enable_storage_nic = true
+    landscape_tfstate  = {}
+  }
+
+  assert {
+    condition     = length(azurerm_network_interface.nics_dbnodes_storage) == 0
+    error_message = "Without the flag and outside a scale-out deployment no storage interface may be planned."
+  }
+}
