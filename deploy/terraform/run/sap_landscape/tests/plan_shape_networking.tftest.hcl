@@ -183,7 +183,7 @@ override_data {
       subnet_bastion_address_prefixes                       = ["10.0.1.0/26"]
       subnet_mgmt_address_prefixes                          = ["10.0.0.0/24"]
       subnet_mgmt_id                                        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-mgmt"
-      subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+      subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
       vnet_mgmt_id                                          = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt"
     }
   }
@@ -1003,7 +1003,7 @@ run "deployer_state_is_read_from_the_capability_contract" {
           }
           virtual_machines           = {
             ids                 = []
-            public_ip_addresses = []
+            public_ip_addresses = ""
             username            = ""
             extension_ids       = []
           }

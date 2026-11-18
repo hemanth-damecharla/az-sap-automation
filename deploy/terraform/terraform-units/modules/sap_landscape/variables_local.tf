@@ -24,13 +24,13 @@ locals {
   region                                          = var.infrastructure.region
 
   // Firewall
-  firewall_exists                                 = var.use_deployer ? length(contains(keys(var.deployer_tfstate),"firewall_id") ? var.deployer_tfstate.firewall_id : "") > 0 : false
+  firewall_exists                                 = var.use_deployer ? length(var.deployer_tfstate.firewall_id) > 0 : false
   firewall_id                                     = local.firewall_exists ? try(var.deployer_tfstate.firewall_id, "") : ""
   firewall_ip                                     = local.firewall_exists ? try(var.deployer_tfstate.firewall_ip, "") : ""
   firewall_name                                   = local.firewall_exists ? try(split("/", local.firewall_id)[8], "") : ""
   firewall_rgname                                 = local.firewall_exists ? try(split("/", local.firewall_id)[4], "") : ""
   firewall_service_tags                           = format("AzureCloud.%s", local.region)
-  use_deployer                                    = length(var.deployer_tfstate) > 0
+  use_deployer                                    = var.use_deployer
   deployer_public_ip_address                      = try(var.deployer_tfstate.deployer_public_ip_address, "")
   deployer_subnet_management_id                   = try(var.deployer_tfstate.subnet_mgmt_id, "")
   deployer_virtual_network_id                     = try(var.deployer_tfstate.vnet_mgmt_id, "")

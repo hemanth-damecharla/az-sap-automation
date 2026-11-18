@@ -59,7 +59,7 @@ resource "azurerm_key_vault" "kv_user" {
                                               local.deployer_subnet_management_id,
                                               var.infrastructure.additional_subnet_id
                                             ]),
-                                            try(var.deployer_tfstate.subnets_to_add_to_firewall_for_key_vaults_and_storage, [])
+                                            var.deployer_tfstate.subnets_to_add_to_firewall_for_keyvaults_and_storage
                                           ))
             }
 
@@ -183,7 +183,7 @@ resource "azurerm_role_assignment" "role_assignment_spn_officer" {
 resource "azurerm_role_assignment" "kv_user_msi_rbac" {
   provider                             = azurerm.deployer
 
-  count                               = !var.key_vault.user.exists && var.key_vault.enable_rbac_authorization && var.options.assign_permissions && (contains(keys(var.deployer_tfstate),"deployer_uai") ? length(var.deployer_tfstate.deployer_uai.principal_id) > 0 : false) ? 1 : 0
+  count                               = !var.key_vault.user.exists && var.key_vault.enable_rbac_authorization && var.options.assign_permissions && (var.deployer_tfstate.deployer_uai != null ? length(var.deployer_tfstate.deployer_uai.principal_id) > 0 : false) ? 1 : 0
   scope                               = var.key_vault.user.exists ? (
                                            data.azurerm_key_vault.kv_user[0].id) : (
                                            azurerm_key_vault.kv_user[0].id
@@ -275,7 +275,7 @@ resource "azurerm_key_vault_access_policy" "kv_user_spn" {
 }
 resource "azurerm_key_vault_access_policy" "kv_user_msi" {
   provider                             = azurerm.main
-  count                                = !var.key_vault.user.exists && !var.key_vault.enable_rbac_authorization && var.options.assign_permissions && (contains(keys(var.deployer_tfstate), "deployer_uai") ? length(var.deployer_tfstate.deployer_uai.principal_id) > 0 : false) ? 1 : 0
+  count                                = !var.key_vault.user.exists && !var.key_vault.enable_rbac_authorization && var.options.assign_permissions && (var.deployer_tfstate.deployer_uai != null ? length(var.deployer_tfstate.deployer_uai.principal_id) > 0 : false) ? 1 : 0
   key_vault_id                         = var.key_vault.user.exists ? (
                                            data.azurerm_key_vault.kv_user[0].id) : (
                                            azurerm_key_vault.kv_user[0].id

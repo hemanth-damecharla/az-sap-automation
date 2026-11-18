@@ -32,7 +32,7 @@ module "sap_landscape" {
   ANF_settings                                 = local.ANF_settings
   authentication                               = local.authentication
   create_transport_storage                     = var.create_transport_storage
-  deployer_tfstate                             = try(module.sap_capabilities.deployer, [])
+  deployer_tfstate                             = module.sap_capabilities.deployer
   diagnostics_storage_account                  = local.diagnostics_storage_account
   enable_firewall_for_keyvaults_and_storage    = var.enable_firewall_for_keyvaults_and_storage
   infrastructure                               = local.infrastructure

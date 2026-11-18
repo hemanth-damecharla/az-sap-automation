@@ -193,7 +193,7 @@ variables {
     subnet_bastion_address_prefixes                      = []
     subnet_mgmt_address_prefixes                         = []
     subnet_mgmt_id                                       = ""
-    subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+    subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
     vnet_mgmt_id                                         = ""
   }
   use_deployer     = false

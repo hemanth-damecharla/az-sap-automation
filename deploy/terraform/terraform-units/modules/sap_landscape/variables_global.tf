@@ -457,8 +457,29 @@ variable "terraform_template_version"         {
                                                }
 
 variable "deployer_tfstate"            {
-                                          description = "Outputs of the deployer Terraform state. Untyped until the deployer publishes a versioned capability contract; only the attributes this module reads are used"
-                                          type        = any
+                                          description = "Outputs of the deployer state, as returned by the sap_capabilities module, or an empty object when no deployer state is used. Only the attributes this module reads are declared; Terraform discards the rest. An attribute missing from an older state takes its default. deployer_uai is null when the deployer state does not publish it."
+                                          type        = object({
+                                                          application_configuration_id                          = optional(string, "")
+                                                          deployer_kv_user_arm_id                               = optional(string, "")
+                                                          deployer_kv_user_name                                 = optional(string, "")
+                                                          deployer_public_ip_address                            = optional(string, "")
+                                                          deployer_uai                                          = optional(object({
+                                                                                                                    principal_id = optional(string)
+                                                                                                                    tenant_id    = optional(string)
+                                                                                                                  }))
+                                                          firewall_id                                           = optional(string, "")
+                                                          firewall_ip                                           = optional(string, "")
+                                                          network_security_access_mode                          = optional(string, "")
+                                                          network_security_perimeter_deployment                 = optional(bool, false)
+                                                          network_security_perimeter_id                         = optional(string, "")
+                                                          subnet_bastion_address_prefixes                       = optional(list(string), [])
+                                                          subnet_mgmt_address_prefixes                          = optional(list(string), [])
+                                                          subnet_mgmt_id                                        = optional(string, "")
+                                                          vnet_mgmt_id                                          = optional(string, "")
+                                                          subnets_to_add_to_firewall_for_keyvaults_and_storage  = optional(list(string), [])
+                                                        })
+                                          default     = {}
+                                          nullable    = false
                                         }
 
 variable "naming"                      {

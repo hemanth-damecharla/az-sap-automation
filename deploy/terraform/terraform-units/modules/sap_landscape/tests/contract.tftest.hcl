@@ -192,7 +192,7 @@ variables {
     subnet_bastion_address_prefixes                      = []
     subnet_mgmt_address_prefixes                         = []
     subnet_mgmt_id                                       = ""
-    subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+    subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
     vnet_mgmt_id                                         = ""
   }
   use_deployer     = false
@@ -558,4 +558,127 @@ run "rejects_unknown_replication_type" {
   }
 
   expect_failures = [var.storage_account_replication_type]
+}
+
+# The deployer state is typed. deployer_uai is null when the deployer state does
+# not publish it, and no role is then assigned to the deployer identity.
+run "deployer_state_without_identity_assigns_no_roles" {
+  command = plan
+
+  variables {
+    options = {
+      zones                     = []
+      user_assigned_identity_id = ""
+      assign_permissions        = true
+      use_spn                   = false
+      spn_id                    = ""
+    }
+    deployer_tfstate = {}
+  }
+
+  assert {
+    condition     = length(azurerm_role_assignment.resource_group_user_access_admin) == 0
+    error_message = "Without a deployer identity no role may be assigned to it."
+  }
+
+  assert {
+    condition     = !local.firewall_exists
+    error_message = "Without a deployer state no firewall may be used."
+  }
+}
+
+run "deployer_state_reaches_roles_firewall_and_rules" {
+  command = plan
+
+  variables {
+    options = {
+      zones                     = []
+      user_assigned_identity_id = ""
+      assign_permissions        = true
+      use_spn                   = false
+      spn_id                    = ""
+    }
+    use_deployer = true
+    deployer_tfstate = {
+      deployer_uai                    = { principal_id = "33333333-3333-3333-3333-333333333333", tenant_id = "11111111-1111-1111-1111-111111111111" }
+      firewall_id                     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/azureFirewalls/fw-mgmt"
+      subnet_mgmt_address_prefixes    = ["10.0.0.0/24"]
+      subnet_bastion_address_prefixes = ["10.0.1.0/26"]
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_role_assignment.resource_group_user_access_admin) == 1 && azurerm_role_assignment.resource_group_user_access_admin[0].principal_id == "33333333-3333-3333-3333-333333333333"
+    error_message = "The deployer identity must be granted access to the resource group."
+  }
+
+  assert {
+    condition     = local.firewall_exists && local.firewall_id == "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/azureFirewalls/fw-mgmt"
+    error_message = "The firewall in the deployer state must be used."
+  }
+
+  assert {
+    condition     = contains(azurerm_network_security_rule.nsr_controlplane_app[0].source_address_prefixes, "10.0.0.0/24") && contains(azurerm_network_security_rule.nsr_controlplane_app[0].source_address_prefixes, "10.0.1.0/26")
+    error_message = "The management and bastion subnets of the deployer must be allowed into the application subnet."
+  }
+}
+
+# use_deployer, not the content of the deployer state, decides whether the
+# deployer subnets are allowed. The root module sets both from the same key.
+run "use_deployer_false_ignores_the_deployer_subnets" {
+  command = plan
+
+  variables {
+    use_deployer = false
+    deployer_tfstate = {
+      deployer_uai                    = { principal_id = "33333333-3333-3333-3333-333333333333", tenant_id = "11111111-1111-1111-1111-111111111111" }
+      firewall_id                     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/azureFirewalls/fw-mgmt"
+      subnet_mgmt_address_prefixes    = ["10.0.0.0/24"]
+      subnet_bastion_address_prefixes = ["10.0.1.0/26"]
+    }
+  }
+
+  assert {
+    condition     = !contains(azurerm_network_security_rule.nsr_controlplane_app[0].source_address_prefixes, "10.0.0.0/24")
+    error_message = "Without use_deployer the deployer subnets must not be allowed into the application subnet."
+  }
+
+  assert {
+    condition     = !local.firewall_exists
+    error_message = "Without use_deployer no firewall may be used."
+  }
+}
+
+# The deployer publishes the subnets that must reach key vaults and storage as
+# subnets_to_add_to_firewall_for_keyvaults_and_storage. They are allowed through
+# the network rules of a new workload zone key vault. Existing key vaults ignore
+# changes to their network rules.
+run "deployer_subnets_reach_the_key_vault_network_rules" {
+  command = plan
+
+  # The workload zone subnets in the same rule set are only known after apply.
+  override_resource {
+    target          = azurerm_subnet.db
+    override_during = plan
+    values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-sap/providers/Microsoft.Network/virtualNetworks/vnet-sap/subnets/db" }
+  }
+
+  override_resource {
+    target          = azurerm_subnet.app
+    override_during = plan
+    values          = { id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-sap/providers/Microsoft.Network/virtualNetworks/vnet-sap/subnets/app" }
+  }
+
+  variables {
+    deployer_tfstate = {
+      subnets_to_add_to_firewall_for_keyvaults_and_storage = [
+        "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-agent"
+      ]
+    }
+  }
+
+  assert {
+    condition     = contains(azurerm_key_vault.kv_user[0].network_acls[0].virtual_network_subnet_ids, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-agent")
+    error_message = "The subnets published by the deployer must be allowed through the key vault network rules."
+  }
 }

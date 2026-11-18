@@ -183,7 +183,7 @@ override_data {
       subnet_bastion_address_prefixes                       = ["10.0.1.0/26"]
       subnet_mgmt_address_prefixes                          = ["10.0.0.0/24"]
       subnet_mgmt_id                                        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-mgmt"
-      subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+      subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
       vnet_mgmt_id                                          = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt"
     }
   }
@@ -403,7 +403,7 @@ run "cross_subscription_dns_and_keyvault_resolution" {
         subnet_bastion_address_prefixes                       = ["10.0.1.0/26"]
         subnet_mgmt_address_prefixes                          = ["10.0.0.0/24"]
         subnet_mgmt_id                                        = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-mgmt"
-        subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+        subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
         vnet_mgmt_id                                          = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt"
       }
     }
@@ -486,7 +486,7 @@ run "full_four_subscription_topology_resolves_all_distinct" {
         subnet_bastion_address_prefixes                       = ["10.0.1.0/26"]
         subnet_mgmt_address_prefixes                          = ["10.0.0.0/24"]
         subnet_mgmt_id                                        = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-mgmt"
-        subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+        subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
         vnet_mgmt_id                                          = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt"
       }
     }
@@ -626,7 +626,7 @@ run "cross_sub_full_4_subscription_topology" {
         subnet_bastion_address_prefixes                       = ["10.0.1.0/26"]
         subnet_mgmt_address_prefixes                          = ["10.0.0.0/24"]
         subnet_mgmt_id                                        = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-mgmt"
-        subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+        subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
         vnet_mgmt_id                                          = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt"
       }
     }
@@ -799,7 +799,7 @@ run "apply_cross_sub_storage_creation_with_brownfield_dns" {
         subnet_bastion_address_prefixes                       = ["10.0.1.0/26"]
         subnet_mgmt_address_prefixes                          = ["10.0.0.0/24"]
         subnet_mgmt_id                                        = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-mgmt"
-        subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+        subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
         vnet_mgmt_id                                          = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt"
       }
     }
@@ -881,7 +881,7 @@ run "apply_cross_sub_keyvault_reuse_with_brownfield_dns_zone" {
         subnet_bastion_address_prefixes                       = ["10.0.1.0/26"]
         subnet_mgmt_address_prefixes                          = ["10.0.0.0/24"]
         subnet_mgmt_id                                        = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-mgmt"
-        subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+        subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
         vnet_mgmt_id                                          = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt"
       }
     }
@@ -971,7 +971,7 @@ run "apply_cross_sub_anf_with_multi_subscription_topology" {
         subnet_bastion_address_prefixes                       = ["10.0.1.0/26"]
         subnet_mgmt_address_prefixes                          = ["10.0.0.0/24"]
         subnet_mgmt_id                                        = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-mgmt"
-        subnets_to_add_to_firewall_for_key_vaults_and_storage = []
+        subnets_to_add_to_firewall_for_keyvaults_and_storage  = []
         vnet_mgmt_id                                          = "/subscriptions/DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt"
       }
     }
