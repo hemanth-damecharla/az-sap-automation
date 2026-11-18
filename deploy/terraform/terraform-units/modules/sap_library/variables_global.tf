@@ -243,9 +243,27 @@ variable "naming"                     {
                                       }
 
 variable "deployer_tfstate"           {
-                                        description = "Outputs of the deployer Terraform state. Untyped until the deployer publishes a versioned capability contract; only the attributes this module reads are used"
-                                        type        = any
+                                        description = "Outputs of the deployer state, as returned by the sap_capabilities module, or an empty object when no deployer state is used. Only the attributes this module reads are declared; Terraform discards the rest. An attribute missing from an older state takes its default. additional_network_id is null when the deployer state does not publish it, which is not the same as an empty value"
+                                        type        = object({
+                                                        Agent_IP                                             = optional(string, "")
+                                                        additional_network_id                                = optional(string)
+                                                        application_configuration_id                         = optional(string, "")
+                                                        deployer_kv_user_arm_id                              = optional(string, "")
+                                                        deployer_msi_id                                      = optional(string, "")
+                                                        deployer_public_ip_address                           = optional(string, "")
+                                                        enable_firewall_for_keyvaults_and_storage            = optional(bool, false)
+                                                        endpoint_subnet_id                                   = optional(string, "")
+                                                        network_security_access_mode                         = optional(string, "")
+                                                        network_security_perimeter_deployment                = optional(bool, false)
+                                                        network_security_perimeter_id                        = optional(string, "")
+                                                        set_secret_expiry                                    = optional(bool, false)
+                                                        subnet_mgmt_id                                       = optional(string, "")
+                                                        subnet_webapp_id                                     = optional(string, "")
+                                                        subnets_to_add_to_firewall_for_keyvaults_and_storage = optional(list(string), [])
+                                                        vnet_mgmt_id                                         = optional(string, "")
+                                                      })
                                         default     = {}
+                                        nullable    = false
                                       }
 
 variable "use_private_endpoint"       {

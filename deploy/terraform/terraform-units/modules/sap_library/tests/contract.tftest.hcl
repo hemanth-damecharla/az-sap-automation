@@ -166,3 +166,182 @@ run "rejects_malformed_management_network_id" {
 
   expect_failures = [var.deployer]
 }
+
+# The deployer state is typed. additional_network_id keeps three meanings: not
+# published by the deployer state (null), published but empty, and a network.
+# The DNS links for the agent network depend on which one it is.
+# No deployer state: only the network given in dns_settings is linked.
+run "deployer_state_without_additional_network_links_no_agent_network" {
+  command = plan
+
+  variables {
+    dns_settings = {
+      register_storage_accounts_keyvaults_with_dns = true
+      create_privatelink_dns_zones                 = false
+      privatelink_dns_resourcegroup_name           = "rg-privatelink-dns"
+      management_dns_resourcegroup_name            = "rg-management-dns"
+      additional_network_id                        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-agent/providers/Microsoft.Network/virtualNetworks/vnet-agent"
+      dns_zone_names = {
+        appconfig_dns_zone_name = "privatelink.appconfig.example"
+        blob_dns_zone_name      = "privatelink.blob.example"
+        file_dns_zone_name      = "privatelink.file.example"
+        table_dns_zone_name     = "privatelink.table.example"
+        vault_dns_zone_name     = "privatelink.vault.example"
+      }
+    }
+    naming = {
+      separator         = "-"
+      prefix            = { LIBRARY = "MGMT-WEEU-SAP_LIBRARY" }
+      resource_prefixes = {
+        appconfig_link           = ""
+        dns_link                 = ""
+        library_rg               = ""
+        nic                      = ""
+        private_endpoint_nic     = ""
+        storage_private_link_sap = ""
+        storage_private_link_tf  = ""
+        storage_private_svc_sap  = ""
+        storage_private_svc_tf   = ""
+      }
+      resource_suffixes = {
+        appconfig_link           = "appconfig-link"
+        dns_link                 = "dns-link"
+        library_rg               = "library-rg"
+        nic                      = "nic"
+        private_endpoint_nic     = "private-endpoint-nic"
+        storage_private_link_sap = "storage-private-link-sap"
+        storage_private_link_tf  = "storage-private-link-tf"
+        storage_private_svc_sap  = "storage-private-svc-sap"
+        storage_private_svc_tf   = "storage-private-svc-tf"
+      }
+    }
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_zone_virtual_network_link.blob_agent) == 0
+    error_message = "Without additional_network_id in the deployer state the agent network link must not be planned."
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_zone_virtual_network_link.vnet_mgmt_blob-agent) == 0
+    error_message = "Without additional_network_id in the deployer state the deployer network link must not be planned."
+  }
+}
+
+# The deployer publishes an empty value when no additional network is configured.
+run "deployer_state_with_empty_additional_network_links_the_agent_network" {
+  command = plan
+
+  variables {
+    dns_settings = {
+      register_storage_accounts_keyvaults_with_dns = true
+      create_privatelink_dns_zones                 = false
+      privatelink_dns_resourcegroup_name           = "rg-privatelink-dns"
+      management_dns_resourcegroup_name            = "rg-management-dns"
+      additional_network_id                        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-agent/providers/Microsoft.Network/virtualNetworks/vnet-agent"
+      dns_zone_names = {
+        appconfig_dns_zone_name = "privatelink.appconfig.example"
+        blob_dns_zone_name      = "privatelink.blob.example"
+        file_dns_zone_name      = "privatelink.file.example"
+        table_dns_zone_name     = "privatelink.table.example"
+        vault_dns_zone_name     = "privatelink.vault.example"
+      }
+    }
+    naming = {
+      separator         = "-"
+      prefix            = { LIBRARY = "MGMT-WEEU-SAP_LIBRARY" }
+      resource_prefixes = {
+        appconfig_link           = ""
+        dns_link                 = ""
+        library_rg               = ""
+        nic                      = ""
+        private_endpoint_nic     = ""
+        storage_private_link_sap = ""
+        storage_private_link_tf  = ""
+        storage_private_svc_sap  = ""
+        storage_private_svc_tf   = ""
+      }
+      resource_suffixes = {
+        appconfig_link           = "appconfig-link"
+        dns_link                 = "dns-link"
+        library_rg               = "library-rg"
+        nic                      = "nic"
+        private_endpoint_nic     = "private-endpoint-nic"
+        storage_private_link_sap = "storage-private-link-sap"
+        storage_private_link_tf  = "storage-private-link-tf"
+        storage_private_svc_sap  = "storage-private-svc-sap"
+        storage_private_svc_tf   = "storage-private-svc-tf"
+      }
+    }
+    deployer_tfstate = { additional_network_id = "" }
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_zone_virtual_network_link.blob_agent) == 1
+    error_message = "An empty additional_network_id in the deployer state differs from dns_settings, so the agent network must be linked."
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_zone_virtual_network_link.vnet_mgmt_blob-agent) == 0
+    error_message = "An empty additional_network_id is not a network, so the deployer network link must not be planned."
+  }
+}
+
+# The deployer and dns_settings name the same network, which is linked once.
+run "deployer_state_with_the_same_network_links_it_once" {
+  command = plan
+
+  variables {
+    dns_settings = {
+      register_storage_accounts_keyvaults_with_dns = true
+      create_privatelink_dns_zones                 = false
+      privatelink_dns_resourcegroup_name           = "rg-privatelink-dns"
+      management_dns_resourcegroup_name            = "rg-management-dns"
+      additional_network_id                        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-agent/providers/Microsoft.Network/virtualNetworks/vnet-agent"
+      dns_zone_names = {
+        appconfig_dns_zone_name = "privatelink.appconfig.example"
+        blob_dns_zone_name      = "privatelink.blob.example"
+        file_dns_zone_name      = "privatelink.file.example"
+        table_dns_zone_name     = "privatelink.table.example"
+        vault_dns_zone_name     = "privatelink.vault.example"
+      }
+    }
+    naming = {
+      separator         = "-"
+      prefix            = { LIBRARY = "MGMT-WEEU-SAP_LIBRARY" }
+      resource_prefixes = {
+        appconfig_link           = ""
+        dns_link                 = ""
+        library_rg               = ""
+        nic                      = ""
+        private_endpoint_nic     = ""
+        storage_private_link_sap = ""
+        storage_private_link_tf  = ""
+        storage_private_svc_sap  = ""
+        storage_private_svc_tf   = ""
+      }
+      resource_suffixes = {
+        appconfig_link           = "appconfig-link"
+        dns_link                 = "dns-link"
+        library_rg               = "library-rg"
+        nic                      = "nic"
+        private_endpoint_nic     = "private-endpoint-nic"
+        storage_private_link_sap = "storage-private-link-sap"
+        storage_private_link_tf  = "storage-private-link-tf"
+        storage_private_svc_sap  = "storage-private-svc-sap"
+        storage_private_svc_tf   = "storage-private-svc-tf"
+      }
+    }
+    deployer_tfstate = { additional_network_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-agent/providers/Microsoft.Network/virtualNetworks/vnet-agent" }
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_zone_virtual_network_link.blob_agent) == 0
+    error_message = "When the deployer state and dns_settings name the same network the agent network link must not be duplicated."
+  }
+
+  assert {
+    condition     = length(azurerm_private_dns_zone_virtual_network_link.vnet_mgmt_blob-agent) == 1
+    error_message = "A network in the deployer state must be linked."
+  }
+}

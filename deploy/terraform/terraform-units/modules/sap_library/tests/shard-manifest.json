@@ -1,8 +1,8 @@
 {
   "module": "deploy/terraform/terraform-units/modules/sap_library",
   "shards": [
-    { "file": "contract.tftest.hcl", "runs": 9 },
+    { "file": "contract.tftest.hcl", "runs": 12 },
     { "file": "storage_network_access.tftest.hcl", "runs": 9 }
   ],
-  "total_runs": 18
+  "total_runs": 21
 }

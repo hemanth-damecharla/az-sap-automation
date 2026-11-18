@@ -27,7 +27,7 @@ module "sap_library" {
   Agent_IP                          = var.add_Agent_IP ? var.Agent_IP : ""
   bootstrap                         = true
   deployer                          = local.deployer
-  deployer_tfstate                  = try(module.sap_capabilities.deployer , {})
+  deployer_tfstate                  = module.sap_capabilities.deployer
   infrastructure                    = local.infrastructure
   key_vault                         = local.key_vault
   naming                            = length(var.name_override_file) > 0 ? local.custom_names : module.sap_namegenerator.naming
