@@ -33,8 +33,8 @@ locals {
   temp_infrastructure                  = {
                                            additional_network_id          = length(var.additional_network_id) > 0 ? (
                                                                              var.additional_network_id) : (
-                                                                             try(length(data.terraform_remote_state.deployer[0].outputs.additional_network_id) > 0, false) ? (
-                                                                               data.terraform_remote_state.deployer[0].outputs.additional_network_id) : (
+                                                                             try(length(module.sap_capabilities.deployer.additional_network_id) > 0, false) ? (
+                                                                               module.sap_capabilities.deployer.additional_network_id) : (
                                                                                ""))
                                            additional_subnet_id           = var.additional_subnet_id
                                            codename                       = var.codename
@@ -52,15 +52,15 @@ locals {
                                            user_assigned_identity_id      = var.user_assigned_identity_id
                                            application_configuration_id   = try(coalesce(
                                                                               var.application_configuration_id,
-                                                                              try(data.terraform_remote_state.deployer[0].outputs.application_configuration_id, "")
+                                                                              try(module.sap_capabilities.deployer.application_configuration_id, "")
                                                                             ), "")
 
                                            use_application_configuration  = length(try(coalesce(
                                                                               var.application_configuration_id,
-                                                                              try(data.terraform_remote_state.deployer[0].outputs.application_configuration_id, "")
+                                                                              try(module.sap_capabilities.deployer.application_configuration_id, "")
                                                                             ), "")) > 0 ? true : false
                                            workload_zone_name             = local.workload_zone_name
-                                           control_plane_name             = trimspace(coalesce(var.control_plane_name, try(data.terraform_remote_state.deployer[0].outputs.control_plane_name, ""), " "))
+                                           control_plane_name             = trimspace(coalesce(var.control_plane_name, try(module.sap_capabilities.deployer.control_plane_name, ""), " "))
                                            terraform_storage_account_name = local.tfstate_storage_account_name
                                            terraform_storage_account_id   = var.tfstate_resource_id
 
@@ -102,12 +102,12 @@ locals {
                                            spn                                    = {
 
                                                                                       id     = trimspace(coalesce(
-                                                                                                         try(contains(keys(data.terraform_remote_state.deployer[0].outputs), "deployer_kv_user_arm_id") ? data.terraform_remote_state.deployer[0].outputs.deployer_kv_user_arm_id : "",""),
+                                                                                                         try(contains(keys(module.sap_capabilities.deployer), "deployer_kv_user_arm_id") ? module.sap_capabilities.deployer.deployer_kv_user_arm_id : "",""),
                                                                                                          var.spn_keyvault_id,
                                                                                                          " ")
                                                                                                          )
                                                                                       exists = length(trimspace(coalesce(
-                                                                                                         try(contains(keys(data.terraform_remote_state.deployer[0].outputs), "deployer_kv_user_arm_id") ? data.terraform_remote_state.deployer[0].outputs.deployer_kv_user_arm_id : "",""),
+                                                                                                         try(contains(keys(module.sap_capabilities.deployer), "deployer_kv_user_arm_id") ? module.sap_capabilities.deployer.deployer_kv_user_arm_id : "",""),
                                                                                                          var.spn_keyvault_id,
                                                                                                          " ")
                                                                                                          )) > 0

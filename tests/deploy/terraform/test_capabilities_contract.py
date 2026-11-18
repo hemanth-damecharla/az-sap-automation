@@ -5,6 +5,10 @@ view of the individual outputs that later deployment stages and add-ons read. Th
 contract repeats the expressions of those outputs, so this test compares the two
 and fails when they drift apart, when a secret is added to the contract, or when
 the contract gains or loses an attribute without this specification changing.
+
+Later stages read an upstream state through the sap_capabilities module, which maps
+the contract back to the names of the individual outputs. The last test checks that
+this mapping is the inverse of the specification.
 """
 
 import re
@@ -363,3 +367,21 @@ def test_contract_carries_no_secrets(root_module):
         assert (
             blocks[output_name].get("sensitive") != "true"
         ), "capabilities.%s repeats the sensitive output %s" % (path, output_name)
+
+
+# Individual output names that repeat a value the contract already carries.
+ADAPTER_ALIASES = {"landscape": {"spn_kv_id": "key_vault.spn_credential_vault_id"}}
+
+
+@pytest.mark.parametrize("state, specification", [("deployer", DEPLOYER), ("landscape", LANDSCAPE)])
+def test_adapter_maps_the_contract_back_to_the_individual_outputs(state, specification):
+    adapter = TERRAFORM_ROOT / "terraform-units" / "modules" / "sap_capabilities"
+    text = _strip_comments((adapter / "variables_local.tf").read_text())
+    pattern = r"(?m)^\s*(\w+)\s*=\s*var\.%s_outputs\.capabilities\.([\w.]+)\s*$" % state
+    mapping = dict(re.findall(pattern, text))
+    mapping.pop("%s_contract_version" % state, None)
+
+    expected = {output_name: path for path, output_name in _leaves(specification)}
+    expected["automation_version"] = "automation_version"
+    expected.update(ADAPTER_ALIASES.get(state, {}))
+    assert mapping == expected

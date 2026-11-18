@@ -350,7 +350,7 @@ output "automation_version"                      {
 
 output "controlplane_environment"                {
                                                    description = "Control plane environment"
-                                                   value       = try(data.terraform_remote_state.deployer[0].outputs.environment, "")
+                                                   value       = try(module.sap_capabilities.deployer.environment, "")
                                                  }
 
 output "use_spn"                                 {
@@ -475,7 +475,7 @@ output "capabilities"                            {
                                                                                                  workload_zone_name        = local.workload_zone_name
                                                                                                  workload_zone_prefix      = module.sap_namegenerator.naming.prefix.WORKLOAD_ZONE
                                                                                                  control_plane_name        = var.control_plane_name
-                                                                                                 control_plane_environment = try(data.terraform_remote_state.deployer[0].outputs.environment, "")
+                                                                                                 control_plane_environment = try(module.sap_capabilities.deployer.environment, "")
                                                                                                  random_id                 = substr(coalesce(var.custom_random_id, module.sap_landscape.random_id),0,3)
                                                                                                }
                                                                    resource_group            = {

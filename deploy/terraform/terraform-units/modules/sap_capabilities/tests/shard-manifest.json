@@ -1,0 +1,7 @@
+{
+  "module": "deploy/terraform/terraform-units/modules/sap_capabilities",
+  "shards": [
+    { "file": "contract.tftest.hcl", "runs": 8 }
+  ],
+  "total_runs": 8
+}

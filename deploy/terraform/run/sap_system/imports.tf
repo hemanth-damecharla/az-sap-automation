@@ -45,13 +45,13 @@ locals {
   # Control plane naming resolution
   control_plane_name_resolved = coalesce(
     var.control_plane_name,
-    try(data.terraform_remote_state.deployer[0].outputs.environment, ""),
-    try(data.terraform_remote_state.landscape.outputs.control_plane_name, "")
+    try(module.sap_capabilities.deployer.environment, ""),
+    try(module.sap_capabilities.landscape.control_plane_name, "")
   )
 
   workload_zone_name_resolved = coalesce(
     var.workload_zone_name,
-    try(data.terraform_remote_state.landscape.outputs.workload_zone_name, "")
+    try(module.sap_capabilities.landscape.workload_zone_name, "")
   )
 
   # Conditions for credential retrieval

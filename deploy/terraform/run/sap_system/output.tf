@@ -33,7 +33,7 @@ output "automation_version"            {
 
 output "workload_automation_version"   {
                                          description = "Defines the version of the terraform templates used in the workload zone deployment"
-                                         value       = data.terraform_remote_state.landscape.outputs.automation_version
+                                         value       = module.sap_capabilities.landscape.automation_version
                                        }
 
 output "random_id"                     {
@@ -121,15 +121,15 @@ output "scs_loadbalancer_id"           {
 
 output "use_custom_dns_a_registration" {
                                          description = "Use custom DNS registration"
-                                         value       = try(data.terraform_remote_state.landscape.outputs.use_custom_dns_a_registration, true)
+                                         value       = try(module.sap_capabilities.landscape.use_custom_dns_a_registration, true)
                                        }
 output "management_dns_subscription_id" {
                                          description = "Subscription Id for DNS resource group"
-                                         value       = try(data.terraform_remote_state.landscape.outputs.management_dns_subscription_id, null)
+                                         value       = try(module.sap_capabilities.landscape.management_dns_subscription_id, null)
                                         }
 output "management_dns_resourcegroup_name" {
                                              description = "Resource group name for DNS resource group"
-                                             value       = try(data.terraform_remote_state.landscape.outputs.management_dns_resourcegroup_name, local.tfstate_storage_account_resource_group_name)
+                                             value       = try(module.sap_capabilities.landscape.management_dns_resourcegroup_name, local.tfstate_storage_account_resource_group_name)
                                            }
 
 
@@ -333,7 +333,7 @@ output "capabilities"                            {
                                                                                               region                           = local.infrastructure.region
                                                                                               sid                              = local.application_tier.sid
                                                                                               random_id                        = substr(coalesce(var.custom_random_id, module.common_infrastructure.random_id), 0, 3)
-                                                                                              workload_zone_automation_version = data.terraform_remote_state.landscape.outputs.automation_version
+                                                                                              workload_zone_automation_version = module.sap_capabilities.landscape.automation_version
                                                                                             }
                                                                    resource_group         = {
                                                                                               id              = module.common_infrastructure.created_resource_group_id
@@ -380,9 +380,9 @@ output "capabilities"                            {
                                                                                                                                ])
                                                                                             }
                                                                    dns                    = {
-                                                                                              use_custom_a_registration      = try(data.terraform_remote_state.landscape.outputs.use_custom_dns_a_registration, true)
-                                                                                              management_subscription_id     = try(data.terraform_remote_state.landscape.outputs.management_dns_subscription_id, null)
-                                                                                              management_resource_group_name = try(data.terraform_remote_state.landscape.outputs.management_dns_resourcegroup_name, local.tfstate_storage_account_resource_group_name)
+                                                                                              use_custom_a_registration      = try(module.sap_capabilities.landscape.use_custom_dns_a_registration, true)
+                                                                                              management_subscription_id     = try(module.sap_capabilities.landscape.management_dns_subscription_id, null)
+                                                                                              management_resource_group_name = try(module.sap_capabilities.landscape.management_dns_resourcegroup_name, local.tfstate_storage_account_resource_group_name)
                                                                                               records                        = {
                                                                                                                                  application               = module.app_tier.dns_info_vms
                                                                                                                                  application_loadbalancers = module.app_tier.dns_info_loadbalancers

@@ -939,3 +939,106 @@ run "nat_gateway_deployment_disabled_creates_no_nat_resources" {
     error_message = "With deploy_nat_gateway=false, sap_landscape must not create a NAT gateway."
   }
 }
+
+# A deployer state written by the current release is read through its capability
+# contract. This state carries only the contract, so a value that reaches the
+# workload zone can only have come from it.
+run "deployer_state_is_read_from_the_capability_contract" {
+  command = plan
+
+  override_data {
+    target = data.terraform_remote_state.deployer
+    values = {
+      outputs = {
+        capabilities = {
+          contract_version           = "1.0"
+          stage                      = "deployer"
+          naming                     = {
+            environment          = "MGMT"
+            location_short       = ""
+            network_logical_name = ""
+            control_plane_name   = "MGMT-WEEU-DEP00"
+            random_id            = ""
+          }
+          resource_group             = {
+            id              = ""
+            name            = ""
+            subscription_id = "99999999-9999-9999-9999-999999999999"
+            location        = ""
+          }
+          network                    = {
+            vnet_id                                    = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt"
+            management_subnet_id                       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-mgmt/subnets/snet-mgmt"
+            management_subnet_address_prefixes         = ["10.0.0.0/24"]
+            bastion_subnet_address_prefixes            = ["10.0.1.0/26"]
+            webapp_subnet_id                           = ""
+            endpoint_subnet_id                         = ""
+            additional_network_id                      = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/virtualNetworks/vnet-agent"
+            firewall_allowed_subnet_ids                = []
+            agent_ip                                   = ""
+            public_network_access_enabled              = false
+            firewall_for_keyvaults_and_storage_enabled = false
+            firewall_id                                = ""
+            firewall_ip                                = ""
+          }
+          network_security_perimeter = {
+            deployed    = false
+            id          = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.Network/networkSecurityPerimeters/nsp-dev"
+            access_mode = "Learning"
+          }
+          identity                   = {
+            principal_id                    = "33333333-3333-3333-3333-333333333333"
+            user_assigned                   = { principal_id = "33333333-3333-3333-3333-333333333333", tenant_id = "11111111-1111-1111-1111-111111111111" }
+            user_assigned_identity_id       = ""
+            client_id                       = ""
+            system_assigned                 = ""
+            system_assigned_enabled         = false
+            devops_infrastructure_object_id = ""
+          }
+          key_vault                  = {
+            id                  = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-mgmt/providers/Microsoft.KeyVault/vaults/kv-deployer"
+            name                = "kv-deployer"
+            ssh_key_secret_name = ""
+            set_secret_expiry   = false
+          }
+          virtual_machines           = {
+            ids                 = []
+            public_ip_addresses = []
+            username            = ""
+            extension_ids       = []
+          }
+          application_configuration  = {
+            deployed = false
+            id       = ""
+            name     = ""
+          }
+          web_app                    = {
+            deployed = false
+            id       = ""
+            url_base = ""
+            identity = ""
+          }
+          diagnostics                = {
+            storage_account_id = ""
+          }
+          automation_version         = "5.0.0"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = module.sap_capabilities.deployer_contract_version == "1.0"
+    error_message = "The contract version of the deployer state must be recognised."
+  }
+
+  assert {
+    condition     = output.controlplane_environment == "MGMT"
+    error_message = "The control plane environment must be read from the capability contract of the deployer state."
+  }
+
+  assert {
+    condition     = local.deployer_subscription_id == "99999999-9999-9999-9999-999999999999"
+    error_message = "The deployer subscription must be read from the capability contract of the deployer state."
+  }
+}

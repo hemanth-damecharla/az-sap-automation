@@ -3,6 +3,16 @@
 
 /*
   Description:
+  Read the outputs of the upstream Terraform states, from their capability
+  contract when they publish one
+*/
+module "sap_capabilities" {
+  source                                       = "../../terraform-units/modules/sap_capabilities"
+  deployer_outputs                             = try(data.terraform_remote_state.deployer[0].outputs, {})
+}
+
+/*
+  Description:
   Setup common infrastructure
 */
 
@@ -22,7 +32,7 @@ module "sap_landscape" {
   ANF_settings                                 = local.ANF_settings
   authentication                               = local.authentication
   create_transport_storage                     = var.create_transport_storage
-  deployer_tfstate                             = try(data.terraform_remote_state.deployer[0].outputs, [])
+  deployer_tfstate                             = try(module.sap_capabilities.deployer, [])
   diagnostics_storage_account                  = local.diagnostics_storage_account
   enable_firewall_for_keyvaults_and_storage    = var.enable_firewall_for_keyvaults_and_storage
   infrastructure                               = local.infrastructure
@@ -41,8 +51,8 @@ module "sap_landscape" {
   options                                      = local.options
   peer_with_control_plane_vnet                 = var.use_deployer ? var.peer_with_control_plane_vnet : false
   place_delete_lock_on_resources               = var.place_delete_lock_on_resources
-  public_network_access_enabled                = contains(keys(data.terraform_remote_state.deployer[0].outputs), "network_security_perimeter_deployment") ? (
-                                                  data.terraform_remote_state.deployer[0].outputs.network_security_perimeter_deployment) : (
+  public_network_access_enabled                = contains(keys(module.sap_capabilities.deployer), "network_security_perimeter_deployment") ? (
+                                                  module.sap_capabilities.deployer.network_security_perimeter_deployment) : (
                                                   true) && var.public_network_access_enabled
 
   storage_account_replication_type             = var.storage_account_replication_type

@@ -34,7 +34,7 @@ locals {
   # Control plane naming resolution
   control_plane_name_resolved          = coalesce(
                                            var.control_plane_name,
-                                           try(data.terraform_remote_state.deployer[0].outputs.environment, "")
+                                           try(module.sap_capabilities.deployer.environment, "")
                                          )
 
 

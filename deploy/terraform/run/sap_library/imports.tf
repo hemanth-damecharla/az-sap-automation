@@ -27,7 +27,7 @@ locals {
   # Determine effective naming based on configuration
   use_control_plane_naming                     = length(trimspace(var.control_plane_name)) > 0
   environment_name                             = local.use_control_plane_naming ? var.control_plane_name : var.environment
-  deployer_outputs                             = try(data.terraform_remote_state.deployer[0].outputs, {})
+  deployer_outputs                             = try(module.sap_capabilities.deployer, {})
 
   # Control plane naming resolution
   control_plane_name_resolved                  = length(trimspace(var.control_plane_name)) > 0 ? (

@@ -3,6 +3,16 @@
 
 /*
   Description:
+  Read the outputs of the upstream Terraform states, from their capability
+  contract when they publish one
+*/
+module "sap_capabilities" {
+  source                            = "../../terraform-units/modules/sap_capabilities"
+  deployer_outputs                  = try(data.terraform_remote_state.deployer[0].outputs, {})
+}
+
+/*
+  Description:
   Setup sap library
 */
 module "sap_library" {
@@ -17,7 +27,7 @@ module "sap_library" {
   Agent_IP                          = var.add_Agent_IP ? var.Agent_IP : ""
   bootstrap                         = true
   deployer                          = local.deployer
-  deployer_tfstate                  = try(data.terraform_remote_state.deployer[0].outputs , {})
+  deployer_tfstate                  = try(module.sap_capabilities.deployer , {})
   infrastructure                    = local.infrastructure
   key_vault                         = local.key_vault
   naming                            = length(var.name_override_file) > 0 ? local.custom_names : module.sap_namegenerator.naming
