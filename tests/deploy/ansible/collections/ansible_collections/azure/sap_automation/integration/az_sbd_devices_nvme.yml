@@ -1,0 +1,15 @@
+- name: Resolve SBD devices on NVMe-attached Azure shared disks
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  tasks:
+    - name: Find the SBD devices
+      ansible.builtin.include_role:
+        name: azure.sap_automation.az_sbd_devices
+      vars:
+        az_sbd_devices_source: shared_disk
+        az_sbd_devices_nvme: true
+        az_sbd_devices_luns: [0, 1]
+    - name: Report the SBD devices
+      ansible.builtin.debug:
+        msg: "SBD_DEVICES={{ az_sbd_devices | join(';') }}"

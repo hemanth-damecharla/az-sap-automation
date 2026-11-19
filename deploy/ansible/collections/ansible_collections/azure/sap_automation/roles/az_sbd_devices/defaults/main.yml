@@ -1,0 +1,17 @@
+---
+# Where the SBD devices come from: shared_disk for Azure shared disks attached
+# to every cluster VM, iscsi for LUNs exported by iSCSI target servers.
+az_sbd_devices_source: shared_disk
+
+# Azure shared disks: logical unit numbers of the disks on the VM.
+az_sbd_devices_luns: []
+
+# Azure shared disks attached through an NVMe controller. The Azure udev rules
+# then provide a stable name per LUN, which is used as it is.
+az_sbd_devices_nvme: false
+
+# iSCSI: target servers with their address and target IQN, and the initiator
+# name of this node, which the target ACLs allow.
+az_sbd_devices_iscsi_targets: []
+# az_sbd_devices_iscsi_initiator_name:
+az_sbd_devices_iscsi_port: "3260"

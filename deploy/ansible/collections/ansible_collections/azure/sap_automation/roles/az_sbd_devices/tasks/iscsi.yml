@@ -1,0 +1,89 @@
+---
+- name: iscsi | Check the iSCSI inputs
+  ansible.builtin.assert:
+    that:
+      - az_sbd_devices_iscsi_targets | length > 0
+      - az_sbd_devices_iscsi_initiator_name | default('') | length > 0
+    fail_msg: iSCSI SBD devices need az_sbd_devices_iscsi_targets and az_sbd_devices_iscsi_initiator_name.
+    quiet: true
+
+- name: iscsi | Install the iSCSI initiator
+  ansible.builtin.package:
+    name: "{{ __az_sbd_devices_iscsi_package }}"
+    state: present
+
+# The target ACLs allow this name. Some RHEL 9 images ship without the file.
+- name: iscsi | Set the initiator name of this node
+  ansible.builtin.lineinfile:
+    path: /etc/iscsi/initiatorname.iscsi
+    regexp: "^InitiatorName="
+    line: "InitiatorName={{ az_sbd_devices_iscsi_initiator_name }}"
+    create: true
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart the iSCSI initiator
+
+- name: iscsi | Enable the iSCSI initiator
+  ansible.builtin.systemd:
+    name: "{{ __az_sbd_devices_iscsi_service }}"
+    enabled: true
+    state: started
+  loop: [iscsid, iscsi]
+  loop_control:
+    loop_var: __az_sbd_devices_iscsi_service
+
+- name: iscsi | Apply the initiator name before logging in
+  ansible.builtin.meta: flush_handlers
+
+- name: iscsi | Discover the targets
+  community.general.open_iscsi:
+    portal: "{{ __az_sbd_devices_target.host }}"
+    port: "{{ az_sbd_devices_iscsi_port }}"
+    discover: true
+  loop: "{{ az_sbd_devices_iscsi_targets }}"
+  loop_control:
+    loop_var: __az_sbd_devices_target
+
+- name: iscsi | Log in to the targets and log in again at boot
+  community.general.open_iscsi:
+    portal: "{{ __az_sbd_devices_target.host }}"
+    port: "{{ az_sbd_devices_iscsi_port }}"
+    target: "{{ __az_sbd_devices_target.iqn }}"
+    login: true
+    auto_node_startup: true
+  loop: "{{ az_sbd_devices_iscsi_targets }}"
+  loop_control:
+    loop_var: __az_sbd_devices_target
+  register: __az_sbd_devices_logins
+  notify:
+    - Rescan the new iSCSI sessions
+    - Wait for udev to create the device links
+
+# A fresh login can return before the kernel has created the device nodes;
+# the handlers rescan the new sessions and wait for udev.
+- name: iscsi | Rescan new sessions before reading their devices
+  ansible.builtin.meta: flush_handlers
+
+- name: iscsi | Read the device nodes of the targets
+  community.general.open_iscsi:
+    portal: "{{ __az_sbd_devices_target.host }}"
+    port: "{{ az_sbd_devices_iscsi_port }}"
+    target: "{{ __az_sbd_devices_target.iqn }}"
+    login: true
+  loop: "{{ az_sbd_devices_iscsi_targets }}"
+  loop_control:
+    loop_var: __az_sbd_devices_target
+  register: __az_sbd_devices_sessions
+
+- name: iscsi | Find the by-id name of each iSCSI device
+  azure.sap_automation.disk_by_id:
+    path: "{{ __az_sbd_devices_node }}"
+  loop: "{{ __az_sbd_devices_sessions.results | map(attribute='devicenodes', default=[]) | flatten | unique }}"
+  loop_control:
+    loop_var: __az_sbd_devices_node
+  register: __az_sbd_devices_disks
+
+- name: iscsi | Return the SBD devices
+  ansible.builtin.set_fact:
+    az_sbd_devices: "{{ __az_sbd_devices_disks.results | map(attribute='by_id') | list }}"

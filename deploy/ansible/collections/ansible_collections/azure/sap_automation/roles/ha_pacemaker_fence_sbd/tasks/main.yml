@@ -1,0 +1,20 @@
+---
+- name: Load platform variables
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: Check the SBD devices
+  ansible.builtin.assert:
+    that:
+      - ha_pacemaker_fence_sbd_devices | length > 0
+      - ha_pacemaker_fence_sbd_devices | length <= 3
+    fail_msg: SBD needs one to three devices in ha_pacemaker_fence_sbd_devices.
+    quiet: true
+
+- name: Prepare the node for SBD
+  ansible.builtin.import_tasks: node.yml
+
+- name: Restart the cluster so that SBD takes effect
+  ansible.builtin.import_tasks: restart.yml
+
+- name: Configure the SBD fence agent
+  ansible.builtin.import_tasks: cib.yml

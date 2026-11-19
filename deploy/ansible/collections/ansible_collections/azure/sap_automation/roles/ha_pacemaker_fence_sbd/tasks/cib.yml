@@ -1,0 +1,11 @@
+---
+# Also an entry point of its own (tasks_from: cib), for a cluster whose nodes
+# are already prepared for SBD.
+- name: cib | Load platform variables
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: cib | Configure the SBD fence agent and enable fencing
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/stonith.xml.j2') }}"
+  when: __ha_pacemaker_fence_sbd_is_config_node | bool
+  notify: Clean up the SBD fence resource

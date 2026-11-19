@@ -1,0 +1,12 @@
+---
+# Clears a failed monitor recorded while sbd was not yet running. crm_resource
+# ships with Pacemaker, so this is identical on RHEL and SLES; no module exposes
+# resource cleanup.
+- name: Clean up the SBD fence resource
+  ansible.builtin.command:
+    argv:
+      - crm_resource
+      - --cleanup
+      - --resource
+      - "{{ ha_pacemaker_fence_sbd_resource_id }}"
+  changed_when: true

@@ -1,0 +1,21 @@
+---
+- name: Restart the iSCSI initiator
+  ansible.builtin.systemd:
+    name: iscsid
+    state: restarted
+
+- name: Rescan the new iSCSI sessions
+  community.general.open_iscsi:
+    portal: "{{ __az_sbd_devices_login.__az_sbd_devices_target.host }}"
+    port: "{{ az_sbd_devices_iscsi_port }}"
+    target: "{{ __az_sbd_devices_login.__az_sbd_devices_target.iqn }}"
+    rescan: true
+  loop: "{{ __az_sbd_devices_logins.results | select('changed') | list }}"
+  loop_control:
+    loop_var: __az_sbd_devices_login
+    label: "{{ __az_sbd_devices_login.__az_sbd_devices_target.iqn }}"
+
+- name: Wait for udev to create the device links
+  ansible.builtin.command:
+    argv: [udevadm, settle]
+  changed_when: false

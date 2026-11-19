@@ -1,0 +1,11 @@
+---
+__ha_pacemaker_fence_sbd_packages: [sbd]
+# Longer than msgwait, so that sbd is up before Corosync gives up waiting.
+__ha_pacemaker_fence_sbd_service_timeout: "259"
+__ha_pacemaker_fence_sbd_resource_id: stonith-sbd
+# external/sbd reads the devices from the SBD configuration file.
+__ha_pacemaker_fence_sbd_agent: external/sbd
+__ha_pacemaker_fence_sbd_parameters:
+  pcmk_delay_max: "15"
+__ha_pacemaker_fence_sbd_restart_commands:
+  - [crm, cluster, restart, --all]

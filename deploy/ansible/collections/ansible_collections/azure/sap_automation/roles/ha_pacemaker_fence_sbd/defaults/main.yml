@@ -1,0 +1,30 @@
+---
+ha_pacemaker_fence_sbd_nodes: "{{ ha_pacemaker_nodes }}"
+ha_pacemaker_fence_sbd_config_node: "{{ ha_pacemaker_config_node }}"
+
+# SBD block devices as seen on this node, in the same order on every node.
+# Use stable names such as /dev/disk/by-id/scsi-3...; the az_sbd_devices role
+# resolves them for Azure shared disks and iSCSI targets.
+ha_pacemaker_fence_sbd_devices: []
+
+# Timeouts written to a device that has no SBD header yet, in seconds. A
+# device that already has a header keeps its timeouts.
+ha_pacemaker_fence_sbd_watchdog_timeout: 60
+ha_pacemaker_fence_sbd_msgwait_timeout: 120
+
+# Kernel watchdog module loaded at boot.
+ha_pacemaker_fence_sbd_watchdog_module: softdog
+
+# Value of the stonith-timeout cluster property, in seconds.
+ha_pacemaker_fence_sbd_stonith_timeout: "210"
+
+# ID of the STONITH resource. The platform defaults are the names the tasks
+# this role replaces used: stonith-sbd on SLES, sbd on RHEL.
+ha_pacemaker_fence_sbd_resource_id: "{{ __ha_pacemaker_fence_sbd_resource_id }}"
+
+# SBD only takes effect after Pacemaker restarts. When the SBD configuration
+# of a node changes, the role restarts the cluster on every node; set this to
+# false to restart it yourself.
+ha_pacemaker_fence_sbd_restart_cluster: true
+ha_pacemaker_fence_sbd_online_retries: 18
+ha_pacemaker_fence_sbd_online_delay: 10

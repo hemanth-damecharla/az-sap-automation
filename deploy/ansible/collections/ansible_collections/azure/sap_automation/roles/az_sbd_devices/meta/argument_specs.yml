@@ -1,0 +1,49 @@
+---
+argument_specs:
+  main:
+    short_description: Find SBD devices on Azure
+    description:
+      - Finds the stable C(/dev/disk/by-id) names of the SBD devices of this
+        node and returns them in the C(az_sbd_devices) fact, ready for
+        C(ha_pacemaker_fence_sbd_devices).
+      - For Azure shared disks it resolves the LUNs. For iSCSI it sets the
+        initiator name, logs in to the targets, enables login at boot, and
+        resolves the devices of the sessions.
+    options:
+      az_sbd_devices_source:
+        description: Where the SBD devices come from.
+        type: str
+        choices: [shared_disk, iscsi]
+        default: shared_disk
+      az_sbd_devices_luns:
+        description: Logical unit numbers of the Azure shared disks. Required with V(shared_disk).
+        type: list
+        elements: int
+        default: []
+      az_sbd_devices_nvme:
+        description:
+          - Whether the shared disks are attached through an NVMe controller.
+          - The Azure udev name per LUN is then used as the device name.
+        type: bool
+        default: false
+      az_sbd_devices_iscsi_targets:
+        description: iSCSI target servers. Required with V(iscsi).
+        type: list
+        elements: dict
+        default: []
+        options:
+          host:
+            description: Address of the target server.
+            type: str
+            required: true
+          iqn:
+            description: IQN of the target.
+            type: str
+            required: true
+      az_sbd_devices_iscsi_initiator_name:
+        description: Initiator name of this node, as allowed by the target ACLs. Required with V(iscsi).
+        type: str
+      az_sbd_devices_iscsi_port:
+        description: Port of the target servers.
+        type: str
+        default: "3260"

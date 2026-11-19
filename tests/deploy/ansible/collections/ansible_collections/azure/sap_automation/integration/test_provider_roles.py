@@ -71,18 +71,28 @@ def cluster(tmp_path, imds_port):
         os.environ,
         FAKE_CIB=str(cib),
         PATH="%s%s%s" % (HERE / "bin", os.pathsep, os.environ["PATH"]),
-        ANSIBLE_COLLECTIONS_PATH=str(COLLECTIONS),
+        # The collection under test first, then where its dependencies such as
+        # community.general are installed (ANSIBLE_HOME is redirected below).
+        ANSIBLE_COLLECTIONS_PATH=os.pathsep.join(
+            [str(COLLECTIONS)]
+            + (
+                [os.environ["ANSIBLE_COLLECTIONS_PATH"]]
+                if os.environ.get("ANSIBLE_COLLECTIONS_PATH")
+                else []
+            )
+            + [os.path.expanduser("~/.ansible/collections"), "/usr/share/ansible/collections"]
+        ),
         ANSIBLE_LOCALHOST_WARNING="false",
         ANSIBLE_INVENTORY_UNPARSED_WARNING="false",
         ANSIBLE_HOME=str(tmp_path / "ansible"),
         no_proxy="127.0.0.1",
     )
 
-    def play(flavor, *extra):
+    def play(flavor, *extra, playbook="provider_roles.yml"):
         result = subprocess.run(
             [
                 "ansible-playbook",
-                str(HERE / "provider_roles.yml"),
+                str(HERE / playbook),
                 "-e",
                 "flavor=%s imds_port=%d" % (flavor, imds_port),
                 *extra,
@@ -147,3 +157,23 @@ def test_service_principal_fencing_keeps_the_secret_out_of_the_output(cluster):
     assert {"client-1", "not-a-real-secret-7f3a"} <= credentials
 
     assert cluster("classic", "-e", "auth=spn") == 0, "second run must not change anything"
+
+
+def test_sbd_fencing_cib_step_is_idempotent(cluster):
+    assert cluster("classic", playbook="sbd_cib.yml") > 0
+    configuration = ET.parse(cluster.cib).getroot().find("configuration")
+    properties = {
+        p.get("name"): p.get("value") for p in configuration.find("crm_config").iter("nvpair")
+    }
+    assert properties["stonith-enabled"] == "true" and properties["stonith-timeout"] == "210"
+    assert properties["dc-version"] == "2.1.5"
+    fence = configuration.find("resources/primitive[@class='stonith']")
+    assert fence is not None and fence.get("id") in ("sbd", "stonith-sbd")
+    assert cluster("classic", playbook="sbd_cib.yml") == 0, "second run must not change anything"
+
+
+def test_nvme_shared_disks_use_the_azure_lun_links(cluster):
+    cluster("classic", playbook="az_sbd_devices_nvme.yml")
+    assert (
+        "SBD_DEVICES=/dev/disk/azure/data/by-lun/0;/dev/disk/azure/data/by-lun/1" in cluster.output
+    )

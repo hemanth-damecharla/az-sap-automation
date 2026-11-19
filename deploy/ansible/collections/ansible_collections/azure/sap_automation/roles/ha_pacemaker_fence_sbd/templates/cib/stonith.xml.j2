@@ -1,0 +1,20 @@
+<crm_config>
+  <cluster_property_set>
+    <nvpair name="stonith-enabled" value="true"/>
+    <nvpair name="stonith-timeout" value="{{ ha_pacemaker_fence_sbd_stonith_timeout }}"/>
+  </cluster_property_set>
+</crm_config>
+<resources>
+  <primitive id="{{ ha_pacemaker_fence_sbd_resource_id }}" class="stonith" type="{{ __ha_pacemaker_fence_sbd_agent }}">
+{% if __ha_pacemaker_fence_sbd_parameters %}
+    <instance_attributes>
+{% for name, value in __ha_pacemaker_fence_sbd_parameters | dictsort %}
+      <nvpair name="{{ name }}" value="{{ value }}"/>
+{% endfor %}
+    </instance_attributes>
+{% endif %}
+    <operations>
+      <op name="monitor" interval="600" timeout="120"/>
+    </operations>
+  </primitive>
+</resources>

@@ -15,7 +15,15 @@
                                             {{ use_sap_automation_collection | default(false) | bool
                                                and node_tier == 'hana'
                                                and not (database_scale_out | default(false) | bool)
-                                               and database_cluster_type == 'AFA'
+                                               and (database_cluster_type == 'AFA'
+                                                    or (database_cluster_type == 'ASD'
+                                                        and (ansible_distribution_version is version('15.1', '>=')
+                                                             if ansible_os_family | upper == 'SUSE'
+                                                             else ansible_distribution_version is version('8.8', '>=')))
+                                                    or (database_cluster_type == 'ISCSI'
+                                                        and (ansible_distribution_version is version('12.5', '>=')
+                                                             if ansible_os_family | upper == 'SUSE'
+                                                             else ansible_distribution_version is version('8.8', '>='))))
                                                and not (ansible_os_family | upper == 'REDHAT'
                                                         and ansible_distribution_major_version | int < 8)
                                                and (ansible_distribution | lower ~ ansible_distribution_version) != 'sles_sap12.4' }}

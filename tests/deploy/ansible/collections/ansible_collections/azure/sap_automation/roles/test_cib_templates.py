@@ -229,6 +229,30 @@ def test_fence_agent_service_principal(platform, login, password):
     assert parameters["pcmk_host_map"] == "n1:vm-n1;n2:vm-n2"
 
 
+@pytest.mark.parametrize(
+    "platform, resource_id, agent, parameters",
+    [
+        ("rhel9", "sbd", "fence_sbd", {"devices": "/dev/disk/by-id/a,/dev/disk/by-id/b"}),
+        ("rhel10", "sbd", "fence_sbd", {"devices": "/dev/disk/by-id/a,/dev/disk/by-id/b"}),
+        ("sles15", "stonith-sbd", "external/sbd", {"pcmk_delay_max": "15"}),
+        ("sles16", "stonith-sbd", "external/sbd", {"pcmk_delay_max": "15"}),
+    ],
+)
+def test_sbd_fence_agent(platform, resource_id, agent, parameters):
+    sections = render(
+        "ha_pacemaker_fence_sbd",
+        "stonith.xml.j2",
+        platform,
+        ha_pacemaker_fence_sbd_devices=["/dev/disk/by-id/a", "/dev/disk/by-id/b"],
+    )
+    primitive = sections["resources"].find("primitive")
+    assert primitive.get("id") == resource_id and primitive.get("type") == agent
+    assert pairs(primitive.find("instance_attributes")) == parameters
+    monitor = primitive.find("operations/op")
+    assert (monitor.get("interval"), monitor.get("timeout")) == ("600", "120")
+    assert pairs(sections["crm_config"]) == {"stonith-enabled": "true", "stonith-timeout": "210"}
+
+
 def test_fence_agent_cloud_and_overrides():
     sections = render(
         "ha_pacemaker_fence_azure_arm",

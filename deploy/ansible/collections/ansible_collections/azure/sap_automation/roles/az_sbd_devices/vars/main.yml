@@ -1,0 +1,3 @@
+---
+__az_sbd_devices_lun_dir: "{{ '/dev/disk/azure/data/by-lun/' if az_sbd_devices_nvme | bool else '/dev/disk/azure/scsi1/lun' }}"
+__az_sbd_devices_iscsi_package: open-iscsi

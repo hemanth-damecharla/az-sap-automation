@@ -17,6 +17,12 @@ Added:
 - `pacemaker_cib` masks the value of `passwd`, `password` and `*secret*`
   parameters in the diff it reports.
 - The SDAF playbooks use the collection for service principal fencing too.
+- `ha_pacemaker_fence_sbd`: SBD fencing provider, with the `sbd_device`
+  module that never rewrites an existing SBD header.
+- `az_sbd_devices`: stable device names of Azure shared disks (SCSI and
+  NVMe) and iSCSI targets, with the `disk_by_id` module.
+- The SDAF playbooks use the collection for HANA scale-up clusters with
+  `database_cluster_type` `ASD` or `ISCSI`.
 
 ## 0.1.0
 

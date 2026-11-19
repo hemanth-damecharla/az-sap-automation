@@ -22,12 +22,16 @@ The default behaviour of every playbook is unchanged.
 | `hana_sql` | Run an SQL statement through `hdbsql` |
 | `hana_hsr` | Enable, register or disable HANA System Replication |
 | `hana_hsr_info` | Replication state for validation |
+| `sbd_device` | Write an SBD header to devices that have none |
+| `disk_by_id` | Stable `/dev/disk/by-id` name of a block device |
 
 | Roles | Layer | Replaces |
 | --- | --- | --- |
 | [`ha_pacemaker`](roles/ha_pacemaker/README.md) | Entry point | Role ordering in `playbook_04_00_01_db_ha.yaml` |
 | [`ha_pacemaker_core`](roles/ha_pacemaker_core/README.md) | Cluster bootstrap | `roles-os/1.17-generic-pacemaker` (bootstrap, scheduled events, start delay) |
 | [`ha_pacemaker_fence_azure_arm`](roles/ha_pacemaker_fence_azure_arm/README.md) | Fencing provider | Azure fence agent tasks in `1.17.2.0-cluster-*.yml` |
+| [`ha_pacemaker_fence_sbd`](roles/ha_pacemaker_fence_sbd/README.md) | Fencing provider | SBD tasks in `1.17.1.2-sbd.yaml` and `1.17.2.0-cluster-*.yml` |
+| [`az_sbd_devices`](roles/az_sbd_devices/README.md) | Azure facts | Device discovery in `1.17.1.1-iSCSI.yml` and `1.17.1.3-sbd-deviceUpdate.yaml` |
 | [`ha_pacemaker_fence_kdump`](roles/ha_pacemaker_fence_kdump/README.md) | Fencing provider | `use_fence_kdump` tasks in `1.17.1-pre_checks.yml` and `1.17.2.0-cluster-RedHat.yml` |
 | [`sap_db_hana_hsr`](roles/sap_db_hana_hsr/README.md) | Database function | `roles-db/4.0.1-hdb-hsr` |
 | [`az_instance_metadata`](roles/az_instance_metadata/README.md) | Azure facts | Instance metadata queries repeated in playbooks and roles |
@@ -50,7 +54,7 @@ Ansible finds the collection without further configuration because it sits in
 
 | Step | Collection is used when | Otherwise |
 | --- | --- | --- |
-| Cluster bootstrap and fencing (`roles-os/1.17-generic-pacemaker`) | HANA scale-up, `database_cluster_type` is `AFA`, RHEL 8 or later or SLES other than SLES 12 SP4 | Existing tasks |
+| Cluster bootstrap and fencing (`roles-os/1.17-generic-pacemaker`) | HANA scale-up on RHEL 8 or later or SLES other than SLES 12 SP4, with `database_cluster_type` `AFA`; or `ASD` on RHEL 8.8 or SLES 15 SP1 and later; or `ISCSI` on RHEL 8.8 or SLES 12 SP5 and later | Existing tasks |
 | System replication (`roles-db/4.0.1-hdb-hsr`) | HANA scale-up | Existing tasks |
 | HANA cluster resources (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.4.1) | No active/read-enabled secondary, `NFS_provider` is not `ANF`, RHEL 8 or later or SLES | Existing tasks |
 

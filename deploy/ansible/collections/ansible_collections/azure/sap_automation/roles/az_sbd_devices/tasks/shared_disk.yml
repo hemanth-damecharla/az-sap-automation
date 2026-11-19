@@ -1,0 +1,16 @@
+---
+- name: shared_disk | Find the by-id name of each shared disk
+  azure.sap_automation.disk_by_id:
+    path: "{{ __az_sbd_devices_lun_dir }}{{ __az_sbd_devices_lun }}"
+  loop: "{{ az_sbd_devices_luns }}"
+  loop_control:
+    loop_var: __az_sbd_devices_lun
+  register: __az_sbd_devices_disks
+  when: not (az_sbd_devices_nvme | bool)
+
+- name: shared_disk | Return the SBD devices
+  ansible.builtin.set_fact:
+    az_sbd_devices: >-
+      {{ az_sbd_devices_luns | map('string') | map('regex_replace', '^', __az_sbd_devices_lun_dir) | list
+         if az_sbd_devices_nvme | bool
+         else __az_sbd_devices_disks.results | map(attribute='by_id') | list }}

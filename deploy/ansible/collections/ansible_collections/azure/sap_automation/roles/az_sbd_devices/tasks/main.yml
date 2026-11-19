@@ -1,0 +1,19 @@
+---
+- name: Load platform variables
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: Find the SBD devices on the Azure shared disks
+  ansible.builtin.include_tasks: shared_disk.yml
+  when: az_sbd_devices_source == 'shared_disk'
+
+- name: Find the SBD devices on the iSCSI targets
+  ansible.builtin.include_tasks: iscsi.yml
+  when: az_sbd_devices_source == 'iscsi'
+
+- name: Check the SBD devices
+  ansible.builtin.assert:
+    that:
+      - az_sbd_devices | length > 0
+      - az_sbd_devices | length <= 3
+    fail_msg: "Found {{ az_sbd_devices | length }} SBD devices; SBD needs one to three."
+    quiet: true

@@ -1,0 +1,10 @@
+---
+__ha_pacemaker_fence_sbd_packages: [sbd, fence-agents-sbd]
+__ha_pacemaker_fence_sbd_service_timeout: "223"
+__ha_pacemaker_fence_sbd_resource_id: sbd
+__ha_pacemaker_fence_sbd_agent: fence_sbd
+__ha_pacemaker_fence_sbd_parameters:
+  devices: "{{ ha_pacemaker_fence_sbd_devices | join(',') }}"
+__ha_pacemaker_fence_sbd_restart_commands:
+  - [pcs, cluster, stop, --all]
+  - [pcs, cluster, start, --all, --request-timeout, "140"]

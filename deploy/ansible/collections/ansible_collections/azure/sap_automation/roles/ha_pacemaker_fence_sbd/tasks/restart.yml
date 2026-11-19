@@ -1,0 +1,25 @@
+---
+# Cluster restart has no declarative interface. The commands run on one node
+# and act on every node, and only when the SBD configuration changed.
+- name: restart | Restart the cluster on every node
+  ansible.builtin.command:
+    argv: "{{ __ha_pacemaker_fence_sbd_command }}"
+  loop: "{{ __ha_pacemaker_fence_sbd_restart_commands }}"
+  loop_control:
+    loop_var: __ha_pacemaker_fence_sbd_command
+  changed_when: true
+  when:
+    - ha_pacemaker_fence_sbd_restart_cluster | bool
+    - __ha_pacemaker_fence_sbd_restart_needed | bool
+    - __ha_pacemaker_fence_sbd_is_config_node | bool
+
+- name: restart | Wait until every node is online
+  azure.sap_automation.pacemaker_cluster_info:
+  register: __ha_pacemaker_fence_sbd_state
+  until: __ha_pacemaker_fence_sbd_node_names | difference(__ha_pacemaker_fence_sbd_state['online_nodes']) | length == 0
+  retries: "{{ ha_pacemaker_fence_sbd_online_retries }}"
+  delay: "{{ ha_pacemaker_fence_sbd_online_delay }}"
+  when:
+    - ha_pacemaker_fence_sbd_restart_cluster | bool
+    - __ha_pacemaker_fence_sbd_restart_needed | bool
+    - not ansible_check_mode

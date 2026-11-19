@@ -1,0 +1,17 @@
+- name: Exercise the SBD fence provider's cluster step against a file-backed CIB
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  tasks:
+    - name: SBD fencing
+      ansible.builtin.include_role:
+        name: azure.sap_automation.ha_pacemaker_fence_sbd
+        tasks_from: cib.yml
+      vars:
+        ha_pacemaker_nodes:
+          - {name: n1, address: 10.0.0.1}
+          - {name: n2, address: 10.0.0.2}
+        ha_pacemaker_config_node: "{{ ansible_facts['hostname'] }}"
+        ha_pacemaker_fence_sbd_devices:
+          - /dev/disk/by-id/scsi-3600a
+          - /dev/disk/by-id/scsi-3600b

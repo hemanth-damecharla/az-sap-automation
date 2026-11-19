@@ -1,0 +1,75 @@
+---
+- name: node | Install the SBD packages
+  ansible.builtin.package:
+    name: "{{ __ha_pacemaker_fence_sbd_packages }}"
+    state: present
+
+- name: node | Load the watchdog module at boot
+  ansible.builtin.copy:
+    content: "{{ ha_pacemaker_fence_sbd_watchdog_module }}\n"
+    dest: /etc/modules-load.d/{{ ha_pacemaker_fence_sbd_watchdog_module }}.conf
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: node | Load the watchdog module
+  community.general.modprobe:
+    name: "{{ ha_pacemaker_fence_sbd_watchdog_module }}"
+    state: present
+
+# The devices are shared, so their headers are written from one node. A device
+# that already has a header is left untouched.
+- name: node | Initialize the SBD devices
+  azure.sap_automation.sbd_device:
+    devices: "{{ ha_pacemaker_fence_sbd_devices }}"
+    watchdog_timeout: "{{ ha_pacemaker_fence_sbd_watchdog_timeout }}"
+    msgwait_timeout: "{{ ha_pacemaker_fence_sbd_msgwait_timeout }}"
+  when: __ha_pacemaker_fence_sbd_is_config_node | bool
+
+- name: node | Write the SBD configuration
+  ansible.builtin.lineinfile:
+    path: "{{ __ha_pacemaker_fence_sbd_config_file }}"
+    regexp: "^{{ __ha_pacemaker_fence_sbd_setting.key }}="
+    line: "{{ __ha_pacemaker_fence_sbd_setting.key }}={{ __ha_pacemaker_fence_sbd_setting.value }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: "{{ __ha_pacemaker_fence_sbd_settings | dict2items }}"
+  loop_control:
+    loop_var: __ha_pacemaker_fence_sbd_setting
+  register: __ha_pacemaker_fence_sbd_config
+
+- name: node | Create the SBD service drop-in directory
+  ansible.builtin.file:
+    path: "{{ __ha_pacemaker_fence_sbd_service_dropin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: node | Give sbd time to start before Corosync
+  ansible.builtin.copy:
+    content: |
+      [Service]
+      TimeoutSec={{ __ha_pacemaker_fence_sbd_service_timeout }}
+    dest: "{{ __ha_pacemaker_fence_sbd_service_dropin_dir }}/sbd_delay_start.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  register: __ha_pacemaker_fence_sbd_dropin
+
+# sbd is started and stopped with the cluster; it is enabled, never started on
+# its own.
+- name: node | Enable the SBD service
+  ansible.builtin.systemd:
+    name: sbd
+    enabled: true
+    daemon_reload: true
+  register: __ha_pacemaker_fence_sbd_service
+
+- name: node | Record whether this node needs a cluster restart
+  ansible.builtin.set_fact:
+    __ha_pacemaker_fence_sbd_changed: >-
+      {{ __ha_pacemaker_fence_sbd_config is changed
+         or __ha_pacemaker_fence_sbd_dropin is changed
+         or __ha_pacemaker_fence_sbd_service is changed }}

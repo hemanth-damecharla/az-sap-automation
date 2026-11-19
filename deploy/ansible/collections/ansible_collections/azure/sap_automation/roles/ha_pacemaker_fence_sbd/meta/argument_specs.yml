@@ -1,0 +1,71 @@
+---
+argument_specs:
+  main:
+    short_description: SBD STONITH
+    description:
+      - Prepares every node for SBD (packages, watchdog, configuration file,
+        service), initializes devices that have no SBD header, restarts the
+        cluster when the SBD configuration changed, and creates the SBD
+        STONITH resource.
+      - A device that already carries an SBD header is never written to.
+    options:
+      ha_pacemaker_fence_sbd_nodes:
+        description: Cluster nodes. Defaults to C(ha_pacemaker_nodes).
+        type: list
+        elements: dict
+        required: true
+        options:
+          name:
+            description: Short host name of the node as known to the cluster.
+            type: str
+            required: true
+          address:
+            description: IP address of the node. Not used by this role.
+            type: str
+          vm_name:
+            description: Azure virtual machine name of the node. Not used by this role.
+            type: str
+      ha_pacemaker_fence_sbd_config_node:
+        description: Node on which the devices are initialized and the cluster configuration is applied.
+        type: str
+        required: true
+      ha_pacemaker_fence_sbd_devices:
+        description:
+          - One to three SBD block devices as seen on this node, in the same
+            order on every node. Use stable names such as C(/dev/disk/by-id/scsi-3...).
+        type: list
+        elements: str
+        required: true
+      ha_pacemaker_fence_sbd_watchdog_timeout:
+        description: Watchdog timeout written to a device without an SBD header, in seconds.
+        type: int
+        default: 60
+      ha_pacemaker_fence_sbd_msgwait_timeout:
+        description: Message wait timeout written to a device without an SBD header, in seconds.
+        type: int
+        default: 120
+      ha_pacemaker_fence_sbd_watchdog_module:
+        description: Kernel watchdog module loaded at boot.
+        type: str
+        default: softdog
+      ha_pacemaker_fence_sbd_stonith_timeout:
+        description: Value of the C(stonith-timeout) cluster property, in seconds.
+        type: str
+        default: "210"
+      ha_pacemaker_fence_sbd_resource_id:
+        description: ID of the STONITH resource. Defaults to V(stonith-sbd) on SLES and V(sbd) on RHEL.
+        type: str
+      ha_pacemaker_fence_sbd_restart_cluster:
+        description:
+          - Restart the cluster on every node when the SBD configuration of a
+            node changed. SBD takes effect only after Pacemaker restarts.
+        type: bool
+        default: true
+      ha_pacemaker_fence_sbd_online_retries:
+        description: Checks for every node to be online after the restart.
+        type: int
+        default: 18
+      ha_pacemaker_fence_sbd_online_delay:
+        description: Seconds between those checks.
+        type: int
+        default: 10

@@ -17,7 +17,29 @@
     name:                                   azure.sap_automation.az_instance_metadata
     public:                                 true
 
-- name:                                     "1.17 Generic Pacemaker - Build the cluster with the Azure fence agent"
+- name:                                     "1.17 Generic Pacemaker - Find the SBD devices"
+  ansible.builtin.include_role:
+    name:                                   azure.sap_automation.az_sbd_devices
+  vars:
+    az_sbd_devices_source:                  "{{ 'shared_disk' if database_cluster_type == 'ASD' else 'iscsi' }}"
+    az_sbd_devices_luns: >-
+                                            {{ sbdDevices | default([])
+                                               | selectattr('host', 'equalto', ansible_hostname)
+                                               | map(attribute='LUN') | list }}
+    az_sbd_devices_nvme:                    "{{ use_nvme_disks | default(false) | bool }}"
+    # The database targets share one IQN; the legacy tasks used the first.
+    az_sbd_devices_iscsi_targets: >-
+                                            {{ iscsi_servers | default([]) | selectattr('type', 'equalto', 'db')
+                                               | selectattr('iqn', 'equalto',
+                                                            (iscsi_servers | default([]) | selectattr('type', 'equalto', 'db')
+                                                             | map(attribute='iqn') | first | default('')))
+                                               | list }}
+    az_sbd_devices_iscsi_initiator_name: >-
+                                            {%- set index = ansible_play_hosts_all.index(inventory_hostname) -%}
+                                            iqn.2006-04.{{ sap_sid | lower }}-xdb-{{ index }}.local:{{ sap_sid | lower }}-xdb-{{ index }}
+  when:                                     database_cluster_type in ['ASD', 'ISCSI']
+
+- name:                                     "1.17 Generic Pacemaker - Build the cluster"
   ansible.builtin.include_role:
     name:                                   azure.sap_automation.ha_pacemaker
   vars:
@@ -25,12 +47,15 @@
                                             {{ ansible_play_hosts_all
                                                | map('extract', hostvars, 'az_instance_metadata_cluster_node') | list }}
     ha_pacemaker_config_node:               "{{ hostvars[primary_instance_name]['az_instance_metadata_cluster_node']['name'] }}"
+    # kdump fencing stays with the Azure fence agent, as in the legacy tasks.
     ha_pacemaker_fence_roles: >-
-                                            {{ ['azure.sap_automation.ha_pacemaker_fence_azure_arm']
-                                               + (['azure.sap_automation.ha_pacemaker_fence_kdump']
-                                                  if use_fence_kdump | default(false) | bool
-                                                     and ansible_os_family | upper == 'REDHAT'
-                                                  else []) }}
+                                            {{ ['azure.sap_automation.ha_pacemaker_fence_sbd']
+                                               if database_cluster_type in ['ASD', 'ISCSI']
+                                               else ['azure.sap_automation.ha_pacemaker_fence_azure_arm']
+                                                    + (['azure.sap_automation.ha_pacemaker_fence_kdump']
+                                                       if use_fence_kdump | default(false) | bool
+                                                          and ansible_os_family | upper == 'REDHAT'
+                                                       else []) }}
     ha_pacemaker_ra_roles:                  []
     # Cluster names as created by the legacy tasks on each distribution.
     ha_pacemaker_core_cluster_name: >-
@@ -47,5 +72,6 @@
     ha_pacemaker_fence_azure_arm_tenant_id:       "{{ fencing_spn_tenant_id | default('') }}"
     ha_pacemaker_fence_azure_arm_client_id:       "{{ fencing_spn_client_id | default('') }}"
     ha_pacemaker_fence_azure_arm_client_secret:   "{{ fencing_spn_client_pwd | default('') }}"
+    ha_pacemaker_fence_sbd_devices:         "{{ az_sbd_devices | default([]) }}"
 
 ...

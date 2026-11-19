@@ -1,0 +1,28 @@
+---
+__ha_pacemaker_fence_sbd_is_config_node: "{{ ansible_facts['hostname'] == ha_pacemaker_fence_sbd_config_node }}"
+__ha_pacemaker_fence_sbd_node_names: "{{ ha_pacemaker_fence_sbd_nodes | map(attribute='name') | list }}"
+
+# Settings written to the SBD configuration file. Other settings in the file
+# keep the values the package installed.
+__ha_pacemaker_fence_sbd_settings:
+  SBD_PACEMAKER: "yes"
+  SBD_STARTMODE: always
+  SBD_DEVICE: '"{{ ha_pacemaker_fence_sbd_devices | join(";") }}"'
+
+__ha_pacemaker_fence_sbd_config_file: /etc/sysconfig/sbd
+__ha_pacemaker_fence_sbd_service_dropin_dir: /etc/systemd/system/sbd.service.d
+
+# Platform values, overridden in the platform files.
+__ha_pacemaker_fence_sbd_packages: [sbd]
+__ha_pacemaker_fence_sbd_service_timeout: "259"
+__ha_pacemaker_fence_sbd_resource_id: stonith-sbd
+__ha_pacemaker_fence_sbd_agent: external/sbd
+__ha_pacemaker_fence_sbd_parameters: {}
+__ha_pacemaker_fence_sbd_restart_commands: []
+
+# True when the SBD configuration changed on any node in this run.
+__ha_pacemaker_fence_sbd_restart_needed: >-
+  {{ ansible_play_hosts_all | map('extract', hostvars)
+     | selectattr('__ha_pacemaker_fence_sbd_changed', 'defined')
+     | map(attribute='__ha_pacemaker_fence_sbd_changed')
+     | select | list | length > 0 }}
