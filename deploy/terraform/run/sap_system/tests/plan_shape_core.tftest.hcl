@@ -1236,3 +1236,146 @@ run "capabilities_contract_is_published" {
     error_message = "The capability contract must repeat the individual outputs."
   }
 }
+
+# A workload zone state written by the current release is read through its
+# capability contract. This state carries only the contract, so a value that
+# reaches the SAP system can only have come from it. The values repeat the
+# flat outputs of the shared fixture.
+run "workload_zone_state_is_read_from_the_capability_contract" {
+  command = plan
+
+  override_data {
+    target = data.terraform_remote_state.landscape
+    values = {
+      outputs = {
+        capabilities = {
+          contract_version          = "1.0"
+          stage                     = "workload_zone"
+          naming                    = {
+            workload_zone_name        = "DEV-WEEU-SAP01"
+            workload_zone_prefix      = "DEV-WEEU-SAP01"
+            control_plane_name        = "DEV-WEEU-DEP01"
+            control_plane_environment = "DEV"
+            random_id                 = "abc"
+          }
+          resource_group            = {
+            id              = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape"
+            name            = "rg-landscape"
+            subscription_id = "00000000-0000-0000-0000-000000000000"
+          }
+          network                   = {
+            vnet_id                       = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01"
+            route_table_id                = ""
+            management_subnet_id          = ""
+            public_network_access_enabled = true
+            use_separate_storage_subnet   = true
+            subnets                       = {
+              admin    = {
+                id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01/subnets/admin"
+                nsg_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/networkSecurityGroups/nsg-admin"
+              }
+              db       = {
+                id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01/subnets/db"
+                nsg_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/networkSecurityGroups/nsg-db"
+              }
+              app      = {
+                id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01/subnets/app"
+                nsg_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/networkSecurityGroups/nsg-app"
+              }
+              web      = {
+                id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01/subnets/web"
+                nsg_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/networkSecurityGroups/nsg-web"
+              }
+              storage  = {
+                id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01/subnets/storage"
+                nsg_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/networkSecurityGroups/nsg-storage"
+              }
+              endpoint = {
+                id     = ""
+                nsg_id = ""
+              }
+              ams      = {
+                id = ""
+              }
+            }
+          }
+          identity                  = {
+            use_spn = true
+          }
+          key_vault                 = {
+            user_id                    = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.KeyVault/vaults/kv-user"
+            private_id                 = ""
+            spn_id                     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.KeyVault/vaults/kv-landscape-spn"
+            name                       = "kv-user"
+            user_credential_vault_id   = ""
+            spn_credential_vault_id    = ""
+            sid_username_secret_name   = "sid-username"
+            sid_password_secret_name   = "sid-password"
+            sid_public_key_secret_name = "sid-public-key"
+          }
+          dns                       = {
+            label                                    = ""
+            resource_group_name                      = "rg-landscape"
+            management_resource_group_name           = ""
+            management_subscription_id               = ""
+            privatelink_resource_group_name          = ""
+            privatelink_subscription_id              = ""
+            privatelink_file_id                      = ""
+            register_virtual_network                 = false
+            register_storage_accounts_and_key_vaults = false
+            use_custom_a_registration                = false
+          }
+          storage                   = {
+            diagnostics_account_name        = "stlandscapediag"
+            diagnostics_resource_group_name = "rg-landscape"
+            transport_account_id            = ""
+            witness_account                 = ""
+            utility_account_ids             = []
+            utility_account_names           = []
+            install_path                    = ""
+            transport_path                  = ""
+            netapp_pool                     = {
+              resource_group_name = "rg-landscape"
+              location            = "westeurope"
+              account_name        = "anf-dev"
+              account_id          = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.NetApp/netAppAccounts/anf-dev"
+              pool_name           = "pool-dev"
+              service_level       = "Premium"
+              subnet_id           = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-landscape/providers/Microsoft.Network/virtualNetworks/vnet-sap01/subnets/anf"
+              qos_type            = "Manual"
+            }
+          }
+          iscsi                     = {
+            authentication_type     = ""
+            authentication_username = ""
+            private_ips             = []
+            server_ips              = []
+            server_names            = []
+            servers                 = []
+            dns_records             = []
+          }
+          application_configuration = {
+            id   = ""
+            name = ""
+          }
+          automation_version        = "5.0.0"
+        }
+      }
+    }
+  }
+
+  assert {
+    condition     = module.sap_capabilities.landscape_contract_version == "1.0"
+    error_message = "The contract version of the workload zone state must be recognised."
+  }
+
+  assert {
+    condition     = output.workload_automation_version == "5.0.0"
+    error_message = "The workload zone automation version must be read from the capability contract."
+  }
+
+  assert {
+    condition     = output.created_resource_group_name != ""
+    error_message = "The SAP system must plan from a workload zone state that carries only the capability contract."
+  }
+}
