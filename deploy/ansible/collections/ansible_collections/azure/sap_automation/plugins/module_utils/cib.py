@@ -260,3 +260,33 @@ def reconcile(current_xml, desired, state="present"):
             assign_ids(desired, name, name)
         changed = _reconcile_replace(current, desired, state)
     return ET.tostring(current, encoding="unicode"), changed
+
+
+# Replacement shown instead of a secret, the marker Ansible itself uses.
+REDACTED = "********"
+
+
+def is_sensitive(name):
+    """True for an nvpair that carries a secret, such as a fence agent password."""
+    name = (name or "").lower()
+    return name in ("passwd", "password") or "secret" in name
+
+
+def redact(xml_text):
+    """Return the XML with the value of every sensitive nvpair masked.
+
+    Used only for what a module reports. Text that is not well-formed XML is
+    returned unchanged; it carries no parsed nvpair to mask.
+    """
+    if not xml_text:
+        return xml_text
+    try:
+        root = ET.fromstring(xml_text)
+    except ET.ParseError:
+        return xml_text
+    masked = False
+    for pair in root.iter("nvpair"):
+        if is_sensitive(pair.get("name")) and pair.get("value"):
+            pair.set("value", REDACTED)
+            masked = True
+    return ET.tostring(root, encoding="unicode") if masked else xml_text

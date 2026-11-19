@@ -8,5 +8,5 @@
       - crm_resource
       - --cleanup
       - --resource
-      - "{{ ha_pacemaker_fence_azure_msi_resource_id }}"
+      - "{{ ha_pacemaker_fence_azure_arm_resource_id }}"
   changed_when: true

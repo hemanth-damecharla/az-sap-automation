@@ -16,9 +16,9 @@
                                                and node_tier == 'hana'
                                                and not (database_scale_out | default(false) | bool)
                                                and database_cluster_type == 'AFA'
-                                               and use_msi_for_clusters | default(false) | bool
                                                and not (ansible_os_family | upper == 'REDHAT'
-                                                        and ansible_distribution_major_version | int < 8) }}
+                                                        and ansible_distribution_major_version | int < 8)
+                                               and (ansible_distribution | lower ~ ansible_distribution_version) != 'sles_sap12.4' }}
 
 - name:                                     "1.17 Generic Pacemaker - Legacy implementation"
   ansible.builtin.import_tasks:             1.17-legacy.yml

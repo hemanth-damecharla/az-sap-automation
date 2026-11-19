@@ -1,4 +1,8 @@
 ---
-__ha_pacemaker_fence_azure_msi_platform_parameters:
+__ha_pacemaker_fence_azure_arm_platform_parameters:
   pcmk_monitor_timeout: "120"
-__ha_pacemaker_fence_azure_msi_priority_fencing_delay: "15"
+__ha_pacemaker_fence_azure_arm_priority_fencing_delay: "15"
+# fence_azure_arm accepts both spellings; RHEL uses username and password,
+# as the tasks this role replaces did on RHEL 8 and later.
+__ha_pacemaker_fence_azure_arm_spn_login: username
+__ha_pacemaker_fence_azure_arm_spn_password: password

@@ -25,7 +25,7 @@ List it after the role that creates the fallback device:
 
 ```yaml
 ha_pacemaker_fence_roles:
-  - azure.sap_automation.ha_pacemaker_fence_azure_msi
+  - azure.sap_automation.ha_pacemaker_fence_azure_arm
   - azure.sap_automation.ha_pacemaker_fence_kdump
 ```
 

@@ -1,8 +1,8 @@
 ---
-__ha_pacemaker_fence_azure_msi_platform_parameters:
+__ha_pacemaker_fence_azure_arm_platform_parameters:
   pcmk_delay_max: "15"
-__ha_pacemaker_fence_azure_msi_meta:
+__ha_pacemaker_fence_azure_arm_meta:
   failure-timeout: 120s
-__ha_pacemaker_fence_azure_msi_monitor:
+__ha_pacemaker_fence_azure_arm_monitor:
   interval: "3600"
   timeout: "120"

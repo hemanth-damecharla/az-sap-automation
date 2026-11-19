@@ -5,6 +5,7 @@
   vars:
     az_instance_metadata_url: http://127.0.0.1:{{ imds_port }}/metadata/instance
     flavor: classic
+    auth: msi
   tasks:
     - name: Read instance metadata
       ansible.builtin.include_role:
@@ -12,15 +13,19 @@
         public: true
     - name: Fencing
       ansible.builtin.include_role:
-        name: azure.sap_automation.ha_pacemaker_fence_azure_msi
+        name: azure.sap_automation.ha_pacemaker_fence_azure_arm
       vars: &common
         ha_pacemaker_nodes:
           - "{{ az_instance_metadata_cluster_node | combine({'name': 'n1'}) }}"
           - {name: n2, address: 10.0.0.2, vm_name: vm-n2}
         ha_pacemaker_config_node: "{{ ansible_facts['hostname'] }}"
-        ha_pacemaker_fence_azure_msi_subscription_id: "{{ az_instance_metadata_compute['subscription_id'] }}"
-        ha_pacemaker_fence_azure_msi_resource_group: "{{ az_instance_metadata_compute['resource_group'] }}"
-        ha_pacemaker_fence_azure_msi_cloud: "{{ az_instance_metadata_compute['cloud'] }}"
+        ha_pacemaker_fence_azure_arm_subscription_id: "{{ az_instance_metadata_compute['subscription_id'] }}"
+        ha_pacemaker_fence_azure_arm_resource_group: "{{ az_instance_metadata_compute['resource_group'] }}"
+        ha_pacemaker_fence_azure_arm_cloud: "{{ az_instance_metadata_compute['cloud'] }}"
+        ha_pacemaker_fence_azure_arm_authentication: "{{ auth }}"
+        ha_pacemaker_fence_azure_arm_tenant_id: tenant-1
+        ha_pacemaker_fence_azure_arm_client_id: client-1
+        ha_pacemaker_fence_azure_arm_client_secret: not-a-real-secret-7f3a
         ha_pacemaker_ra_hana_scaleup_sid: X00
         ha_pacemaker_ra_hana_scaleup_instance_number: "00"
         ha_pacemaker_ra_hana_scaleup_virtual_ip: 10.0.0.9

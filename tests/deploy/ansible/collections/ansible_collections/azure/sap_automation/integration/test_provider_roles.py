@@ -93,6 +93,7 @@ def cluster(tmp_path, imds_port):
             check=False,
         )
         assert result.returncode == 0, result.stdout + result.stderr
+        play.output = result.stdout + result.stderr
         recap = result.stdout.rsplit("PLAY RECAP", 1)[1]
         return int(recap.split("changed=")[1].split()[0])
 
@@ -131,3 +132,18 @@ def test_check_mode_apply_and_second_run(cluster, flavor):
     types = {p.get("type") for p in configuration.find("resources").iter("primitive")}
     assert ("SAPHanaController" in types) == (flavor == "angi")
     assert len(configuration.find("constraints")) == 2
+
+
+def test_service_principal_fencing_keeps_the_secret_out_of_the_output(cluster):
+    assert cluster("classic", "-e", "auth=spn", "--diff", "-v") > 0
+    assert "not-a-real-secret-7f3a" not in cluster.output
+
+    configuration = ET.parse(cluster.cib).getroot().find("configuration")
+    fence = configuration.find("resources/primitive[@id='rsc_st_azure']")
+    parameters = {p.get("name"): p.get("value") for p in fence.iter("nvpair")}
+    assert "msi" not in parameters
+    assert parameters["tenantId"] == "tenant-1"
+    credentials = {parameters.get(name) for name in ("login", "username", "passwd", "password")}
+    assert {"client-1", "not-a-real-secret-7f3a"} <= credentials
+
+    assert cluster("classic", "-e", "auth=spn") == 0, "second run must not change anything"

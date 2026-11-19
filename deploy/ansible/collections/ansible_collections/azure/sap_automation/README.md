@@ -27,7 +27,7 @@ The default behaviour of every playbook is unchanged.
 | --- | --- | --- |
 | [`ha_pacemaker`](roles/ha_pacemaker/README.md) | Entry point | Role ordering in `playbook_04_00_01_db_ha.yaml` |
 | [`ha_pacemaker_core`](roles/ha_pacemaker_core/README.md) | Cluster bootstrap | `roles-os/1.17-generic-pacemaker` (bootstrap, scheduled events, start delay) |
-| [`ha_pacemaker_fence_azure_msi`](roles/ha_pacemaker_fence_azure_msi/README.md) | Fencing provider | Azure fence agent tasks in `1.17.2.0-cluster-*.yml` |
+| [`ha_pacemaker_fence_azure_arm`](roles/ha_pacemaker_fence_azure_arm/README.md) | Fencing provider | Azure fence agent tasks in `1.17.2.0-cluster-*.yml` |
 | [`ha_pacemaker_fence_kdump`](roles/ha_pacemaker_fence_kdump/README.md) | Fencing provider | `use_fence_kdump` tasks in `1.17.1-pre_checks.yml` and `1.17.2.0-cluster-RedHat.yml` |
 | [`sap_db_hana_hsr`](roles/sap_db_hana_hsr/README.md) | Database function | `roles-db/4.0.1-hdb-hsr` |
 | [`az_instance_metadata`](roles/az_instance_metadata/README.md) | Azure facts | Instance metadata queries repeated in playbooks and roles |
@@ -50,7 +50,7 @@ Ansible finds the collection without further configuration because it sits in
 
 | Step | Collection is used when | Otherwise |
 | --- | --- | --- |
-| Cluster bootstrap and fencing (`roles-os/1.17-generic-pacemaker`) | HANA scale-up, `database_cluster_type` is `AFA`, `use_msi_for_clusters` is true, RHEL 8 or later or SLES | Existing tasks |
+| Cluster bootstrap and fencing (`roles-os/1.17-generic-pacemaker`) | HANA scale-up, `database_cluster_type` is `AFA`, RHEL 8 or later or SLES other than SLES 12 SP4 | Existing tasks |
 | System replication (`roles-db/4.0.1-hdb-hsr`) | HANA scale-up | Existing tasks |
 | HANA cluster resources (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.4.1) | No active/read-enabled secondary, `NFS_provider` is not `ANF`, RHEL 8 or later or SLES | Existing tasks |
 
@@ -79,8 +79,12 @@ applies its configuration with `azure.sap_automation.pacemaker_cib`.
 
 No role stores or defaults a secret. `ha_pacemaker_core_hacluster_password`
 must be supplied from Azure Key Vault or Ansible Vault and is never logged.
-`ha_pacemaker_fence_azure_msi` needs no credential: the fence agent uses the
-managed identity of the virtual machines.
+`ha_pacemaker_fence_azure_arm` needs no credential with the managed identity
+of the virtual machines (`use_msi_for_clusters`). With a service principal the
+client secret comes from the framework's fencing variables, is written to the
+cluster configuration as the existing tasks wrote it, and is kept out of the
+Ansible output: the fencing task runs with `no_log`, and `pacemaker_cib` masks
+password and secret parameters in every diff it reports.
 
 ## Validation
 

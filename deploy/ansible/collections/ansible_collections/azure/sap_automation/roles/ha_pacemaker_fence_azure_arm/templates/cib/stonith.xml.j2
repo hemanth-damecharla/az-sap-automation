@@ -2,29 +2,29 @@
   <cluster_property_set>
     <nvpair name="stonith-enabled" value="true"/>
     <nvpair name="stonith-action" value="reboot"/>
-    <nvpair name="stonith-timeout" value="{{ ha_pacemaker_fence_azure_msi_stonith_timeout }}"/>
+    <nvpair name="stonith-timeout" value="{{ ha_pacemaker_fence_azure_arm_stonith_timeout }}"/>
     <nvpair name="concurrent-fencing" value="true"/>
-{% if ha_pacemaker_fence_azure_msi_priority_fencing_delay | string | length > 0 %}
-    <nvpair name="priority-fencing-delay" value="{{ ha_pacemaker_fence_azure_msi_priority_fencing_delay }}"/>
+{% if ha_pacemaker_fence_azure_arm_priority_fencing_delay | string | length > 0 %}
+    <nvpair name="priority-fencing-delay" value="{{ ha_pacemaker_fence_azure_arm_priority_fencing_delay }}"/>
 {% endif %}
   </cluster_property_set>
 </crm_config>
 <resources>
-  <primitive id="{{ ha_pacemaker_fence_azure_msi_resource_id }}" class="stonith" type="fence_azure_arm">
+  <primitive id="{{ ha_pacemaker_fence_azure_arm_resource_id }}" class="stonith" type="fence_azure_arm">
     <instance_attributes>
-{% for name, value in __ha_pacemaker_fence_azure_msi_parameters | dictsort %}
+{% for name, value in __ha_pacemaker_fence_azure_arm_parameters | dictsort %}
       <nvpair name="{{ name }}" value="{{ value }}"/>
 {% endfor %}
     </instance_attributes>
-{% if __ha_pacemaker_fence_azure_msi_meta %}
+{% if __ha_pacemaker_fence_azure_arm_meta %}
     <meta_attributes>
-{% for name, value in __ha_pacemaker_fence_azure_msi_meta | dictsort %}
+{% for name, value in __ha_pacemaker_fence_azure_arm_meta | dictsort %}
       <nvpair name="{{ name }}" value="{{ value }}"/>
 {% endfor %}
     </meta_attributes>
 {% endif %}
     <operations>
-      <op name="monitor"{% for key, value in __ha_pacemaker_fence_azure_msi_monitor | dictsort %} {{ key }}="{{ value }}"{% endfor %}/>
+      <op name="monitor"{% for key, value in __ha_pacemaker_fence_azure_arm_monitor | dictsort %} {{ key }}="{{ value }}"{% endfor %}/>
     </operations>
   </primitive>
 </resources>

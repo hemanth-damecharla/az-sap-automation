@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0
+
+Breaking:
+
+- `ha_pacemaker_fence_azure_msi` is renamed `ha_pacemaker_fence_azure_arm`,
+  and its variables from `ha_pacemaker_fence_azure_msi_*` to
+  `ha_pacemaker_fence_azure_arm_*`. The role now covers both ways the
+  `fence_azure_arm` agent authenticates.
+
+Added:
+
+- `ha_pacemaker_fence_azure_arm_authentication`: `msi` (default) or `spn`,
+  with `ha_pacemaker_fence_azure_arm_tenant_id`, `_client_id` and
+  `_client_secret` for a service principal.
+- `pacemaker_cib` masks the value of `passwd`, `password` and `*secret*`
+  parameters in the diff it reports.
+- The SDAF playbooks use the collection for service principal fencing too.
+
 ## 0.1.0
 
 - Collection skeleton.

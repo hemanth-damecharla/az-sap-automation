@@ -51,6 +51,10 @@ notes:
   - Each changed section is pushed with one C(cibadmin --replace) call, so a
     section is updated atomically and Pacemaker validates it against the
     active schema before accepting it.
+  - The diff masks the value of every C(nvpair) named C(passwd) or
+    C(password), or with C(secret) in its name, wherever it is in a changed
+    section. The XML passed in O(xml) is not masked; use C(no_log) on a task
+    whose O(xml) carries a secret.
 author:
   - SAP Deployment Automation Framework contributors
 """
@@ -102,6 +106,7 @@ from ansible_collections.azure.sap_automation.plugins.module_utils.cib import (
     CibError,
     parse_desired,
     reconcile,
+    redact,
 )
 
 # cibadmin exits with ENXIO when the requested scope is not in the CIB yet.
@@ -166,8 +171,10 @@ def main():
         if not changed:
             continue
         changed_sections.append(name)
-        before.append(current or "")
-        after.append(new_xml)
+        # The diff shows whole sections, so a secret in an unrelated element
+        # of the same section would otherwise appear in the output.
+        before.append(redact(current or ""))
+        after.append(redact(new_xml))
         if not module.check_mode:
             write_section(module, cibadmin, name, new_xml, current is not None)
 

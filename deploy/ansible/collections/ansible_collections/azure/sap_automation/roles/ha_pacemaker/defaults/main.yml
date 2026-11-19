@@ -11,5 +11,5 @@ ha_pacemaker_config_node: "{{ (ha_pacemaker_nodes | first | default({}))['name']
 # without changing this collection.
 ha_pacemaker_core_role: azure.sap_automation.ha_pacemaker_core
 ha_pacemaker_fence_roles:
-  - azure.sap_automation.ha_pacemaker_fence_azure_msi
+  - azure.sap_automation.ha_pacemaker_fence_azure_arm
 ha_pacemaker_ra_roles: []

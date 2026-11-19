@@ -215,3 +215,29 @@ def test_merge_section_rejects_wrong_child_and_bad_current_xml():
 def test_template_indentation_is_not_written_to_the_cib():
     new_xml, _ = cib.reconcile(None, section(PRIMITIVE, "resources"))
     assert "\n" not in new_xml and "> <" not in new_xml
+
+
+@pytest.mark.parametrize(
+    "name, masked",
+    [
+        ("passwd", True),
+        ("password", True),
+        ("Client_Secret", True),
+        ("login", False),
+        ("username", False),
+        ("pcmk_host_map", False),
+    ],
+)
+def test_redact_masks_only_secret_parameters(name, masked):
+    xml_text = '<resources><nvpair name="%s" value="v"/></resources>' % name
+    value = ET.fromstring(cib.redact(xml_text)).find("nvpair").get("value")
+    assert value == (cib.REDACTED if masked else "v")
+
+
+def test_redact_leaves_other_text_unchanged():
+    assert cib.redact("") == ""
+    assert cib.redact("not xml <") == "not xml <"
+    unchanged = '<resources><nvpair name="login" value="v"/></resources>'
+    assert cib.redact(unchanged) is unchanged
+    empty_secret = '<resources><nvpair name="passwd" value=""/></resources>'
+    assert cib.redact(empty_secret) is empty_secret

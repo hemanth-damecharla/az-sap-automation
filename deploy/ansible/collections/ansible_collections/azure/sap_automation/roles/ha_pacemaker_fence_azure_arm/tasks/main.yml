@@ -2,8 +2,23 @@
 - name: Load platform variables
   ansible.builtin.import_tasks: set_vars.yml
 
+- name: Check the service principal is complete
+  ansible.builtin.assert:
+    that:
+      - ha_pacemaker_fence_azure_arm_tenant_id | default('') | length > 0
+      - ha_pacemaker_fence_azure_arm_client_id | default('') | length > 0
+      - ha_pacemaker_fence_azure_arm_client_secret | default('') | length > 0
+    fail_msg: >-
+      Service principal fencing needs ha_pacemaker_fence_azure_arm_tenant_id,
+      ha_pacemaker_fence_azure_arm_client_id and ha_pacemaker_fence_azure_arm_client_secret.
+    quiet: true
+  when: ha_pacemaker_fence_azure_arm_authentication == 'spn'
+
+# With a service principal the XML carries the secret, and the module reports
+# the XML in its diff.
 - name: Configure the Azure fence agent and enable fencing
   azure.sap_automation.pacemaker_cib:
     xml: "{{ lookup('ansible.builtin.template', 'cib/stonith.xml.j2') }}"
-  when: __ha_pacemaker_fence_azure_msi_is_config_node | bool
+  when: __ha_pacemaker_fence_azure_arm_is_config_node | bool
+  no_log: "{{ ha_pacemaker_fence_azure_arm_authentication == 'spn' }}"
   notify: Clean up the Azure fence resource

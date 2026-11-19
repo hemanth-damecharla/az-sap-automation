@@ -1,20 +1,30 @@
 ---
-ha_pacemaker_fence_azure_msi_nodes: "{{ ha_pacemaker_nodes }}"
-ha_pacemaker_fence_azure_msi_config_node: "{{ ha_pacemaker_config_node }}"
+ha_pacemaker_fence_azure_arm_nodes: "{{ ha_pacemaker_nodes }}"
+ha_pacemaker_fence_azure_arm_config_node: "{{ ha_pacemaker_config_node }}"
 
 # Azure subscription and resource group that contain the cluster VMs.
-# ha_pacemaker_fence_azure_msi_subscription_id:
-# ha_pacemaker_fence_azure_msi_resource_group:
+# ha_pacemaker_fence_azure_arm_subscription_id:
+# ha_pacemaker_fence_azure_arm_resource_group:
+
+# How fence_azure_arm authenticates to Azure: msi uses the managed identity of
+# the cluster VMs, spn a service principal.
+ha_pacemaker_fence_azure_arm_authentication: msi
+
+# Service principal, required when authentication is spn. The secret is stored
+# in the cluster configuration, as with any fence agent password.
+# ha_pacemaker_fence_azure_arm_tenant_id:
+# ha_pacemaker_fence_azure_arm_client_id:
+# ha_pacemaker_fence_azure_arm_client_secret:
 
 # Azure cloud of the VMs: public or usgov.
-ha_pacemaker_fence_azure_msi_cloud: public
+ha_pacemaker_fence_azure_arm_cloud: public
 
-ha_pacemaker_fence_azure_msi_resource_id: rsc_st_azure
-ha_pacemaker_fence_azure_msi_stonith_timeout: "900"
+ha_pacemaker_fence_azure_arm_resource_id: rsc_st_azure
+ha_pacemaker_fence_azure_arm_stonith_timeout: "900"
 
 # Empty leaves the cluster property untouched.
-ha_pacemaker_fence_azure_msi_priority_fencing_delay: "{{ __ha_pacemaker_fence_azure_msi_priority_fencing_delay }}"
+ha_pacemaker_fence_azure_arm_priority_fencing_delay: "{{ __ha_pacemaker_fence_azure_arm_priority_fencing_delay }}"
 
 # Additional or overriding fence_azure_arm parameters, merged over the
 # platform defaults.
-ha_pacemaker_fence_azure_msi_parameters: {}
+ha_pacemaker_fence_azure_arm_parameters: {}

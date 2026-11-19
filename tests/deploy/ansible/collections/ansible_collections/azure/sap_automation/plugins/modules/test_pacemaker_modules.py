@@ -37,6 +37,24 @@ def test_cib_check_mode_reports_without_writing(run_module):
     assert len(run_module.commands.calls) == 2
 
 
+def test_cib_diff_masks_secrets_of_other_resources(run_module):
+    fence = (
+        '<primitive id="rsc_st_azure" class="stonith" type="fence_azure_arm">'
+        '<instance_attributes id="ia"><nvpair id="p" name="passwd" value="s3cret"/>'
+        '<nvpair id="l" name="login" value="client-1"/></instance_attributes></primitive>'
+    )
+    live = "<resources>%s</resources>" % fence
+    run_module.commands.add(out=live).add()
+    result = run_module(
+        pacemaker_cib.main,
+        {"xml": '<resources><primitive id="rsc_ip" class="ocf" type="IPaddr2"/></resources>'},
+    )
+    assert result["changed"]
+    diff = result["diff"]["before"] + result["diff"]["after"]
+    assert "s3cret" not in diff and "********" in diff and "client-1" in diff
+    assert "s3cret" in run_module.commands.calls[1][1]["data"], "the CIB keeps the real value"
+
+
 def test_cib_creates_section_that_does_not_exist(run_module):
     run_module.commands.add(rc=105).add()
     xml = '<rsc_defaults><meta_attributes><nvpair name="migration-threshold" value="3"/></meta_attributes></rsc_defaults>'

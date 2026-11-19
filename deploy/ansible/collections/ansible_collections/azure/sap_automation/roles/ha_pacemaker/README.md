@@ -35,8 +35,8 @@ Inputs of the provider roles are set with their own prefixed variables.
           - azure.sap_automation.ha_pacemaker_ra_hana_scaleup
         ha_pacemaker_core_cluster_name: hdb_X00
         ha_pacemaker_core_hacluster_password: "{{ lookup('azure.azcollection.azure_keyvault_secret', 'ha-cluster-password', vault_url=kv_url) }}"
-        ha_pacemaker_fence_azure_msi_subscription_id: "{{ subscription_id }}"
-        ha_pacemaker_fence_azure_msi_resource_group: "{{ resource_group_name }}"
+        ha_pacemaker_fence_azure_arm_subscription_id: "{{ subscription_id }}"
+        ha_pacemaker_fence_azure_arm_resource_group: "{{ resource_group_name }}"
         ha_pacemaker_ra_hana_scaleup_sid: X00
         ha_pacemaker_ra_hana_scaleup_instance_number: "00"
         ha_pacemaker_ra_hana_scaleup_virtual_ip: 10.1.1.4

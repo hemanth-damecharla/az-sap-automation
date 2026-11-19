@@ -17,7 +17,7 @@
     name:                                   azure.sap_automation.az_instance_metadata
     public:                                 true
 
-- name:                                     "1.17 Generic Pacemaker - Build the cluster with a managed identity fence agent"
+- name:                                     "1.17 Generic Pacemaker - Build the cluster with the Azure fence agent"
   ansible.builtin.include_role:
     name:                                   azure.sap_automation.ha_pacemaker
   vars:
@@ -26,7 +26,7 @@
                                                | map('extract', hostvars, 'az_instance_metadata_cluster_node') | list }}
     ha_pacemaker_config_node:               "{{ hostvars[primary_instance_name]['az_instance_metadata_cluster_node']['name'] }}"
     ha_pacemaker_fence_roles: >-
-                                            {{ ['azure.sap_automation.ha_pacemaker_fence_azure_msi']
+                                            {{ ['azure.sap_automation.ha_pacemaker_fence_azure_arm']
                                                + (['azure.sap_automation.ha_pacemaker_fence_kdump']
                                                   if use_fence_kdump | default(false) | bool
                                                      and ansible_os_family | upper == 'REDHAT'
@@ -40,8 +40,12 @@
     ha_pacemaker_core_azure_events_enabled: >-
                                             {{ ansible_os_family | upper == 'SUSE'
                                                or cluster_use_scheduled_events_agent | default(true) | bool }}
-    ha_pacemaker_fence_azure_msi_subscription_id: "{{ az_instance_metadata_compute['subscription_id'] }}"
-    ha_pacemaker_fence_azure_msi_resource_group:  "{{ az_instance_metadata_compute['resource_group'] }}"
-    ha_pacemaker_fence_azure_msi_cloud:           "{{ az_instance_metadata_compute['cloud'] }}"
+    ha_pacemaker_fence_azure_arm_subscription_id: "{{ az_instance_metadata_compute['subscription_id'] }}"
+    ha_pacemaker_fence_azure_arm_resource_group:  "{{ az_instance_metadata_compute['resource_group'] }}"
+    ha_pacemaker_fence_azure_arm_cloud:           "{{ az_instance_metadata_compute['cloud'] }}"
+    ha_pacemaker_fence_azure_arm_authentication:  "{{ 'msi' if use_msi_for_clusters | default(false) | bool else 'spn' }}"
+    ha_pacemaker_fence_azure_arm_tenant_id:       "{{ fencing_spn_tenant_id | default('') }}"
+    ha_pacemaker_fence_azure_arm_client_id:       "{{ fencing_spn_client_id | default('') }}"
+    ha_pacemaker_fence_azure_arm_client_secret:   "{{ fencing_spn_client_pwd | default('') }}"
 
 ...

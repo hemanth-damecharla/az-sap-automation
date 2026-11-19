@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   author: SAP Deployment Automation Framework contributors
-  description: Configures Azure fence agent STONITH with a managed identity
+  description: Configures Azure fence agent STONITH with a managed identity or a service principal
   license: MIT
   min_ansible_version: "2.16"
   platforms:

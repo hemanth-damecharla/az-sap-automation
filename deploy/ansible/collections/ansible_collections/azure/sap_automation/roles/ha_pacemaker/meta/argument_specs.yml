@@ -39,7 +39,7 @@ argument_specs:
         type: list
         elements: str
         default:
-          - azure.sap_automation.ha_pacemaker_fence_azure_msi
+          - azure.sap_automation.ha_pacemaker_fence_azure_arm
       ha_pacemaker_ra_roles:
         description: Fully qualified names of the resource agent provider roles, applied in order.
         type: list

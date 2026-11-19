@@ -1,35 +1,45 @@
 ---
-__ha_pacemaker_fence_azure_msi_is_config_node: "{{ ansible_facts['hostname'] == ha_pacemaker_fence_azure_msi_config_node }}"
+__ha_pacemaker_fence_azure_arm_is_config_node: "{{ ansible_facts['hostname'] == ha_pacemaker_fence_azure_arm_config_node }}"
 
-__ha_pacemaker_fence_azure_msi_host_map: >-
-  {{ ha_pacemaker_fence_azure_msi_nodes | map(attribute='name')
-     | zip(ha_pacemaker_fence_azure_msi_nodes | map(attribute='vm_name'))
+__ha_pacemaker_fence_azure_arm_host_map: >-
+  {{ ha_pacemaker_fence_azure_arm_nodes | map(attribute='name')
+     | zip(ha_pacemaker_fence_azure_arm_nodes | map(attribute='vm_name'))
      | map('join', ':') | join(';') }}
 
 # fence_azure_arm parameters common to every platform.
-__ha_pacemaker_fence_azure_msi_base_parameters:
-  msi: "true"
-  subscriptionId: "{{ ha_pacemaker_fence_azure_msi_subscription_id }}"
-  resourceGroup: "{{ ha_pacemaker_fence_azure_msi_resource_group }}"
-  pcmk_host_map: "{{ __ha_pacemaker_fence_azure_msi_host_map }}"
+__ha_pacemaker_fence_azure_arm_base_parameters:
+  subscriptionId: "{{ ha_pacemaker_fence_azure_arm_subscription_id }}"
+  resourceGroup: "{{ ha_pacemaker_fence_azure_arm_resource_group }}"
+  pcmk_host_map: "{{ __ha_pacemaker_fence_azure_arm_host_map }}"
   power_timeout: "240"
   pcmk_reboot_timeout: "900"
   pcmk_monitor_retries: "4"
   pcmk_action_limit: "3"
-__ha_pacemaker_fence_azure_msi_cloud_parameters:
+# Credentials. The service principal names are set per platform; an inline if
+# keeps the service principal values unevaluated when the managed identity is
+# used.
+__ha_pacemaker_fence_azure_arm_spn_login: login
+__ha_pacemaker_fence_azure_arm_spn_password: passwd
+__ha_pacemaker_fence_azure_arm_auth_parameters: >-
+  {{ {'msi': 'true'} if ha_pacemaker_fence_azure_arm_authentication == 'msi'
+     else {'tenantId': ha_pacemaker_fence_azure_arm_tenant_id,
+           __ha_pacemaker_fence_azure_arm_spn_login: ha_pacemaker_fence_azure_arm_client_id,
+           __ha_pacemaker_fence_azure_arm_spn_password: ha_pacemaker_fence_azure_arm_client_secret} }}
+__ha_pacemaker_fence_azure_arm_cloud_parameters:
   public: {}
   usgov:
     cloud: usgov
 
 # Platform deltas, overridden in the platform files.
-__ha_pacemaker_fence_azure_msi_platform_parameters: {}
-__ha_pacemaker_fence_azure_msi_meta: {}
-__ha_pacemaker_fence_azure_msi_monitor:
+__ha_pacemaker_fence_azure_arm_platform_parameters: {}
+__ha_pacemaker_fence_azure_arm_meta: {}
+__ha_pacemaker_fence_azure_arm_monitor:
   interval: "3600"
-__ha_pacemaker_fence_azure_msi_priority_fencing_delay: ""
+__ha_pacemaker_fence_azure_arm_priority_fencing_delay: ""
 
-__ha_pacemaker_fence_azure_msi_parameters: >-
-  {{ __ha_pacemaker_fence_azure_msi_base_parameters
-     | combine(__ha_pacemaker_fence_azure_msi_cloud_parameters[ha_pacemaker_fence_azure_msi_cloud],
-               __ha_pacemaker_fence_azure_msi_platform_parameters,
-               ha_pacemaker_fence_azure_msi_parameters) }}
+__ha_pacemaker_fence_azure_arm_parameters: >-
+  {{ __ha_pacemaker_fence_azure_arm_base_parameters
+     | combine(__ha_pacemaker_fence_azure_arm_auth_parameters,
+               __ha_pacemaker_fence_azure_arm_cloud_parameters[ha_pacemaker_fence_azure_arm_cloud],
+               __ha_pacemaker_fence_azure_arm_platform_parameters,
+               ha_pacemaker_fence_azure_arm_parameters) }}

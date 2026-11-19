@@ -33,8 +33,8 @@ INPUTS = {
     ],
     "ha_pacemaker_config_node": "n1",
     "ha_pacemaker_core_cluster_name": "hdb_X00",
-    "ha_pacemaker_fence_azure_msi_subscription_id": "sub-id",
-    "ha_pacemaker_fence_azure_msi_resource_group": "rg-sap",
+    "ha_pacemaker_fence_azure_arm_subscription_id": "sub-id",
+    "ha_pacemaker_fence_azure_arm_resource_group": "rg-sap",
     "ha_pacemaker_ra_hana_scaleup_sid": "x00",
     "ha_pacemaker_ra_hana_scaleup_instance_number": "00",
     "ha_pacemaker_ra_hana_scaleup_virtual_ip": "10.0.0.9",
@@ -194,7 +194,7 @@ def test_angi_layout_differs_by_platform():
     ],
 )
 def test_fence_agent_parameters(platform, expected, unexpected, delay):
-    sections = render("ha_pacemaker_fence_azure_msi", "stonith.xml.j2", platform)
+    sections = render("ha_pacemaker_fence_azure_arm", "stonith.xml.j2", platform)
     primitive = sections["resources"].find("primitive")
     parameters = pairs(primitive.find("instance_attributes"))
     assert parameters["msi"] == "true"
@@ -207,13 +207,35 @@ def test_fence_agent_parameters(platform, expected, unexpected, delay):
     assert properties.get("priority-fencing-delay") == delay
 
 
+@pytest.mark.parametrize(
+    "platform, login, password",
+    [("rhel9", "username", "password"), ("sles15", "login", "passwd")],
+)
+def test_fence_agent_service_principal(platform, login, password):
+    sections = render(
+        "ha_pacemaker_fence_azure_arm",
+        "stonith.xml.j2",
+        platform,
+        ha_pacemaker_fence_azure_arm_authentication="spn",
+        ha_pacemaker_fence_azure_arm_tenant_id="tenant-id",
+        ha_pacemaker_fence_azure_arm_client_id="client-id",
+        ha_pacemaker_fence_azure_arm_client_secret="client-secret",
+    )
+    parameters = pairs(sections["resources"].find("primitive/instance_attributes"))
+    assert "msi" not in parameters
+    assert parameters["tenantId"] == "tenant-id"
+    assert parameters[login] == "client-id" and parameters[password] == "client-secret"
+    assert not {"login", "passwd", "username", "password"} - {login, password} & parameters.keys()
+    assert parameters["pcmk_host_map"] == "n1:vm-n1;n2:vm-n2"
+
+
 def test_fence_agent_cloud_and_overrides():
     sections = render(
-        "ha_pacemaker_fence_azure_msi",
+        "ha_pacemaker_fence_azure_arm",
         "stonith.xml.j2",
         "sles15",
-        ha_pacemaker_fence_azure_msi_cloud="usgov",
-        ha_pacemaker_fence_azure_msi_parameters={"power_timeout": "300"},
+        ha_pacemaker_fence_azure_arm_cloud="usgov",
+        ha_pacemaker_fence_azure_arm_parameters={"power_timeout": "300"},
     )
     parameters = pairs(sections["resources"].find("primitive/instance_attributes"))
     assert parameters["cloud"] == "usgov" and parameters["power_timeout"] == "300"
