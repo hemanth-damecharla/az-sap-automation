@@ -1,0 +1,76 @@
+---
+- name: configure | Install the package that ships the hooks
+  ansible.builtin.package:
+    name: "{{ __sap_db_hana_hadr_hooks_spec['package'] }}"
+    state: present
+  register: __sap_db_hana_hadr_hooks_package
+  when: sap_db_hana_hadr_hooks_install_package | bool
+
+- name: configure | Find the hook scripts
+  ansible.builtin.stat:
+    path: "{{ __sap_db_hana_hadr_hooks_path | regex_replace('/+$', '') }}/{{ __sap_db_hana_hadr_hooks_hook['provider'] }}.py"
+  loop: "{{ __sap_db_hana_hadr_hooks_hooks }}"
+  loop_control:
+    loop_var: __sap_db_hana_hadr_hooks_hook
+    label: "{{ __sap_db_hana_hadr_hooks_hook['provider'] }}"
+  register: __sap_db_hana_hadr_hooks_scripts
+
+- name: configure | Check that every hook script exists
+  ansible.builtin.assert:
+    that: __sap_db_hana_hadr_hooks_missing | length == 0
+    fail_msg: >-
+      Hook scripts not found in {{ __sap_db_hana_hadr_hooks_path }}:
+      {{ __sap_db_hana_hadr_hooks_missing | join(', ') }}.
+      Install {{ __sap_db_hana_hadr_hooks_spec['package'] }} or set sap_db_hana_hadr_hooks_path.
+    quiet: true
+  vars:
+    __sap_db_hana_hadr_hooks_missing: >-
+      {{ __sap_db_hana_hadr_hooks_scripts.results | rejectattr('stat.exists')
+         | map(attribute='__sap_db_hana_hadr_hooks_hook.provider') | list }}
+  # A package that check mode only pretends to install leaves no scripts.
+  when: not (ansible_check_mode and __sap_db_hana_hadr_hooks_package is changed)
+
+- name: configure | Remove the providers and trace levels of the other hooks
+  community.general.ini_file:
+    path: "{{ sap_db_hana_hadr_hooks_global_ini }}"
+    section: "{{ __sap_db_hana_hadr_hooks_stale['section'] }}"
+    option: "{{ __sap_db_hana_hadr_hooks_stale['option'] | default(omit) }}"
+    state: absent
+    create: false
+  loop: >-
+    {{ __sap_db_hana_hadr_hooks_stale_sections | map('community.general.dict_kv', 'section') | list
+       + __sap_db_hana_hadr_hooks_stale_traces | map('community.general.dict_kv', 'option')
+         | map('combine', {'section': 'trace'}) | list }}
+  loop_control:
+    loop_var: __sap_db_hana_hadr_hooks_stale
+    label: "{{ __sap_db_hana_hadr_hooks_stale['section'] }} {{ __sap_db_hana_hadr_hooks_stale['option'] | default('') }}"
+  register: __sap_db_hana_hadr_hooks_removed
+
+- name: configure | Configure the providers in global.ini
+  community.general.ini_file:
+    path: "{{ sap_db_hana_hadr_hooks_global_ini }}"
+    section: "{{ __sap_db_hana_hadr_hooks_setting['section'] }}"
+    option: "{{ __sap_db_hana_hadr_hooks_setting['option'] }}"
+    value: "{{ __sap_db_hana_hadr_hooks_setting['value'] }}"
+    owner: "{{ __sap_db_hana_hadr_hooks_admin_user }}"
+    group: "{{ sap_db_hana_hadr_hooks_group }}"
+    mode: "0644"
+  loop: "{{ __sap_db_hana_hadr_hooks_settings }}"
+  loop_control:
+    loop_var: __sap_db_hana_hadr_hooks_setting
+    label: "{{ __sap_db_hana_hadr_hooks_setting['section'] }} {{ __sap_db_hana_hadr_hooks_setting['option'] }}"
+  register: __sap_db_hana_hadr_hooks_configured
+
+- name: configure | Record whether global.ini changed
+  ansible.builtin.set_fact:
+    __sap_db_hana_hadr_hooks_global_ini_changed: >-
+      {{ __sap_db_hana_hadr_hooks_removed is changed or __sap_db_hana_hadr_hooks_configured is changed }}
+
+- name: configure | Allow the hooks to update the cluster attributes
+  ansible.builtin.template:
+    src: 20-saphana.j2
+    dest: "{{ sap_db_hana_hadr_hooks_sudoers_file }}"
+    owner: "{{ __sap_db_hana_hadr_hooks_sudoers_owner }}"
+    group: "{{ __sap_db_hana_hadr_hooks_sudoers_owner_group }}"
+    mode: "0440"
+    validate: "{{ sap_db_hana_hadr_hooks_sudoers_validate | default(omit, true) }}"

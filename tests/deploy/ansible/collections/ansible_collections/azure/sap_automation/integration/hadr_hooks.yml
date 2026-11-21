@@ -1,0 +1,31 @@
+- name: Exercise the HA/DR hook role against a file-backed HANA layout
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars:
+    os_family: Suse
+    flavor: classic
+    activation: none
+    root: /nonexistent
+  tasks:
+    - name: Present the cluster node platform
+      fake_platform:
+        os_family: "{{ os_family }}"
+        distribution: "{{ 'SLES_SAP' if os_family == 'Suse' else 'RedHat' }}"
+        version: "{{ '15.5' if os_family == 'Suse' else '9.4' }}"
+    - name: HA/DR provider hooks
+      ansible.builtin.include_role:
+        name: azure.sap_automation.sap_db_hana_hadr_hooks
+      vars:
+        sap_db_hana_hadr_hooks_sid: x00
+        sap_db_hana_hadr_hooks_instance_number: "00"
+        sap_db_hana_hadr_hooks_flavor: "{{ flavor }}"
+        sap_db_hana_hadr_hooks_activation: "{{ activation }}"
+        sap_db_hana_hadr_hooks_install_package: false
+        sap_db_hana_hadr_hooks_path: "{{ root }}/hooks"
+        sap_db_hana_hadr_hooks_global_ini: "{{ root }}/global.ini"
+        sap_db_hana_hadr_hooks_group: "{{ ansible_facts['user_gid'] }}"
+        sap_db_hana_hadr_hooks_sudoers_file: "{{ root }}/20-saphana"
+        sap_db_hana_hadr_hooks_trace_dir: "{{ root }}/trace"
+        sap_db_hana_hadr_hooks_verify_retries: 1
+        sap_db_hana_hadr_hooks_verify_delay: 0

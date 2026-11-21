@@ -1,0 +1,32 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+---
+# Maps the framework's input variables to the azure.sap_automation HA/DR hook
+# role. The conditions are those under which 5.5.3-SAPHanaSR.yml configures
+# the hooks; the version and package checks of 5.5.2 have already run.
+
+- name:                                "5.5.3.1 HANA Pacemaker - Configure the HA/DR provider hooks"
+  ansible.builtin.include_role:
+    name:                              azure.sap_automation.sap_db_hana_hadr_hooks
+  vars:
+    sap_db_hana_hadr_hooks_sid:             "{{ db_sid | upper }}"
+    sap_db_hana_hadr_hooks_instance_number: "{{ db_instance_number }}"
+    sap_db_hana_hadr_hooks_flavor:          "{{ 'angi' if is_certified_for_hanasr_angi | default(false) | bool else 'classic' }}"
+    # On SLES the classic susChkSrv hook needs SAPHanaSR 0.161.1_BF and HANA 2.0 SPS 05.
+    sap_db_hana_hadr_hooks_chksrv:          "{{ ansible_os_family | upper != 'SUSE' or suschk_hook_check is success }}"
+    sap_db_hana_hadr_hooks_host_name:       "{{ virtual_host }}"
+    # Once the cluster manages HANA, a restart outside the cluster would be
+    # taken for a failure; the configuration then loads at the next restart.
+    sap_db_hana_hadr_hooks_activation:      "{{ 'none' if hana_cluster_existence_check | bool else 'restart' }}"
+    # 5.5.1 installs the package and removes the generation it replaces.
+    sap_db_hana_hadr_hooks_install_package: false
+    sap_db_hana_hadr_hooks_stop_start_timeout: "{{ hana_stop_start_timeout_in_seconds | default(600) }}"
+  when:
+    - hana_version_ok
+    - basic_hook_check is success
+    - not (is_certified_for_hanasr_angi | default(false) | bool)
+        or ansible_os_family | upper == 'REDHAT'
+        or angi_hook_check is success
+
+...

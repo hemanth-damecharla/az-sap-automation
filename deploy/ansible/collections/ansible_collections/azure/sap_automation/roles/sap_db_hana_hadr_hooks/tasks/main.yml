@@ -1,0 +1,16 @@
+---
+- name: Load platform variables
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: Install the hooks and point HANA at them
+  ansible.builtin.import_tasks: configure.yml
+
+- name: Restart HANA where the configuration changed
+  ansible.builtin.import_tasks: restart.yml
+  when:
+    - sap_db_hana_hadr_hooks_activation == 'restart'
+    - __sap_db_hana_hadr_hooks_global_ini_changed | bool
+
+- name: Check that HANA loaded the hooks
+  ansible.builtin.import_tasks: verify.yml
+  when: not ansible_check_mode

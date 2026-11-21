@@ -1,0 +1,23 @@
+---
+# Microsoft Learn and SUSE document stopping HANA before global.ini is
+# changed; stopping it after the change has the same effect, because HANA
+# reads the providers only at start.
+- name: restart | Stop SAP HANA
+  azure.sap_automation.hana_system:
+    sid: "{{ __sap_db_hana_hadr_hooks_sid }}"
+    instance_number: "{{ sap_db_hana_hadr_hooks_instance_number }}"
+    state: stopped
+    scope: system
+    timeout: "{{ sap_db_hana_hadr_hooks_stop_start_timeout }}"
+  become: true
+  become_user: "{{ __sap_db_hana_hadr_hooks_admin_user }}"
+
+- name: restart | Start SAP HANA
+  azure.sap_automation.hana_system:
+    sid: "{{ __sap_db_hana_hadr_hooks_sid }}"
+    instance_number: "{{ sap_db_hana_hadr_hooks_instance_number }}"
+    state: started
+    scope: system
+    timeout: "{{ sap_db_hana_hadr_hooks_stop_start_timeout }}"
+  become: true
+  become_user: "{{ __sap_db_hana_hadr_hooks_admin_user }}"

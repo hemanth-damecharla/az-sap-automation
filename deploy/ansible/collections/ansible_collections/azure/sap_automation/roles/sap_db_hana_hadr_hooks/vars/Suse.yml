@@ -1,0 +1,21 @@
+---
+# Microsoft Learn, "High availability for SAP HANA on Azure VMs on SLES",
+# section "Set up SAP HANA HA/DR providers".
+__sap_db_hana_hadr_hooks_flavors:
+  classic:
+    package: SAPHanaSR
+    path: /usr/share/SAPHanaSR
+    srhook: {section: ha_dr_provider_SAPHanaSR, provider: SAPHanaSR, execution_order: "1", trace: ha_dr_saphanasr}
+    # The documented classic configuration sets no trace level for susChkSrv.
+    chksrv: {section: ha_dr_provider_suschksrv, provider: susChkSrv, execution_order: "3", trace: ""}
+    action_on_lost: fence
+    sudoers: suse
+    hook_helper: /usr/sbin/SAPHanaSR-hookHelper
+  angi:
+    package: SAPHanaSR-angi
+    path: /usr/share/SAPHanaSR-angi
+    srhook: {section: ha_dr_provider_sushanasr, provider: susHanaSR, execution_order: "1", trace: ha_dr_sushanasr}
+    chksrv: {section: ha_dr_provider_suschksrv, provider: susChkSrv, execution_order: "3", trace: ha_dr_suschksrv}
+    action_on_lost: fence
+    sudoers: suse
+    hook_helper: /usr/bin/SAPHanaSR-hookHelper

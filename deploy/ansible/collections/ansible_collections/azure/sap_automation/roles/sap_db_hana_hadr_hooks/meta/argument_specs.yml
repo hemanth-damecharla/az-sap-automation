@@ -1,0 +1,96 @@
+---
+argument_specs:
+  main:
+    short_description: SAP HANA HA/DR provider hooks
+    description:
+      - Installs the package that ships the HA/DR provider hooks, configures
+        the replication hook and the service hook in C(global.ini), and lets
+        C(<sid>adm) update the cluster attributes the hooks write.
+      - Restarts HANA on a node whose C(global.ini) changed, unless
+        O(sap_db_hana_hadr_hooks_activation=none), and then waits until the
+        name server reports the hooks loaded from the configured directory.
+      - Run on every HANA node of the cluster, as root.
+    options:
+      sap_db_hana_hadr_hooks_sid:
+        description: SAP HANA system ID.
+        type: str
+        required: true
+      sap_db_hana_hadr_hooks_instance_number:
+        description: Two-digit instance number.
+        type: str
+        required: true
+      sap_db_hana_hadr_hooks_flavor:
+        description:
+          - V(classic) configures SAPHanaSR, with susChkSrv on SLES or ChkSrv on RHEL.
+          - V(angi) configures susHanaSR and susChkSrv (SAPHanaSR-angi) on SLES,
+            or HanaSR and ChkSrv (sap-hana-ha) on RHEL.
+          - Must match the flavor of the cluster resource agents. The provider
+            sections of the other flavor are removed.
+        type: str
+        choices: [classic, angi]
+        default: classic
+      sap_db_hana_hadr_hooks_chksrv:
+        description: Configure the service hook as well as the replication hook.
+        type: bool
+        default: true
+      sap_db_hana_hadr_hooks_action_on_lost:
+        description:
+          - Action of the service hook when the index server is lost.
+          - Defaults to V(fence), except V(kill) for the classic ChkSrv on RHEL,
+            which has no V(fence).
+        type: str
+        choices: [ignore, stop, kill, fence]
+      sap_db_hana_hadr_hooks_path:
+        description: Directory the providers are loaded from. Defaults to the package directory.
+        type: str
+      sap_db_hana_hadr_hooks_site_names:
+        description: System replication site names, for the sudoers rules of the classic hooks and of SLES.
+        type: list
+        elements: str
+        default: [SITEA, SITEB]
+      sap_db_hana_hadr_hooks_host_name:
+        description: Host name the instance was installed with. Defaults to the short host name.
+        type: str
+      sap_db_hana_hadr_hooks_activation:
+        description:
+          - V(restart) stops and starts HANA on a node whose C(global.ini)
+            changed. Use it only while Pacemaker does not manage HANA.
+          - V(none) only writes the configuration; HANA loads it at its next
+            start, and the load is not checked.
+        type: str
+        choices: [restart, none]
+        default: restart
+      sap_db_hana_hadr_hooks_install_package:
+        description: Install the package that ships the hooks.
+        type: bool
+        default: true
+      sap_db_hana_hadr_hooks_global_ini:
+        description: Path of the custom C(global.ini).
+        type: path
+      sap_db_hana_hadr_hooks_group:
+        description: Group of C(global.ini).
+        type: str
+        default: sapsys
+      sap_db_hana_hadr_hooks_sudoers_file:
+        description: Sudoers file the rules are written to.
+        type: path
+        default: /etc/sudoers.d/20-saphana
+      sap_db_hana_hadr_hooks_sudoers_validate:
+        description: Command that checks the sudoers file before it is installed, with C(%s) for the file. Empty to skip.
+        type: str
+        default: /usr/sbin/visudo -cf %s
+      sap_db_hana_hadr_hooks_trace_dir:
+        description: Trace directory to read instead of C(/usr/sap/<SID>/HDB<nr>/<host>/trace).
+        type: path
+      sap_db_hana_hadr_hooks_stop_start_timeout:
+        description: Seconds to wait for HANA to stop or start.
+        type: int
+        default: 600
+      sap_db_hana_hadr_hooks_verify_retries:
+        description: Number of times to look for the load of the hooks.
+        type: int
+        default: 30
+      sap_db_hana_hadr_hooks_verify_delay:
+        description: Seconds between those checks.
+        type: int
+        default: 10

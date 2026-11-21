@@ -1,0 +1,21 @@
+---
+# Microsoft Learn, "High availability of SAP HANA on Azure VMs on RHEL",
+# section "Set up SAP HANA HA/DR providers".
+__sap_db_hana_hadr_hooks_flavors:
+  classic:
+    package: resource-agents-sap-hana
+    path: /usr/share/SAPHanaSR/srHook
+    srhook: {section: ha_dr_provider_SAPHanaSR, provider: SAPHanaSR, execution_order: "1", trace: ha_dr_saphanasr}
+    chksrv: {section: ha_dr_provider_chksrv, provider: ChkSrv, execution_order: "2", trace: ha_dr_chksrv}
+    # The classic ChkSrv does not offer "fence".
+    action_on_lost: kill
+    sudoers: rhel_classic
+    hook_helper: ""
+  angi:
+    package: sap-hana-ha
+    path: /usr/share/sap-hana-ha/
+    srhook: {section: ha_dr_provider_hanasr, provider: HanaSR, execution_order: "1", trace: ha_dr_hanasr}
+    chksrv: {section: ha_dr_provider_chksrv, provider: ChkSrv, execution_order: "2", trace: ha_dr_chksrv}
+    action_on_lost: fence
+    sudoers: rhel_angi
+    hook_helper: /usr/bin/SAPHanaSR-hookHelper

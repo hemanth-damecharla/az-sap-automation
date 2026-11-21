@@ -1,0 +1,24 @@
+---
+- name: verify | Report that the hooks load at the next start of HANA
+  ansible.builtin.debug:
+    msg: >-
+      global.ini of {{ __sap_db_hana_hadr_hooks_sid }} changed and
+      sap_db_hana_hadr_hooks_activation is none. HANA loads
+      {{ __sap_db_hana_hadr_hooks_providers | join(', ') }} at its next start.
+  when:
+    - sap_db_hana_hadr_hooks_activation == 'none'
+    - __sap_db_hana_hadr_hooks_global_ini_changed | bool
+
+- name: verify | Wait until the name server loaded the hooks
+  azure.sap_automation.hana_hadr_provider_info:
+    sid: "{{ __sap_db_hana_hadr_hooks_sid }}"
+    instance_number: "{{ sap_db_hana_hadr_hooks_instance_number }}"
+    host_name: "{{ sap_db_hana_hadr_hooks_host_name }}"
+    trace_dir: "{{ sap_db_hana_hadr_hooks_trace_dir | default(omit) }}"
+    providers: "{{ __sap_db_hana_hadr_hooks_providers }}"
+    path: "{{ __sap_db_hana_hadr_hooks_path }}"
+  register: __sap_db_hana_hadr_hooks_loaded
+  until: __sap_db_hana_hadr_hooks_loaded['missing'] | default(['?']) | length == 0
+  retries: "{{ sap_db_hana_hadr_hooks_verify_retries }}"
+  delay: "{{ sap_db_hana_hadr_hooks_verify_delay }}"
+  when: not (sap_db_hana_hadr_hooks_activation == 'none' and __sap_db_hana_hadr_hooks_global_ini_changed | bool)

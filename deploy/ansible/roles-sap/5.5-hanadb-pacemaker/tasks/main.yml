@@ -8,8 +8,27 @@
 - name:                                "5.5 HANA Pacemaker - Pre checks"
   ansible.builtin.include_tasks:        5.5.2-pre_checks.yml
 
+# Opt-in: with use_sap_automation_collection the HA/DR provider hooks are
+# configured by the azure.sap_automation collection on RHEL 8 or later and
+# SLES. The default, and RHEL 7, continue to use 5.5.3-SAPHanaSR.yml.
+- name:                                "5.5 HANA Pacemaker - Determine the implementation of the HA/DR provider hooks"
+  ansible.builtin.set_fact:
+    hana_hooks_use_collection: >-
+                                       {{ use_sap_automation_collection | default(false) | bool
+                                          and not (ansible_os_family | upper == 'REDHAT'
+                                                   and ansible_distribution_major_version | int < 8) }}
+
 - name:                                "5.5 HANA Pacemaker - Configure HANA System Replication"
   ansible.builtin.include_tasks:       5.5.3-SAPHanaSR.yml
+  when:                                not hana_hooks_use_collection
+
+- name:                                "5.5 HANA Pacemaker - Configure the HA/DR provider hooks (azure.sap_automation collection)"
+  ansible.builtin.include_tasks:
+    file:                              5.5.3.1-SAPHanaSR-collection.yml
+    apply:
+      become:                          true
+      become_user:                     root
+  when:                                hana_hooks_use_collection
 
 - name:                                "5.5 HANA Pacemaker - Cluster Provisioning"
   ansible.builtin.include_tasks:

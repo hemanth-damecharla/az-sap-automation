@@ -1,0 +1,49 @@
+---
+# sap_db_hana_hadr_hooks_sid:
+# sap_db_hana_hadr_hooks_instance_number:
+
+# classic: SAPHanaSR (SLES, RHEL) with susChkSrv (SLES) or ChkSrv (RHEL).
+# angi:    susHanaSR and susChkSrv (SAPHanaSR-angi, SLES), or HanaSR and
+#          ChkSrv (sap-hana-ha, RHEL). Must match the resource agents.
+sap_db_hana_hadr_hooks_flavor: classic
+
+# Configure the service hook (susChkSrv or ChkSrv) as well as the
+# replication hook.
+sap_db_hana_hadr_hooks_chksrv: true
+
+# Action of the service hook when the index server is lost. Defaults to the
+# documented value of the platform and flavor.
+# sap_db_hana_hadr_hooks_action_on_lost:
+
+# Directory the providers are loaded from. Defaults to the package
+# directory, so package updates reach HANA at its next restart.
+# sap_db_hana_hadr_hooks_path:
+
+# HANA system replication site names, as registered with hdbnsutil.
+sap_db_hana_hadr_hooks_site_names: [SITEA, SITEB]
+
+# Host name the instance was installed with; names its trace directory.
+sap_db_hana_hadr_hooks_host_name: "{{ ansible_facts['hostname'] }}"
+
+# restart: stop and start HANA on a node whose global.ini changed, then wait
+#          until the providers are loaded. Only do this before Pacemaker
+#          manages HANA.
+# none:    write the configuration only; HANA loads it at its next start.
+sap_db_hana_hadr_hooks_activation: restart
+
+sap_db_hana_hadr_hooks_install_package: true
+
+sap_db_hana_hadr_hooks_global_ini: >-
+  /hana/shared/{{ sap_db_hana_hadr_hooks_sid | upper }}/global/hdb/custom/config/global.ini
+sap_db_hana_hadr_hooks_group: sapsys
+
+sap_db_hana_hadr_hooks_sudoers_file: /etc/sudoers.d/20-saphana
+# Command that checks the sudoers file before it is installed; empty to skip.
+sap_db_hana_hadr_hooks_sudoers_validate: /usr/sbin/visudo -cf %s
+
+# Trace directory to read instead of /usr/sap/<SID>/HDB<nr>/<host>/trace.
+# sap_db_hana_hadr_hooks_trace_dir:
+
+sap_db_hana_hadr_hooks_stop_start_timeout: 600
+sap_db_hana_hadr_hooks_verify_retries: 30
+sap_db_hana_hadr_hooks_verify_delay: 10

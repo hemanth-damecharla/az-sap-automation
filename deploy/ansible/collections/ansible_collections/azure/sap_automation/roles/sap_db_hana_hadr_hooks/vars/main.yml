@@ -1,0 +1,51 @@
+---
+__sap_db_hana_hadr_hooks_sid: "{{ sap_db_hana_hadr_hooks_sid | upper }}"
+__sap_db_hana_hadr_hooks_admin_user: "{{ sap_db_hana_hadr_hooks_sid | lower }}adm"
+# Owner and group of the sudoers file.
+__sap_db_hana_hadr_hooks_sudoers_owner: root
+__sap_db_hana_hadr_hooks_sudoers_owner_group: root
+
+# Set by the platform file.
+__sap_db_hana_hadr_hooks_flavors: {}
+
+__sap_db_hana_hadr_hooks_spec: "{{ __sap_db_hana_hadr_hooks_flavors[sap_db_hana_hadr_hooks_flavor] }}"
+__sap_db_hana_hadr_hooks_path: "{{ sap_db_hana_hadr_hooks_path | default(__sap_db_hana_hadr_hooks_spec['path'], true) }}"
+__sap_db_hana_hadr_hooks_action_on_lost: >-
+  {{ sap_db_hana_hadr_hooks_action_on_lost | default(__sap_db_hana_hadr_hooks_spec['action_on_lost'], true) }}
+
+# Hooks this run configures, replication hook first.
+__sap_db_hana_hadr_hooks_hooks: >-
+  {{ [__sap_db_hana_hadr_hooks_spec['srhook']]
+     + ([__sap_db_hana_hadr_hooks_spec['chksrv']] if sap_db_hana_hadr_hooks_chksrv | bool else []) }}
+
+__sap_db_hana_hadr_hooks_settings: >-
+  {%- set settings = [] -%}
+  {%- for hook in __sap_db_hana_hadr_hooks_hooks -%}
+  {%-   set _ = settings.extend([
+         {'section': hook['section'], 'option': 'provider', 'value': hook['provider']},
+         {'section': hook['section'], 'option': 'path', 'value': __sap_db_hana_hadr_hooks_path},
+         {'section': hook['section'], 'option': 'execution_order', 'value': hook['execution_order']}]) -%}
+  {%-   if hook == __sap_db_hana_hadr_hooks_spec['chksrv'] -%}
+  {%-     set _ = settings.append({'section': hook['section'], 'option': 'action_on_lost',
+                                  'value': __sap_db_hana_hadr_hooks_action_on_lost}) -%}
+  {%-   endif -%}
+  {%-   if hook['trace'] -%}
+  {%-     set _ = settings.append({'section': 'trace', 'option': hook['trace'], 'value': 'info'}) -%}
+  {%-   endif -%}
+  {%- endfor -%}
+  {{- settings -}}
+
+# Provider sections and trace levels of the platform's other hooks, for
+# example the classic hook after a change to angi. HANA would otherwise load
+# both generations.
+__sap_db_hana_hadr_hooks_known: >-
+  {{ __sap_db_hana_hadr_hooks_flavors.values() | map(attribute='srhook') | list
+     + __sap_db_hana_hadr_hooks_flavors.values() | map(attribute='chksrv') | list }}
+__sap_db_hana_hadr_hooks_stale_sections: >-
+  {{ __sap_db_hana_hadr_hooks_known | map(attribute='section') | unique
+     | difference(__sap_db_hana_hadr_hooks_hooks | map(attribute='section')) }}
+__sap_db_hana_hadr_hooks_stale_traces: >-
+  {{ __sap_db_hana_hadr_hooks_known | map(attribute='trace') | select | unique
+     | difference(__sap_db_hana_hadr_hooks_hooks | map(attribute='trace')) }}
+
+__sap_db_hana_hadr_hooks_providers: "{{ __sap_db_hana_hadr_hooks_hooks | map(attribute='provider') | list }}"

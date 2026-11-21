@@ -1,0 +1,38 @@
+{#- Content follows the Microsoft Learn HANA high availability guides for SLES
+    and RHEL, section "Set up SAP HANA HA/DR providers". -#}
+{%- macro alias(site) -%}
+{%-   set name = site | upper | regex_replace('[^A-Z0-9_]', '_') -%}
+{{ name if name is match('[A-Z]') else 'S' + name }}
+{%- endmacro -%}
+{%- set spec = __sap_db_hana_hadr_hooks_spec -%}
+{%- set sid = __sap_db_hana_hadr_hooks_sid -%}
+{%- set user = __sap_db_hana_hadr_hooks_admin_user -%}
+{%- set sites = sap_db_hana_hadr_hooks_site_names -%}
+{%- set attribute = '/usr/sbin/crm_attribute -n hana_' + sid | lower + '_site_srHook_' -%}
+# {{ ansible_managed }}
+# HA/DR provider hooks of {{ sid }}: {{ __sap_db_hana_hadr_hooks_providers | join(', ') }}
+{% if spec['sudoers'] == 'suse' %}
+{%   set aliases = [] %}
+{%   for site in sites %}
+Cmnd_Alias SOK_{{ alias(site) }} = {{ attribute }}{{ site }} -v SOK -t crm_config -s SAPHanaSR
+Cmnd_Alias SFAIL_{{ alias(site) }} = {{ attribute }}{{ site }} -v SFAIL -t crm_config -s SAPHanaSR
+{%     set _ = aliases.extend(['SOK_' + alias(site), 'SFAIL_' + alias(site)]) %}
+{%   endfor %}
+Cmnd_Alias HELPER_TAKEOVER = {{ spec['hook_helper'] }} --sid={{ sid }} --case=checkTakeover
+Cmnd_Alias HELPER_FENCE = {{ spec['hook_helper'] }} --sid={{ sid }} --case=fenceMe
+
+{{ user }} ALL=(ALL) NOPASSWD: {{ (aliases + ['HELPER_TAKEOVER', 'HELPER_FENCE']) | join(', ') }}
+{% elif spec['sudoers'] == 'rhel_classic' %}
+{%   set aliases = [] %}
+{%   for site in sites %}
+Cmnd_Alias {{ alias(site) }}_SOK = {{ attribute }}{{ site }} -v SOK -t crm_config -s SAPHanaSR
+Cmnd_Alias {{ alias(site) }}_SFAIL = {{ attribute }}{{ site }} -v SFAIL -t crm_config -s SAPHanaSR
+{%     set _ = aliases.extend([alias(site) + '_SOK', alias(site) + '_SFAIL']) %}
+{%   endfor %}
+{{ user }} ALL=(ALL) NOPASSWD: {{ aliases | join(', ') }}
+Defaults!{{ aliases | join(', ') }} !requiretty
+{% else %}
+{{ user }} ALL=(ALL) NOPASSWD: /usr/sbin/crm_attribute -n hana_*
+{{ user }} ALL=(ALL) NOPASSWD: {{ spec['hook_helper'] }}
+Defaults:{{ user }} !requiretty
+{% endif %}

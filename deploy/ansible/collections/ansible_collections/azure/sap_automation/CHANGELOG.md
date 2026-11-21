@@ -23,6 +23,10 @@ Added:
   NVMe) and iSCSI targets, with the `disk_by_id` module.
 - The SDAF playbooks use the collection for HANA scale-up clusters with
   `database_cluster_type` `ASD` or `ISCSI`.
+- `sap_db_hana_hadr_hooks`: the HANA HA/DR provider hooks for both
+  generations on SLES and RHEL, with the `hana_hadr_provider_info` module.
+  The SDAF playbooks use it for HANA scale-up with the switch on. On RHEL with
+  `sap-hana-ha`, `action_on_lost` is now `fence`, as documented.
 
 ## 0.1.0
 

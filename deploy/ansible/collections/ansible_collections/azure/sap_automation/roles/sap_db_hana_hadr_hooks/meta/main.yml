@@ -1,0 +1,18 @@
+---
+galaxy_info:
+  author: SAP Deployment Automation Framework contributors
+  description: Configures the SAP HANA HA/DR providers that integrate system replication with Pacemaker
+  license: MIT
+  min_ansible_version: "2.16"
+  platforms:
+    - name: EL
+      versions:
+        - all
+    - name: SLES
+      versions:
+        - all
+  galaxy_tags:
+    - sap
+    - hana
+    - pacemaker
+dependencies: []
