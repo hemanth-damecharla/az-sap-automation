@@ -22,5 +22,27 @@
     ha_pacemaker_ra_hana_scaleup_instance_number: "{{ db_instance_number }}"
     ha_pacemaker_ra_hana_scaleup_virtual_ip:      "{{ database_loadbalancer_ip }}"
     ha_pacemaker_ra_hana_scaleup_flavor:          "{{ 'angi' if is_certified_for_hanasr_angi | default(false) | bool else 'classic' }}"
+    # HANA on Azure NetApp Files, under the conditions the earlier cluster
+    # tasks used: on RHEL each node's three volumes become Filesystem
+    # resources, on SLES /hana/shared is checked by a bind mount.
+    ha_pacemaker_ra_hana_scaleup_nfs: >-
+                                       {{ NFS_provider | default('NONE') == 'ANF'
+                                          and database_high_availability | default(false) | bool
+                                          and ([hana_data_mountpoint | default([]), hana_log_mountpoint | default([]),
+                                                hana_shared_mountpoint | default([])]
+                                               | map('length') | select('gt', 1) | list | length)
+                                              >= (3 if ansible_os_family | upper == 'REDHAT' else 1) }}
+    # Volume i belongs to the i-th database host, as in 2.6.1.0-anf-mounts-hana.yaml.
+    ha_pacemaker_ra_hana_scaleup_nfs_mounts: >-
+                                       {% set mounts = [] -%}
+                                       {% for host in ansible_play_hosts_all[:2] -%}
+                                       {%   set _ = mounts.append({
+                                              'node': hostvars[host]['az_instance_metadata_cluster_node']['name'],
+                                              'data': (hana_data_mountpoint | default([]))[loop.index0] | default('') + '/hanadata',
+                                              'log': (hana_log_mountpoint | default([]))[loop.index0] | default('') + '/hanalog',
+                                              'shared': (hana_shared_mountpoint | default([]))[loop.index0] | default('') + '/hanashared'}) -%}
+                                       {% endfor -%}
+                                       {{ mounts if ansible_os_family | upper == 'REDHAT' else [] }}
+    ha_pacemaker_ra_hana_scaleup_nfs_options:     "rw,nfsvers=4.1,hard,timeo=600,rsize=262144,wsize=262144,noatime,lock,_netdev,sec=sys,nconnect=8"
 
 ...

@@ -31,6 +31,12 @@ Added:
   first, keeps or removes the fstab entry, never replaces a mount from
   another source and never remounts. The SDAF playbooks use it for the HANA
   scale-up volumes on Azure NetApp Files with the switch on.
+- `ha_pacemaker_ra_hana_scaleup_nfs`: cluster resources for HANA file
+  systems on NFS (Filesystem groups and attribute resources on RHEL classic,
+  the `/hana/shared` check clone on SLES classic). The SDAF playbooks now use
+  the collection for HANA clusters on Azure NetApp Files too. On RHEL with
+  angi the HANA volumes stay in `/etc/fstab` and the cluster no longer
+  creates Filesystem resources for them, as documented.
 
 ## 0.1.0
 

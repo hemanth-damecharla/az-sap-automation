@@ -72,6 +72,47 @@
     </primitive>
   </clone>
 {% endif %}
+{% set nfs = __ha_pacemaker_ra_hana_scaleup_nfs_style %}
+{% if nfs == 'groups' %}
+{% for group in __ha_pacemaker_ra_hana_scaleup_nfs_groups %}
+  <group id="{{ group['id'] }}">
+{% for fs in group['filesystems'] %}
+    <primitive id="{{ fs['id'] }}" class="ocf" provider="heartbeat" type="Filesystem">
+      {{ nvpairs('instance_attributes', {'device': fs['device'], 'directory': fs['directory'], 'fstype': 'nfs',
+                                         'options': ha_pacemaker_ra_hana_scaleup_nfs_options, 'fast_stop': 'no'}) }}
+      <operations>
+        <op name="monitor" interval="20s" timeout="120s" on-fail="fence">
+          <instance_attributes>
+            <nvpair name="OCF_CHECK_LEVEL" value="20"/>
+          </instance_attributes>
+        </op>
+      </operations>
+    </primitive>
+{% endfor %}
+  </group>
+  <primitive id="{{ group['attribute'] }}" class="ocf" provider="pacemaker" type="attribute">
+    {{ nvpairs('instance_attributes', {'active_value': 'true', 'inactive_value': 'false', 'name': group['attribute']}) }}
+  </primitive>
+{% endfor %}
+{% elif nfs == 'check' %}
+{% set check = __ha_pacemaker_ra_hana_scaleup_fs_check %}
+  <clone id="{{ check['clone_id'] }}">
+    {{ nvpairs('meta_attributes', {'clone-node-max': '1', 'interleave': 'true'}) }}
+    <primitive id="{{ check['id'] }}" class="ocf" provider="heartbeat" type="Filesystem">
+      {{ nvpairs('instance_attributes', {'device': check['device'], 'directory': check['directory'],
+                                         'fstype': 'nfs', 'options': check['options']}) }}
+      <operations>
+        <op name="monitor" interval="120" timeout="120" on-fail="fence">
+          <instance_attributes>
+            <nvpair name="OCF_CHECK_LEVEL" value="20"/>
+          </instance_attributes>
+        </op>
+        <op name="start" interval="0" timeout="120"/>
+        <op name="stop" interval="0" timeout="120"/>
+      </operations>
+    </primitive>
+  </clone>
+{% endif %}
   <group id="{{ spec['group']['id'] }}">
 {% for member in spec['group']['members'] %}
 {% if member == 'ip' %}
@@ -97,4 +138,33 @@
   <rsc_order id="{{ spec['order_id'] }}" first="{{ spec['topology']['clone_id'] }}" then="{{ db['clone_id'] }}"
 {%- if spec['order_kind'] %} kind="{{ spec['order_kind'] }}"{% endif %}
 {%- if spec['order_symmetrical'] %} symmetrical="{{ spec['order_symmetrical'] }}"{% endif %}/>
+{% if nfs == 'groups' %}
+{% set groups = __ha_pacemaker_ra_hana_scaleup_nfs_groups %}
+{% for group in groups %}
+  <rsc_location id="loc_{{ group['id'] }}" rsc="{{ group['id'] }}" resource-discovery="never">
+    <rule score="-INFINITY" boolean-op="or">
+{% for other in group['others'] %}
+      <expression attribute="#uname" operation="eq" value="{{ other }}"/>
+{% endfor %}
+    </rule>
+  </rsc_location>
+{% for other in group['others'] %}
+  <rsc_location id="loc_{{ group['attribute'] }}_avoids_{{ other }}" rsc="{{ group['attribute'] }}" node="{{ other }}" score="-INFINITY"/>
+{% endfor %}
+  <rsc_order id="ord_{{ group['id'] }}_then_{{ group['attribute'] }}" first="{{ group['id'] }}" then="{{ group['attribute'] }}"/>
+{% for clone in [spec['topology']['clone_id'], db['clone_id']] %}
+  <rsc_order id="ord_stop_{{ clone }}_then_stop_{{ group['id'] }}" first="{{ clone }}" first-action="stop"
+             then="{{ group['id'] }}" then-action="stop" symmetrical="false"/>
+{% endfor %}
+{% endfor %}
+{% for clone in [spec['topology']['clone_id'], db['clone_id']] %}
+  <rsc_location id="loc_{{ clone }}_nfs_active" rsc="{{ clone }}">
+    <rule score="-INFINITY" boolean-op="and">
+{% for group in groups %}
+      <expression attribute="{{ group['attribute'] }}" operation="ne" value="true"/>
+{% endfor %}
+    </rule>
+  </rsc_location>
+{% endfor %}
+{% endif %}
 </constraints>

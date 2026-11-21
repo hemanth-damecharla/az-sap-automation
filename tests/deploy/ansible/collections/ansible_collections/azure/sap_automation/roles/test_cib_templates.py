@@ -124,6 +124,116 @@ def test_rhel_classic_keeps_pcs_names_and_legacy_roles():
     }
 
 
+NFS_MOUNTS = [
+    {
+        "node": "n%d" % n,
+        "data": "anf:/d%d/hanadata" % n,
+        "log": "anf:/l%d/hanalog" % n,
+        "shared": "anf:/s%d/hanashared" % n,
+    }
+    for n in (1, 2)
+]
+
+
+def test_rhel_classic_nfs_follows_the_documented_layout():
+    sections = render(
+        "ha_pacemaker_ra_hana_scaleup",
+        "hana.xml.j2",
+        "rhel9",
+        ha_pacemaker_ra_hana_scaleup_nfs=True,
+        ha_pacemaker_ra_hana_scaleup_nfs_mounts=NFS_MOUNTS,
+    )
+    resources, constraints = sections["resources"], sections["constraints"]
+    group = resources.find("group[@id='g_hana_X00_NFS_2']")
+    assert ids(group, "primitive") == ["hana_data2", "hana_log2", "hana_shared2"]
+    data = group.find("primitive[@id='hana_data2']")
+    assert data.get("type") == "Filesystem"
+    assert pairs(data.find("instance_attributes")) == {
+        "device": "anf:/d2/hanadata",
+        "directory": "/hana/data",
+        "fstype": "nfs",
+        "options": "rw,nfsvers=4.1,hard,timeo=600,rsize=262144,wsize=262144,noatime,lock,_netdev,sec=sys",
+        "fast_stop": "no",
+    }
+    monitor = data.find("operations/op")
+    assert (monitor.get("interval"), monitor.get("timeout"), monitor.get("on-fail")) == (
+        "20s",
+        "120s",
+        "fence",
+    )
+    assert pairs(monitor) == {"OCF_CHECK_LEVEL": "20"}
+    attribute = resources.find("primitive[@id='attr_hana_X00_NFS_1_active']")
+    assert attribute.get("provider") == "pacemaker" and attribute.get("type") == "attribute"
+    assert pairs(attribute)["name"] == "attr_hana_X00_NFS_1_active"
+
+    location = constraints.find("rsc_location[@id='loc_g_hana_X00_NFS_1']")
+    assert location.get("resource-discovery") == "never"
+    expression = location.find("rule/expression")
+    assert (expression.get("attribute"), expression.get("value")) == ("#uname", "n2")
+    avoids = constraints.find("rsc_location[@id='loc_attr_hana_X00_NFS_2_active_avoids_n1']")
+    assert (avoids.get("node"), avoids.get("score")) == ("n1", "-INFINITY")
+    order = constraints.find(
+        "rsc_order[@id='ord_g_hana_X00_NFS_1_then_attr_hana_X00_NFS_1_active']"
+    )
+    assert order.get("first") == "g_hana_X00_NFS_1"
+    for clone in ("SAPHanaTopology_X00_00-clone", "SAPHana_X00_00-clone"):
+        rule = constraints.find("rsc_location[@rsc='%s']/rule" % clone)
+        assert (rule.get("score"), rule.get("boolean-op")) == ("-INFINITY", "and")
+        assert [e.get("attribute") for e in rule] == [
+            "attr_hana_X00_NFS_1_active",
+            "attr_hana_X00_NFS_2_active",
+        ]
+        stops = [
+            o
+            for o in constraints.iter("rsc_order")
+            if o.get("first") == clone and o.get("first-action") == "stop"
+        ]
+        assert {o.get("then") for o in stops} == {"g_hana_X00_NFS_1", "g_hana_X00_NFS_2"}
+        assert {o.get("symmetrical") for o in stops} == {"false"}
+    all_ids = [e.get("id") for s in sections.values() for e in s.iter() if e.get("id")]
+    assert len(all_ids) == len(set(all_ids)), "duplicate ids"
+
+
+def test_sles_classic_nfs_adds_the_shared_check_clone():
+    sections = render(
+        "ha_pacemaker_ra_hana_scaleup",
+        "hana.xml.j2",
+        "sles15",
+        ha_pacemaker_ra_hana_scaleup_nfs=True,
+    )
+    clone = sections["resources"].find("clone[@id='cln_fs_check_X00_HDB00']")
+    assert pairs(clone.find("meta_attributes")) == {"clone-node-max": "1", "interleave": "true"}
+    check = clone.find("primitive[@id='rsc_fs_check_X00_HDB00']")
+    parameters = pairs(check.find("instance_attributes"))
+    assert parameters["device"] == "/hana/shared/X00/check/"
+    assert parameters["directory"] == "/hana/shared/check/" and parameters["fstype"] == "nfs"
+    assert parameters["options"].startswith("bind,defaults,rw,hard,timeo=600,")
+    monitor = check.find("operations/op[@name='monitor']")
+    assert (monitor.get("on-fail"), pairs(monitor)) == ("fence", {"OCF_CHECK_LEVEL": "20"})
+    assert not [e for e in sections["constraints"] if "fs_check" in (e.get("rsc") or "")]
+
+
+@pytest.mark.parametrize("platform", ["rhel9", "sles15"])
+def test_angi_nfs_adds_nothing_beyond_saphanafilesystem(platform):
+    plain = render(
+        "ha_pacemaker_ra_hana_scaleup",
+        "hana.xml.j2",
+        platform,
+        ha_pacemaker_ra_hana_scaleup_flavor="angi",
+    )
+    nfs = render(
+        "ha_pacemaker_ra_hana_scaleup",
+        "hana.xml.j2",
+        platform,
+        ha_pacemaker_ra_hana_scaleup_flavor="angi",
+        ha_pacemaker_ra_hana_scaleup_nfs=True,
+        ha_pacemaker_ra_hana_scaleup_nfs_mounts=NFS_MOUNTS,
+    )
+    assert {name: cib.ET.tostring(s) for name, s in nfs.items()} == {
+        name: cib.ET.tostring(s) for name, s in plain.items()
+    }
+
+
 def test_rhel10_uses_promoted_role_names():
     sections = render("ha_pacemaker_ra_hana_scaleup", "hana.xml.j2", "rhel10")
     roles = [op.get("role") for op in sections["resources"].iter("op") if op.get("role")]

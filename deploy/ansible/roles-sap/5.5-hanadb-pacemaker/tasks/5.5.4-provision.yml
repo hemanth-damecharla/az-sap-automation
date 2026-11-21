@@ -8,15 +8,14 @@
 
 # Clustering commands are based on the Host OS
 # Opt-in: with use_sap_automation_collection the cluster resources are applied
-# by the azure.sap_automation collection for the scenarios it covers. The NFS
-# mount monitoring resources and the active/read-enabled secondary virtual IP
-# are only implemented by the legacy tasks.
+# by the azure.sap_automation collection for the scenarios it covers, including
+# the file system resources for Azure NetApp Files. The active/read-enabled
+# secondary virtual IP is only implemented by the legacy tasks.
 - name:                                "5.5.4 HANA Pacemaker - Determine the implementation to use"
   ansible.builtin.set_fact:
     hana_resources_use_collection: >-
                                        {{ use_sap_automation_collection | default(false) | bool
                                           and not (database_active_active | default(false) | bool)
-                                          and NFS_provider | default('NONE') != 'ANF'
                                           and not (ansible_os_family | upper == 'REDHAT'
                                                    and ansible_distribution_major_version | int < 8) }}
 

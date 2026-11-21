@@ -20,6 +20,22 @@ See [`meta/argument_specs.yml`](meta/argument_specs.yml). Required:
 `ha_pacemaker_ra_hana_scaleup_flavor` selects `classic` (SAPHana) or `angi`
 (SAPHanaController with SAPHanaFilesystem).
 
+## HANA file systems on NFS
+
+Set `ha_pacemaker_ra_hana_scaleup_nfs` when `/hana/data`, `/hana/log` and
+`/hana/shared` are NFS volumes, such as Azure NetApp Files. What the role adds
+follows the Microsoft Learn guides for HANA scale-up with Azure NetApp Files
+on RHEL and SLES:
+
+| | classic | angi |
+| --- | --- | --- |
+| RHEL | Per node, a group `g_hana_<SID>_NFS_<n>` of three `Filesystem` resources (`OCF_CHECK_LEVEL=20`, `on-fail=fence`) that never runs or probes on the other node, an `attribute` resource `attr_hana_<SID>_NFS_<n>_active` started after it, HANA allowed only where an attribute is `true`, and HANA stopped before the file systems | Nothing; the file systems stay in `/etc/fstab` and `SAPHanaFilesystem` checks them |
+| SLES | A cloned bind mount `rsc_fs_check_<SID>_HDB<nr>` of `/hana/shared/<SID>/check/` that fails, and fences, when the share is not writable | Nothing; `SAPHanaFilesystem` |
+
+On RHEL with classic, `ha_pacemaker_ra_hana_scaleup_nfs_mounts` lists each
+node's volumes, and the file systems must not be in `/etc/fstab`; the
+cluster mounts them. The names match those of earlier SDAF releases.
+
 ## Platform variables
 
 `vars/main.yml` describes the SAPHanaSR-angi layout on SLES. Platform files
@@ -54,9 +70,9 @@ unmanaged resources.
 ## Status against `roles-sap/5.5-hanadb-pacemaker`
 
 Covers `5.5.4.1-cluster-RedHat.yml` and `5.5.4.1-cluster-Suse.yml` for the
-base topology. Not yet migrated, and still served by the legacy role: the
-NFS mount monitoring resources and their constraints, the active/read-enabled
-secondary virtual IP, moving the primary back after configuration, RHEL 7,
+base topology, and `5.5.4.0-clusterPrep-*.yml` with the ANF parts of
+`5.5.4.1-cluster-*.yml` for the file system resources. Not yet migrated, and
+still served by the legacy role: the active/read-enabled secondary virtual IP, moving the primary back after configuration, RHEL 7,
 and everything outside the cluster resources (system replication, hook,
 sudoers, post-provision report).
 

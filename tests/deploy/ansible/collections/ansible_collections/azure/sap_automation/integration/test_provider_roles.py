@@ -177,3 +177,23 @@ def test_nvme_shared_disks_use_the_azure_lun_links(cluster):
     assert (
         "SBD_DEVICES=/dev/disk/azure/data/by-lun/0;/dev/disk/azure/data/by-lun/1" in cluster.output
     )
+
+
+@pytest.mark.parametrize("flavor", ["classic", "angi"])
+def test_hana_nfs_resources_apply_and_second_run(cluster, flavor):
+    # The pacemaker.service drop-in is written outside the CIB; leave it out.
+    extra = ("-e", "__ha_pacemaker_ra_hana_scaleup_service_dropin=false")
+    assert cluster(flavor, "--check", *extra, playbook="nfs_resources.yml") > 0
+    assert cluster.writes() == []
+    assert cluster(flavor, *extra, playbook="nfs_resources.yml") > 0
+    assert cluster(flavor, *extra, playbook="nfs_resources.yml") == 0, "second run must not change"
+
+    configuration = ET.parse(cluster.cib).getroot().find("configuration")
+    resources, constraints = configuration.find("resources"), configuration.find("constraints")
+    groups = [g.get("id") for g in resources.iter("group") if "NFS" in g.get("id")]
+    if flavor == "angi":
+        assert groups == [] and not [c for c in constraints if "NFS" in c.get("id")]
+        return
+    assert groups == ["g_hana_X00_NFS_1", "g_hana_X00_NFS_2"]
+    assert resources.find("group/primitive[@id='hana_log2']") is not None
+    assert len([c for c in constraints if "NFS" in c.get("id")]) == 10

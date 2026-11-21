@@ -61,7 +61,7 @@ Ansible finds the collection without further configuration because it sits in
 | System replication (`roles-db/4.0.1-hdb-hsr`) | HANA scale-up | Existing tasks |
 | HANA data, log and shared volumes on Azure NetApp Files (`roles-sap-os/2.6-sap-mounts`, step 2.6.1) | HANA scale-up with `NFS_provider` `ANF` | Existing tasks |
 | HANA HA/DR provider hooks (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.3) | HANA scale-up on RHEL 8 or later or SLES | Existing tasks |
-| HANA cluster resources (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.4.1) | No active/read-enabled secondary, `NFS_provider` is not `ANF`, RHEL 8 or later or SLES | Existing tasks |
+| HANA cluster resources (`roles-sap/5.5-hanadb-pacemaker`, steps 5.5.4.0 and 5.5.4.1), including the Azure NetApp Files file system resources | No active/read-enabled secondary, RHEL 8 or later or SLES | Existing tasks |
 
 As before, the two cluster steps act only on a node where the cluster has not
 been configured yet, so a cluster built by the existing tasks is not

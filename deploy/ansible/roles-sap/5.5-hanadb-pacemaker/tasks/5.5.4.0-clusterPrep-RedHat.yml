@@ -24,6 +24,7 @@
 
 - name:                                "5.5.4.0 HANA Pacemaker - Cluster Preparation - REDHAT - Configure the ANF file system resources"
   when:
+    - not (hana_resources_use_collection | default(false) | bool)
     - database_high_availability
     - NFS_provider == "ANF"
     - hana_data_mountpoint is defined

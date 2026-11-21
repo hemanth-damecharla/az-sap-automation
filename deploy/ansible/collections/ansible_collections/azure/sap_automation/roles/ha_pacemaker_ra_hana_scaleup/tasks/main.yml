@@ -2,6 +2,32 @@
 - name: Load platform variables
   ansible.builtin.import_tasks: set_vars.yml
 
+- name: Check the NFS file system inputs
+  ansible.builtin.assert:
+    that:
+      - ha_pacemaker_ra_hana_scaleup_nfs_mounts | length == ha_pacemaker_ra_hana_scaleup_nodes | length
+      - ha_pacemaker_ra_hana_scaleup_nfs_mounts | map(attribute='node') | sort
+        == ha_pacemaker_ra_hana_scaleup_nodes | map(attribute='name') | sort
+    fail_msg: >-
+      ha_pacemaker_ra_hana_scaleup_nfs_mounts needs one entry, with node, data,
+      log and shared, for each cluster node.
+    quiet: true
+  when: __ha_pacemaker_ra_hana_scaleup_nfs_style == 'groups'
+
+# The bind mount that the check resource monitors needs both directories on
+# every node.
+- name: Create the directories of the NFS check resource
+  ansible.builtin.file:
+    path: "{{ __ha_pacemaker_ra_hana_scaleup_nfs_check_dir }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ __ha_pacemaker_ra_hana_scaleup_fs_check['device'] }}"
+    - "{{ __ha_pacemaker_ra_hana_scaleup_fs_check['directory'] }}"
+  loop_control:
+    loop_var: __ha_pacemaker_ra_hana_scaleup_nfs_check_dir
+  when: __ha_pacemaker_ra_hana_scaleup_nfs_style == 'check'
+
 - name: Configure the cluster resources
   ansible.builtin.import_tasks: resources.yml
   when: __ha_pacemaker_ra_hana_scaleup_is_config_node | bool

@@ -8,9 +8,13 @@
 # (hanadata, hanalog, hanashared) that is mounted on the node whose position
 # in the <SID>_DB group matches the position of the volume in the list.
 #
-# On RHEL with database high availability the mounts get no fstab entry,
-# because 5.5.4.0-clusterPrep-RedHat.yml creates Pacemaker Filesystem
-# resources for them.
+# On RHEL with database high availability and the classic resource agents
+# the mounts get no fstab entry, because the cluster mounts them through
+# Filesystem resources. With the new generation (angi, RHEL 9.4 and later)
+# they stay in fstab and SAPHanaFilesystem checks them, as the Microsoft
+# Learn guide for HANA on Azure NetApp Files on RHEL describes. When the
+# legacy cluster tasks build the cluster instead, they create Filesystem
+# resources for both generations and comment the fstab entries out.
 
 - name:                                "2.6.1.9 ANF Mount - Mount the HANA volumes of this node"
   azure.sap_automation.nfs_mount:
@@ -22,7 +26,7 @@
     owner:                             "{{ hdbadm_uid }}"
     group:                             sapsys
     mode:                              "0755"
-    persist:                           "{{ not (ansible_os_family | upper == 'REDHAT' and database_high_availability | default(false) | bool) }}"
+    persist:                           "{{ not (ansible_os_family | upper == 'REDHAT' and database_high_availability | default(false) | bool and not __anf_angi | bool) }}"
   loop:
     - { volumes: "{{ hana_data_mountpoint | default([]) }}",   folder: hanadata,   path: /hana/data,   pair: true }
     - { volumes: "{{ hana_log_mountpoint | default([]) }}",    folder: hanalog,    path: /hana/log,    pair: true }
@@ -30,6 +34,8 @@
   loop_control:
     label:                             "{{ item.path }}"
   vars:
+    # The test of 04.03-angi-pre-checks.yml, which runs later in 5.5.
+    __anf_angi:                        "{{ use_hanasr_angi | default(false) | bool and ansible_distribution_version is version('9.4', '>=') }}"
     __anf_node_index:                  "{{ db_hosts.index(ansible_hostname) if ansible_hostname in db_hosts else 99 }}"
   # The first node mounts the first volume, the second node the second; the
   # earlier tasks mount a second data or log volume only in a two-node system.

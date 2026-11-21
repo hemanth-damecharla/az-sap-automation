@@ -25,3 +25,13 @@ ha_pacemaker_ra_hana_scaleup_migration_threshold: 5000
 # How long to wait for the cluster to settle after leaving maintenance mode.
 ha_pacemaker_ra_hana_scaleup_settle_retries: 12
 ha_pacemaker_ra_hana_scaleup_settle_delay: 10
+
+# HANA file systems on NFS (Azure NetApp Files). With the classic resource
+# agents the cluster checks them: on RHEL through Filesystem resources that
+# mount each node's volumes, on SLES through a bind mount of /hana/shared.
+# With angi, SAPHanaFilesystem does this and nothing more is configured.
+ha_pacemaker_ra_hana_scaleup_nfs: false
+# One entry per node, for the RHEL Filesystem resources:
+#   - {node: n1, data: "10.0.2.4:/n1-data/hanadata", log: ..., shared: ...}
+ha_pacemaker_ra_hana_scaleup_nfs_mounts: []
+ha_pacemaker_ra_hana_scaleup_nfs_options: rw,nfsvers=4.1,hard,timeo=600,rsize=262144,wsize=262144,noatime,lock,_netdev,sec=sys

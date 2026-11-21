@@ -104,3 +104,34 @@ __ha_pacemaker_ra_hana_scaleup_spec: >-
 # Whether pacemaker.service gets a drop-in that orders it after the systemd
 # unit of the SAP HANA instance.
 __ha_pacemaker_ra_hana_scaleup_service_dropin: false
+
+# How the NFS file systems are checked: groups of Filesystem resources (RHEL
+# classic), a bind-mount check clone (SLES classic), or none (angi, where
+# SAPHanaFilesystem is part of the resources above).
+__ha_pacemaker_ra_hana_scaleup_nfs_style: >-
+  {{ 'none' if not (ha_pacemaker_ra_hana_scaleup_nfs | bool) or ha_pacemaker_ra_hana_scaleup_flavor == 'angi'
+     else ('groups' if ansible_facts['os_family'] == 'RedHat' else 'check') }}
+
+# Names follow the resources earlier SDAF releases created with pcs.
+__ha_pacemaker_ra_hana_scaleup_nfs_groups: >-
+  {% set groups = [] -%}
+  {% for mount in ha_pacemaker_ra_hana_scaleup_nfs_mounts -%}
+  {%   set n = loop.index | string -%}
+  {%   set _ = groups.append({
+         'id': 'g_hana_' + __ha_pacemaker_ra_hana_scaleup_sid + '_NFS_' + n,
+         'attribute': 'attr_hana_' + __ha_pacemaker_ra_hana_scaleup_sid + '_NFS_' + n + '_active',
+         'node': mount['node'],
+         'others': ha_pacemaker_ra_hana_scaleup_nfs_mounts | map(attribute='node') | reject('equalto', mount['node']) | list,
+         'filesystems': [
+           {'id': 'hana_data' + n, 'device': mount['data'], 'directory': '/hana/data'},
+           {'id': 'hana_log' + n, 'device': mount['log'], 'directory': '/hana/log'},
+           {'id': 'hana_shared' + n, 'device': mount['shared'], 'directory': '/hana/shared'}]}) -%}
+  {% endfor -%}
+  {{ groups }}
+
+__ha_pacemaker_ra_hana_scaleup_fs_check:
+  id: "rsc_fs_check_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+  clone_id: "cln_fs_check_{{ __ha_pacemaker_ra_hana_scaleup_suffix }}"
+  device: "/hana/shared/{{ __ha_pacemaker_ra_hana_scaleup_sid }}/check/"
+  directory: /hana/shared/check/
+  options: bind,defaults,rw,hard,timeo=600,rsize=262144,wsize=262144,proto=tcp,noatime,_netdev,nfsvers=4.1,lock,sec=sys
