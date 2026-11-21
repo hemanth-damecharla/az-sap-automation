@@ -25,6 +25,7 @@ The default behaviour of every playbook is unchanged.
 | `sbd_device` | Write an SBD header to devices that have none |
 | `disk_by_id` | Stable `/dev/disk/by-id` name of a block device |
 | `hana_hadr_provider_info` | HA/DR providers the HANA name server loaded |
+| `nfs_mount` | Mount a directory of an NFS share, creating it on the share first |
 
 | Roles | Layer | Replaces |
 | --- | --- | --- |
@@ -58,6 +59,7 @@ Ansible finds the collection without further configuration because it sits in
 | --- | --- | --- |
 | Cluster bootstrap and fencing (`roles-os/1.17-generic-pacemaker`) | HANA scale-up on RHEL 8 or later or SLES other than SLES 12 SP4, with `database_cluster_type` `AFA`; or `ASD` on RHEL 8.8 or SLES 15 SP1 and later; or `ISCSI` on RHEL 8.8 or SLES 12 SP5 and later | Existing tasks |
 | System replication (`roles-db/4.0.1-hdb-hsr`) | HANA scale-up | Existing tasks |
+| HANA data, log and shared volumes on Azure NetApp Files (`roles-sap-os/2.6-sap-mounts`, step 2.6.1) | HANA scale-up with `NFS_provider` `ANF` | Existing tasks |
 | HANA HA/DR provider hooks (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.3) | HANA scale-up on RHEL 8 or later or SLES | Existing tasks |
 | HANA cluster resources (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.4.1) | No active/read-enabled secondary, `NFS_provider` is not `ANF`, RHEL 8 or later or SLES | Existing tasks |
 
@@ -66,8 +68,8 @@ been configured yet, so a cluster built by the existing tasks is not
 rewritten. The hook step runs every time, but once the cluster is configured
 it only writes the configuration and does not restart HANA. The files that
 translate the framework's variables into role inputs are
-`1.17.9-collection.yml`, `4.0.1.9-collection.yml`,
-`5.5.3.1-SAPHanaSR-collection.yml` and `5.5.4.2-cluster-collection.yml`.
+`1.17.9-collection.yml`, `2.6.1.9-anf-mounts-hana-collection.yaml`,
+`4.0.1.9-collection.yml`, `5.5.3.1-SAPHanaSR-collection.yml` and `5.5.4.2-cluster-collection.yml`.
 
 ## Extending without changing the collection
 

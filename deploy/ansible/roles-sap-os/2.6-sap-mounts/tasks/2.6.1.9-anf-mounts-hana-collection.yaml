@@ -1,0 +1,41 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+---
+# Maps the framework's variables to azure.sap_automation.nfs_mount for the
+# HANA data, log and shared volumes of a scale-up node. The layout is the one
+# 2.6.1.1-anf-mount.yaml creates: each volume holds one directory
+# (hanadata, hanalog, hanashared) that is mounted on the node whose position
+# in the <SID>_DB group matches the position of the volume in the list.
+#
+# On RHEL with database high availability the mounts get no fstab entry,
+# because 5.5.4.0-clusterPrep-RedHat.yml creates Pacemaker Filesystem
+# resources for them.
+
+- name:                                "2.6.1.9 ANF Mount - Mount the HANA volumes of this node"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ item.volumes[__anf_node_index | int] }}"
+    subdir:                            "{{ item.folder }}"
+    path:                              "{{ item.path }}"
+    fstype:                            nfs4
+    opts:                              "{{ mnt_options }}"
+    owner:                             "{{ hdbadm_uid }}"
+    group:                             sapsys
+    mode:                              "0755"
+    persist:                           "{{ not (ansible_os_family | upper == 'REDHAT' and database_high_availability | default(false) | bool) }}"
+  loop:
+    - { volumes: "{{ hana_data_mountpoint | default([]) }}",   folder: hanadata,   path: /hana/data,   pair: true }
+    - { volumes: "{{ hana_log_mountpoint | default([]) }}",    folder: hanalog,    path: /hana/log,    pair: true }
+    - { volumes: "{{ hana_shared_mountpoint | default([]) }}", folder: hanashared, path: /hana/shared, pair: false }
+  loop_control:
+    label:                             "{{ item.path }}"
+  vars:
+    __anf_node_index:                  "{{ db_hosts.index(ansible_hostname) if ansible_hostname in db_hosts else 99 }}"
+  # The first node mounts the first volume, the second node the second; the
+  # earlier tasks mount a second data or log volume only in a two-node system.
+  when:
+    - (__anf_node_index | int) < 2
+    - item.volumes | length > (__anf_node_index | int)
+    - (__anf_node_index | int) == 0 or not item.pair or db_hosts | length == 2
+
+...

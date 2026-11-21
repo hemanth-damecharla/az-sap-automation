@@ -178,6 +178,12 @@
       state:                           directory
       group:                           sapsys
 
+  # Opt-in: with use_sap_automation_collection the data, log and shared
+  # volumes of this node are mounted by the azure.sap_automation collection.
+  - name:                                "2.6.1 ANF Mount - HANA volumes (azure.sap_automation collection)"
+    ansible.builtin.include_tasks:       2.6.1.9-anf-mounts-hana-collection.yaml
+    when:                                use_sap_automation_collection | default(false) | bool
+
   - name:                                "2.6.1 ANF Mount - HANA data"
     ansible.builtin.include_tasks:       2.6.1.1-anf-mount.yaml
     loop:
@@ -199,6 +205,7 @@
       - hana_data_mountpoint is defined
       - hana_data_mountpoint | length > 0
       - ansible_hostname == db_hosts[0]
+      - not (use_sap_automation_collection | default(false) | bool)
 
   - name:                                "2.6.1 ANF Mount - HANA log"
     ansible.builtin.include_tasks:       2.6.1.1-anf-mount.yaml
@@ -221,6 +228,7 @@
       - hana_log_mountpoint is defined
       - hana_log_mountpoint | length > 0
       - ansible_hostname == db_hosts[0]
+      - not (use_sap_automation_collection | default(false) | bool)
 
   - name:                                "2.6.1 ANF Mount - HANA shared"
     ansible.builtin.include_tasks:       2.6.1.1-anf-mount.yaml
@@ -244,6 +252,7 @@
       - hana_shared_mountpoint | length > 0
       - not database_scale_out
       - ansible_hostname == db_hosts[0]
+      - not (use_sap_automation_collection | default(false) | bool)
 
   - name:                                "2.6.1 ANF Mount - HANA data (secondary)"
     ansible.builtin.include_tasks:       2.6.1.1-anf-mount.yaml
@@ -267,6 +276,7 @@
       - hana_data_mountpoint | length > 1
       - db_hosts | length == 2
       - ansible_hostname == db_hosts[1]
+      - not (use_sap_automation_collection | default(false) | bool)
 
   - name:                                "2.6.1 ANF Mount - HANA log (secondary)"
     ansible.builtin.include_tasks:       2.6.1.1-anf-mount.yaml
@@ -290,6 +300,7 @@
       - hana_log_mountpoint | length > 1
       - db_hosts | length ==2
       - ansible_hostname == db_hosts[1]
+      - not (use_sap_automation_collection | default(false) | bool)
 
   - name:                                "2.6.1 ANF Mount - HANA shared (secondary)"
     ansible.builtin.include_tasks:       2.6.1.1-anf-mount.yaml
@@ -313,6 +324,7 @@
       - hana_shared_mountpoint | length > 1
       - not database_scale_out
       - ansible_hostname == db_hosts[1]
+      - not (use_sap_automation_collection | default(false) | bool)
 
   - name:                                "2.6.1 ANF Mount - Set Permissons on HANA Directories ({{ item.path }})"
     ansible.builtin.file:

@@ -27,6 +27,10 @@ Added:
   generations on SLES and RHEL, with the `hana_hadr_provider_info` module.
   The SDAF playbooks use it for HANA scale-up with the switch on. On RHEL with
   `sap-hana-ha`, `action_on_lost` is now `fence`, as documented.
+- `nfs_mount`: mounts a directory of an NFS share and creates it on the share
+  first, keeps or removes the fstab entry, never replaces a mount from
+  another source and never remounts. The SDAF playbooks use it for the HANA
+  scale-up volumes on Azure NetApp Files with the switch on.
 
 ## 0.1.0
 
