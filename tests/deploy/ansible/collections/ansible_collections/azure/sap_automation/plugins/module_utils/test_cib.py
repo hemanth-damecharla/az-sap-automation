@@ -241,3 +241,29 @@ def test_redact_leaves_other_text_unchanged():
     assert cib.redact(unchanged) is unchanged
     empty_secret = '<resources><nvpair name="passwd" value=""/></resources>'
     assert cib.redact(empty_secret) is empty_secret
+
+
+def test_replace_false_only_adds_missing_elements_and_properties():
+    current, _ = cib.reconcile(None, section(PRIMITIVE, "resources"))
+    changed_ip = PRIMITIVE.replace("10.0.0.5", "10.0.0.6")
+    kept, changed = cib.reconcile(current, section(changed_ip, "resources"), replace=False)
+    assert not changed and "10.0.0.5" in kept
+
+    other = PRIMITIVE.replace("rsc_ip", "rsc_other").replace("10.0.0.5", "10.0.0.7")
+    combined = section(changed_ip, "resources")
+    combined.extend(section(other, "resources"))
+    added, changed = cib.reconcile(current, combined, replace=False)
+    assert changed and "10.0.0.5" in added and "10.0.0.7" in added and "10.0.0.6" not in added
+
+    defaults = "<rsc_defaults><meta_attributes><nvpair name='%s' value='%s'/></meta_attributes></rsc_defaults>"
+    live, _ = cib.reconcile(
+        None, section(defaults % ("resource-stickiness", "1000"), "rsc_defaults")
+    )
+    same, changed = cib.reconcile(
+        live, section(defaults % ("resource-stickiness", "1"), "rsc_defaults"), replace=False
+    )
+    assert not changed and "1000" in same
+    more, changed = cib.reconcile(
+        live, section(defaults % ("migration-threshold", "3"), "rsc_defaults"), replace=False
+    )
+    assert changed and "migration-threshold" in more

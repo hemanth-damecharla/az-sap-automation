@@ -197,3 +197,30 @@ def test_hana_nfs_resources_apply_and_second_run(cluster, flavor):
     assert groups == ["g_hana_X00_NFS_1", "g_hana_X00_NFS_2"]
     assert resources.find("group/primitive[@id='hana_log2']") is not None
     assert len([c for c in constraints if "NFS" in c.get("id")]) == 10
+
+
+@pytest.mark.parametrize("os_family", ["Suse", "RedHat"])
+@pytest.mark.parametrize("enqueue", ["ensa1", "ensa2"])
+def test_ascs_ers_steps_apply_and_repeat_without_change(cluster, os_family, enqueue):
+    extra = ("-e", "os_family=%s enqueue=%s" % (os_family, enqueue))
+    assert cluster("classic", "--check", *extra, playbook="ascs_ers.yml") > 0
+    assert cluster.writes() == []
+    assert cluster("classic", *extra, playbook="ascs_ers.yml") > 0
+    assert cluster("classic", *extra, playbook="ascs_ers.yml") == 0, "a second pass must not change"
+
+    configuration = ET.parse(cluster.cib).getroot().find("configuration")
+    resources, constraints = configuration.find("resources"), configuration.find("constraints")
+    ascs = resources.find("group[@id='g-S01_ASCS']")
+    assert [p.get("type") for p in ascs.iter("primitive")][-1] == "SAPInstance"
+    assert resources.find("group[@id='g-S01_ERS']/primitive[@id='rsc_sap_S01_ERS01']") is not None
+    assert {c.get("id") for c in constraints} >= {
+        "col_sap_S01_no_both",
+        "ord_sap_S01_first_start_ascs",
+    }
+    assert (constraints.find("rsc_location") is not None) == (enqueue == "ensa1")
+    properties = {
+        p.get("name"): p.get("value") for p in configuration.find("crm_config").iter("nvpair")
+    }
+    assert properties["maintenance-mode"] == "false"
+    if os_family == "Suse":
+        assert properties.get("priority-fencing-delay") == ("30" if enqueue == "ensa2" else None)

@@ -1,0 +1,35 @@
+---
+# Microsoft Learn, "High availability for SAP NetWeaver on Azure VMs on SUSE
+# Linux Enterprise Server with Azure NetApp Files for SAP applications".
+__ha_pacemaker_ra_sap_ascs_ers_platform:
+  members: [fs, nc, vip]
+  fs_parameters: {fast_stop: "no"}
+  fs_operations:
+    - {name: start, interval: "0", timeout: 60s}
+    - {name: stop, interval: "0", timeout: 60s}
+    - {name: monitor, interval: 20s, timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_fs_monitor_timeout }}s"}
+  vip_operations:
+    - {name: monitor, interval: "10", timeout: "20"}
+  nc_operations:
+    - {name: monitor, interval: "10", timeout: 20s}
+  sap_operations:
+    - {name: monitor, interval: "11", timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout }}", on-fail: restart}
+  # The order is between the SAP instances on SLES and between the groups on RHEL.
+  order_on: sap
+  rsc_defaults: {}
+  enqueue:
+    ensa1:
+      ascs_meta:
+        resource-stickiness: "5000"
+        failure-timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout }}"
+        migration-threshold: "1"
+        priority: "10"
+      ers_meta: {priority: "1000"}
+      failover_location: true
+      # The ENSA1 procedure removes the property.
+      priority_fencing_delay: ""
+    ensa2:
+      ascs_meta: {resource-stickiness: "5000", priority: "100"}
+      ers_meta: {}
+      failover_location: false
+      priority_fencing_delay: "30"

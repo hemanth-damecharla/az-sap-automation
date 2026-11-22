@@ -1,0 +1,39 @@
+---
+# Microsoft Learn, "High availability for SAP NetWeaver on Azure VMs on Red Hat
+# Enterprise Linux with Azure NetApp Files for SAP applications".
+__ha_pacemaker_ra_sap_ascs_ers_platform:
+  members: [fs, vip, nc]
+  fs_parameters: {force_unmount: safe, fast_stop: "no"}
+  fs_operations:
+    - {name: start, interval: "0", timeout: "60"}
+    - {name: stop, interval: "0", timeout: "120"}
+    - {name: monitor, interval: "200", timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_fs_monitor_timeout }}"}
+  vip_operations: []
+  nc_operations: []
+  sap_operations:
+    - {name: monitor, interval: "20", timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout }}", on-fail: restart}
+    - {name: start, interval: "0", timeout: "600"}
+    - {name: stop, interval: "0", timeout: "600"}
+  order_on: group
+  # Priorities and priority-fencing-delay need pacemaker 2.0.4-6.el8 or later.
+  rsc_defaults: >-
+    {{ {'resource-stickiness': '1', 'migration-threshold': '3'}
+       | combine({'priority': '1'} if __ha_pacemaker_ra_sap_ascs_ers_priority_fencing | bool else {}) }}
+  enqueue:
+    ensa1:
+      ascs_meta: >-
+        {{ {'resource-stickiness': '5000', 'migration-threshold': '1', 'failure-timeout': '60'}
+           | combine({'priority': '10'} if __ha_pacemaker_ra_sap_ascs_ers_priority_fencing | bool else {}) }}
+      ers_meta: {}
+      failover_location: true
+      priority_fencing_delay: "{{ '15s' if __ha_pacemaker_ra_sap_ascs_ers_priority_fencing | bool else '' }}"
+    ensa2:
+      ascs_meta: >-
+        {{ {'resource-stickiness': '5000'}
+           | combine({'priority': '10'} if __ha_pacemaker_ra_sap_ascs_ers_priority_fencing | bool else {}) }}
+      ers_meta: {}
+      failover_location: false
+      priority_fencing_delay: "{{ '15s' if __ha_pacemaker_ra_sap_ascs_ers_priority_fencing | bool else '' }}"
+
+__ha_pacemaker_ra_sap_ascs_ers_priority_fencing: >-
+  {{ (ansible_facts['packages']['pacemaker'] | default([{'version': '0'}]))[0]['version'] is version('2.0.4', '>=') }}

@@ -1,0 +1,38 @@
+---
+- name: resources | Read the installed package versions
+  ansible.builtin.package_facts:
+  when: ansible_facts['packages'] is not defined
+
+- name: resources | Determine whether the SAP resources need to change
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ __ha_pacemaker_ra_sap_ascs_ers_xml }}"
+  check_mode: true
+  register: __ha_pacemaker_ra_sap_ascs_ers_plan
+
+- name: resources | Apply the SAP resources under maintenance mode
+  when: __ha_pacemaker_ra_sap_ascs_ers_plan['sections'] | length > 0
+  block:
+    - name: resources | Enter maintenance mode
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/maintenance.xml.j2') }}"
+      vars:
+        __ha_pacemaker_ra_sap_ascs_ers_maintenance: "true"
+
+    - name: resources | Configure the SAP resources and constraints
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ __ha_pacemaker_ra_sap_ascs_ers_xml }}"
+
+    - name: resources | Leave maintenance mode
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/maintenance.xml.j2') }}"
+      vars:
+        __ha_pacemaker_ra_sap_ascs_ers_maintenance: "false"
+      when: ha_pacemaker_ra_sap_ascs_ers_leave_maintenance | bool
+
+# With ENSA1 on SLES the documented procedure removes the property.
+- name: resources | Remove the priority fencing delay
+  azure.sap_automation.pacemaker_cib:
+    xml: >-
+      <crm_config><cluster_property_set><nvpair name="priority-fencing-delay"/></cluster_property_set></crm_config>
+    state: absent
+  when: not __ha_pacemaker_ra_sap_ascs_ers_spec['priority_fencing_delay']

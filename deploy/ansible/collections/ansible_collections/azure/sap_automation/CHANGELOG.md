@@ -37,6 +37,12 @@ Added:
   the collection for HANA clusters on Azure NetApp Files too. On RHEL with
   angi the HANA volumes stay in `/etc/fstab` and the cluster no longer
   creates Filesystem resources for them, as documented.
+- `ha_pacemaker_ra_sap_ascs_ers`: ASCS/SCS and ERS resources for ENSA1 and
+  ENSA2 on SLES and RHEL, with a `group.yml` entry point for the groups SWPM
+  installs into. The SDAF playbooks use it for the cluster resources of
+  5.6-scsers-pacemaker with the switch on.
+- `pacemaker_cib` option `replace`: with `false`, only missing elements and
+  properties are added.
 
 ## 0.1.0
 

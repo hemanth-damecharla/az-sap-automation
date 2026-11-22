@@ -1,0 +1,43 @@
+- name: Exercise the ASCS/ERS resource agent role against a file-backed CIB
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars:
+    os_family: Suse
+    enqueue: ensa2
+    sap: &sap
+      ha_pacemaker_config_node: "{{ ansible_facts['hostname'] }}"
+      ha_pacemaker_ra_sap_ascs_ers_sid: S01
+      ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number: "00"
+      ha_pacemaker_ra_sap_ascs_ers_ers_instance_number: "01"
+      ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_hostname: s01scs00cl1
+      ha_pacemaker_ra_sap_ascs_ers_ers_virtual_hostname: s01ers01cl2
+      ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_ip: 10.0.1.20
+      ha_pacemaker_ra_sap_ascs_ers_ers_virtual_ip: 10.0.1.21
+      ha_pacemaker_ra_sap_ascs_ers_ascs_device: 10.0.2.4:/sapS01/usrsapS01ascs00
+      ha_pacemaker_ra_sap_ascs_ers_ers_device: 10.0.2.4:/sapS01/usrsapS01ers01
+      ha_pacemaker_ra_sap_ascs_ers_enqueue: "{{ enqueue }}"
+  tasks:
+    - name: Present the cluster node platform
+      fake_platform:
+        os_family: "{{ os_family }}"
+        distribution: "{{ 'SLES_SAP' if os_family == 'Suse' else 'RedHat' }}"
+        version: "{{ '15.5' if os_family == 'Suse' else '9.4' }}"
+    - name: ASCS group before the ASCS installation
+      ansible.builtin.include_role:
+        name: azure.sap_automation.ha_pacemaker_ra_sap_ascs_ers
+        tasks_from: group.yml
+      vars:
+        <<: *sap
+        ha_pacemaker_ra_sap_ascs_ers_group: ascs
+    - name: ERS group before the ERS installation
+      ansible.builtin.include_role:
+        name: azure.sap_automation.ha_pacemaker_ra_sap_ascs_ers
+        tasks_from: group.yml
+      vars:
+        <<: *sap
+        ha_pacemaker_ra_sap_ascs_ers_group: ers
+    - name: SAP instance resources after both installations
+      ansible.builtin.include_role:
+        name: azure.sap_automation.ha_pacemaker_ra_sap_ascs_ers
+      vars: *sap

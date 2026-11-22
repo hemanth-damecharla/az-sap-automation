@@ -1,0 +1,10 @@
+---
+# Entry point after SWPM installed both instances: adds the SAPInstance
+# resources to the groups, with the constraints and properties of the
+# enqueue server generation. Runs on the configuration node.
+- name: Load platform variables
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: Configure the SAP instance resources
+  ansible.builtin.import_tasks: resources.yml
+  when: __ha_pacemaker_ra_sap_ascs_ers_is_config_node | bool

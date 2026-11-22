@@ -157,3 +157,15 @@ def test_attribute_removal_check_mode_and_failure(run_module):
 
     run_module.commands.add(out="1\n").add(rc=1, err="boom")
     assert run_module(pacemaker_attribute.main, ATTRIBUTE)["failed"]
+
+
+def test_cib_without_replace_keeps_an_existing_element(run_module):
+    live = '<resources><primitive id="rsc_ip" class="ocf" provider="heartbeat" type="IPaddr2"/></resources>'
+    run_module.commands.add(out=live)
+    desired = (
+        '<resources><primitive id="rsc_ip" class="ocf" provider="heartbeat" type="IPaddr2">'
+        '<instance_attributes><nvpair name="ip" value="10.0.0.5"/></instance_attributes>'
+        "</primitive></resources>"
+    )
+    result = run_module(pacemaker_cib.main, {"xml": desired, "replace": False})
+    assert not result["changed"] and len(run_module.commands.calls) == 1

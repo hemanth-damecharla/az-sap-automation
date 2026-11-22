@@ -13,6 +13,7 @@
   when:
     - inventory_hostname == primary_instance_name
     - ensa1 | default(false)
+    - not (scs_resources_use_collection | default(false))
   block:
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - Get the cluster maintenance mode status"
       ansible.builtin.shell:           crm configure get_property maintenance-mode
@@ -92,6 +93,7 @@
   when:
     - inventory_hostname == primary_instance_name
     - ensa2 | default(false)
+    - not (scs_resources_use_collection | default(false))
   block:
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - Get the cluster maintenance mode status"
       ansible.builtin.shell:           crm configure get_property maintenance-mode
@@ -162,6 +164,23 @@
 # | Systemd-Based SAP Startup Framework - BEGIN                                |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
+
+# With use_sap_automation_collection the resources, constraints and
+# properties of both enqueue server generations come from the collection.
+- name:                                "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - Configure the SAP resources (azure.sap_automation collection)"
+  when:
+    - scs_resources_use_collection | default(false)
+    - inventory_hostname == primary_instance_name
+    - ensa1 | default(false) or ensa2 | default(false)
+  block:
+    - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - Configure the SAP resources"
+      ansible.builtin.include_tasks:   5.6.4.9-cluster-collection.yml
+      vars:
+        scs_collection_step:           resources
+
+    - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - Bring the primary node online"
+      ansible.builtin.command:         crm node online {{ primary_instance_name }}
+      changed_when:                    false
 
 - name:                                "5.6.4.2 SCS/ERS Pacemaker - SUSE - Systemd-Based SAP Startup Framework"
   ansible.builtin.include_tasks:

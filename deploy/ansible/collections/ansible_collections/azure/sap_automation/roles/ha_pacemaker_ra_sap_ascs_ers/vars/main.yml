@@ -1,0 +1,55 @@
+---
+__ha_pacemaker_ra_sap_ascs_ers_is_config_node: "{{ ansible_facts['hostname'] == ha_pacemaker_ra_sap_ascs_ers_config_node }}"
+__ha_pacemaker_ra_sap_ascs_ers_sid: "{{ ha_pacemaker_ra_sap_ascs_ers_sid | upper }}"
+__ha_pacemaker_ra_sap_ascs_ers_type: "{{ ha_pacemaker_ra_sap_ascs_ers_instance_type | upper }}"
+__ha_pacemaker_ra_sap_ascs_ers_ascs_name: >-
+  {{ __ha_pacemaker_ra_sap_ascs_ers_type }}{{ ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number }}
+__ha_pacemaker_ra_sap_ascs_ers_ers_name: "ERS{{ ha_pacemaker_ra_sap_ascs_ers_ers_instance_number }}"
+
+# Resource names are those earlier SDAF releases created.
+__ha_pacemaker_ra_sap_ascs_ers_instances:
+  ascs:
+    group: "g-{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_{{ __ha_pacemaker_ra_sap_ascs_ers_type }}"
+    fs: "fs_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_{{ __ha_pacemaker_ra_sap_ascs_ers_type }}"
+    vip: "vip_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_{{ __ha_pacemaker_ra_sap_ascs_ers_type }}"
+    nc: "nc_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_{{ __ha_pacemaker_ra_sap_ascs_ers_type }}"
+    sap: "rsc_sap_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_{{ __ha_pacemaker_ra_sap_ascs_ers_ascs_name }}"
+    device: "{{ ha_pacemaker_ra_sap_ascs_ers_ascs_device }}"
+    directory: "/usr/sap/{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}/{{ __ha_pacemaker_ra_sap_ascs_ers_ascs_name }}"
+    ip: "{{ ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_ip }}"
+    port: "{{ ha_pacemaker_ra_sap_ascs_ers_ascs_probe_port }}"
+    instance: >-
+      {{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_{{ __ha_pacemaker_ra_sap_ascs_ers_ascs_name }}_{{ ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_hostname }}
+    group_meta: {resource-stickiness: "3000"}
+  ers:
+    group: "g-{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_ERS"
+    fs: "fs_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_ERS"
+    vip: "vip_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_ERS"
+    nc: "nc_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_ERS"
+    sap: "rsc_sap_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_{{ __ha_pacemaker_ra_sap_ascs_ers_ers_name }}"
+    device: "{{ ha_pacemaker_ra_sap_ascs_ers_ers_device }}"
+    directory: "/usr/sap/{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}/{{ __ha_pacemaker_ra_sap_ascs_ers_ers_name }}"
+    ip: "{{ ha_pacemaker_ra_sap_ascs_ers_ers_virtual_ip }}"
+    port: "{{ ha_pacemaker_ra_sap_ascs_ers_ers_probe_port }}"
+    instance: >-
+      {{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_{{ __ha_pacemaker_ra_sap_ascs_ers_ers_name }}_{{ ha_pacemaker_ra_sap_ascs_ers_ers_virtual_hostname }}
+    group_meta: {}
+
+__ha_pacemaker_ra_sap_ascs_ers_constraint_ids:
+  colocation: "col_sap_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_no_both"
+  order: "ord_sap_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_first_start_ascs"
+  location: "loc_sap_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}_failover_to_ers"
+
+# Set by the platform file.
+__ha_pacemaker_ra_sap_ascs_ers_platform: {}
+__ha_pacemaker_ra_sap_ascs_ers_spec: >-
+  {{ __ha_pacemaker_ra_sap_ascs_ers_platform
+     | combine(__ha_pacemaker_ra_sap_ascs_ers_platform['enqueue'][ha_pacemaker_ra_sap_ascs_ers_enqueue]) }}
+
+# Desired configuration of the main entry point: both groups with their SAP
+# instances, the constraints and the properties.
+__ha_pacemaker_ra_sap_ascs_ers_xml: >-
+  {{ lookup('ansible.builtin.template', 'cib/ascs_ers.xml.j2',
+            template_vars={'__ha_pacemaker_ra_sap_ascs_ers_render': ['ascs', 'ers'],
+                           '__ha_pacemaker_ra_sap_ascs_ers_with_sap': ['ascs', 'ers'],
+                           '__ha_pacemaker_ra_sap_ascs_ers_constraints': true}) }}

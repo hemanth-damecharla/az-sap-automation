@@ -410,3 +410,192 @@ def test_kdump_fencing_topology():
         ("fl-n2-1", "rsc_st_kdump"),
         ("fl-n2-2", "rsc_st_azure"),
     ]
+
+
+ASCS_ERS = {
+    "ha_pacemaker_ra_sap_ascs_ers_sid": "s01",
+    "ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number": "00",
+    "ha_pacemaker_ra_sap_ascs_ers_ers_instance_number": "01",
+    "ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_hostname": "s01scs00cl1",
+    "ha_pacemaker_ra_sap_ascs_ers_ers_virtual_hostname": "s01ers01cl2",
+    "ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_ip": "10.0.1.20",
+    "ha_pacemaker_ra_sap_ascs_ers_ers_virtual_ip": "10.0.1.21",
+    "ha_pacemaker_ra_sap_ascs_ers_ascs_device": "10.0.2.4:/sapS01/usrsapS01ascs00",
+    "ha_pacemaker_ra_sap_ascs_ers_ers_device": "10.0.2.4:/sapS01/usrsapS01ers01",
+    "ha_pacemaker_ra_sap_ascs_ers_nfs_options": "sec=sys,nfsvers=4.1",
+    "ha_pacemaker_ra_sap_ascs_ers_fs_monitor_timeout": 105,
+    "ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout": 105,
+}
+
+
+def ascs_ers(platform, enqueue="ensa2", step="main", pacemaker="2.1.5", **extra):
+    overrides = dict(ASCS_ERS, ha_pacemaker_ra_sap_ascs_ers_enqueue=enqueue, **extra)
+    if step == "main":
+        overrides.update(
+            __ha_pacemaker_ra_sap_ascs_ers_render=["ascs", "ers"],
+            __ha_pacemaker_ra_sap_ascs_ers_with_sap=["ascs", "ers"],
+            __ha_pacemaker_ra_sap_ascs_ers_constraints=True,
+        )
+    else:
+        overrides.update(
+            __ha_pacemaker_ra_sap_ascs_ers_render=[step],
+            __ha_pacemaker_ra_sap_ascs_ers_with_sap=[],
+            __ha_pacemaker_ra_sap_ascs_ers_constraints=False,
+        )
+    return render(
+        "ha_pacemaker_ra_sap_ascs_ers", "ascs_ers.xml.j2", platform, pacemaker, **overrides
+    )
+
+
+def ops(primitive):
+    return [
+        {key: value for key, value in op.attrib.items() if key != "id"}
+        for op in primitive.iter("op")
+    ]
+
+
+@pytest.mark.parametrize("platform", PLATFORMS)
+@pytest.mark.parametrize("enqueue", ["ensa1", "ensa2"])
+def test_ascs_ers_renders_for_every_platform(platform, enqueue):
+    sections = ascs_ers(platform, enqueue)
+    resources = sections["resources"]
+    assert ids(resources, "group") == ["g-S01_ASCS", "g-S01_ERS"]
+    all_ids = [e.get("id") for s in sections.values() for e in s.iter() if e.get("id")]
+    assert len(all_ids) == len(set(all_ids)), "duplicate ids"
+    ascs = resources.find(".//primitive[@id='rsc_sap_S01_ASCS00']")
+    assert pairs(ascs.find("instance_attributes")) == {
+        "InstanceName": "S01_ASCS00_s01scs00cl1",
+        "START_PROFILE": "/sapmnt/S01/profile/S01_ASCS00_s01scs00cl1",
+        "AUTOMATIC_RECOVER": "false",
+    }
+    ers = resources.find(".//primitive[@id='rsc_sap_S01_ERS01']")
+    assert pairs(ers.find("instance_attributes"))["IS_ERS"] == "true"
+    assert pairs(resources.find("group[@id='g-S01_ASCS']/meta_attributes")) == {
+        "resource-stickiness": "3000"
+    }
+    colocation = sections["constraints"].find("rsc_colocation")
+    assert (colocation.get("rsc"), colocation.get("with-rsc"), colocation.get("score")) == (
+        "g-S01_ERS",
+        "g-S01_ASCS",
+        "-5000",
+    )
+    location = sections["constraints"].find("rsc_location")
+    assert (location is not None) == (enqueue == "ensa1")
+
+
+def test_ascs_ers_sles_follows_the_suse_guide():
+    sections = ascs_ers("sles15", "ensa2")
+    group = sections["resources"].find("group[@id='g-S01_ASCS']")
+    assert [p.get("id") for p in group.iter("primitive")] == [
+        "fs_S01_ASCS",
+        "nc_S01_ASCS",
+        "vip_S01_ASCS",
+        "rsc_sap_S01_ASCS00",
+    ]
+    fs = group.find("primitive[@id='fs_S01_ASCS']")
+    assert pairs(fs) == {
+        "device": "10.0.2.4:/sapS01/usrsapS01ascs00",
+        "directory": "/usr/sap/S01/ASCS00",
+        "fstype": "nfs",
+        "options": "sec=sys,nfsvers=4.1",
+        "fast_stop": "no",
+    }
+    assert ops(fs) == [
+        {"name": "start", "interval": "0", "timeout": "60s"},
+        {"name": "stop", "interval": "0", "timeout": "60s"},
+        {"name": "monitor", "interval": "20s", "timeout": "105s"},
+    ]
+    sap = group.find("primitive[@id='rsc_sap_S01_ASCS00']")
+    assert sap.find("operations").get("id") == "rsc_sap_S01_ASCS00-operations"
+    assert ops(sap) == [
+        {"name": "monitor", "interval": "11", "timeout": "105", "on-fail": "restart"}
+    ]
+    assert pairs(sap.find("meta_attributes")) == {"resource-stickiness": "5000", "priority": "100"}
+    order = sections["constraints"].find("rsc_order")
+    assert (order.get("first"), order.get("then"), order.get("kind")) == (
+        "rsc_sap_S01_ASCS00",
+        "rsc_sap_S01_ERS01",
+        "Optional",
+    )
+    assert pairs(sections["crm_config"]) == {"priority-fencing-delay": "30"}
+    assert "rsc_defaults" not in sections
+
+
+def test_ascs_ers_sles_ensa1_uses_the_failover_rule():
+    sections = ascs_ers("sles15", "ensa1")
+    resources = sections["resources"]
+    assert pairs(resources.find(".//primitive[@id='rsc_sap_S01_ASCS00']/meta_attributes")) == {
+        "resource-stickiness": "5000",
+        "failure-timeout": "105",
+        "migration-threshold": "1",
+        "priority": "10",
+    }
+    assert pairs(resources.find(".//primitive[@id='rsc_sap_S01_ERS01']/meta_attributes")) == {
+        "priority": "1000"
+    }
+    rule = sections["constraints"].find("rsc_location[@rsc='rsc_sap_S01_ASCS00']/rule")
+    expression = rule.find("expression")
+    assert rule.get("score") == "2000"
+    assert (expression.get("attribute"), expression.get("value")) == ("runs_ers_S01", "1")
+    assert "crm_config" not in sections, "the ENSA1 procedure removes priority-fencing-delay"
+
+
+def test_ascs_ers_rhel_follows_the_red_hat_guide():
+    sections = ascs_ers("rhel9", "ensa1")
+    group = sections["resources"].find("group[@id='g-S01_ERS']")
+    assert [p.get("id") for p in group.iter("primitive")] == [
+        "fs_S01_ERS",
+        "vip_S01_ERS",
+        "nc_S01_ERS",
+        "rsc_sap_S01_ERS01",
+    ]
+    fs = group.find("primitive[@id='fs_S01_ERS']")
+    assert pairs(fs)["force_unmount"] == "safe"
+    assert ops(fs)[1:] == [
+        {"name": "stop", "interval": "0", "timeout": "120"},
+        {"name": "monitor", "interval": "200", "timeout": "105"},
+    ]
+    assert ops(group.find("primitive[@id='vip_S01_ERS']")) == []
+    assert ops(group.find("primitive[@id='rsc_sap_S01_ERS01']")) == [
+        {"name": "monitor", "interval": "20", "timeout": "105", "on-fail": "restart"},
+        {"name": "start", "interval": "0", "timeout": "600"},
+        {"name": "stop", "interval": "0", "timeout": "600"},
+    ]
+    ascs_meta = sections["resources"].find(".//primitive[@id='rsc_sap_S01_ASCS00']/meta_attributes")
+    assert pairs(ascs_meta) == {
+        "resource-stickiness": "5000",
+        "migration-threshold": "1",
+        "failure-timeout": "60",
+        "priority": "10",
+    }
+    order = sections["constraints"].find("rsc_order")
+    assert (order.get("first"), order.get("then")) == ("g-S01_ASCS", "g-S01_ERS")
+    assert pairs(sections["rsc_defaults"]) == {
+        "resource-stickiness": "1",
+        "migration-threshold": "3",
+        "priority": "1",
+    }
+    assert pairs(sections["crm_config"]) == {"priority-fencing-delay": "15s"}
+
+
+def test_ascs_ers_rhel_without_priority_fencing_support():
+    sections = ascs_ers("rhel9", "ensa2", pacemaker="2.0.3")
+    assert pairs(sections["rsc_defaults"]) == {
+        "resource-stickiness": "1",
+        "migration-threshold": "3",
+    }
+    meta = sections["resources"].find(".//primitive[@id='rsc_sap_S01_ASCS00']/meta_attributes")
+    assert pairs(meta) == {"resource-stickiness": "5000"}
+    assert "crm_config" not in sections
+
+
+@pytest.mark.parametrize("platform", ["rhel9", "sles15"])
+def test_ascs_ers_group_step_creates_one_group_without_constraints(platform):
+    sections = ascs_ers(platform, step="ers", ha_pacemaker_ra_sap_ascs_ers_cidr_netmask="24")
+    resources = sections["resources"]
+    assert ids(resources, "group") == ["g-S01_ERS"]
+    assert "SAPInstance" not in [p.get("type") for p in resources.iter("primitive")]
+    assert "constraints" not in sections and "crm_config" not in sections
+    vip = resources.find(".//primitive[@id='vip_S01_ERS']")
+    assert pairs(vip) == {"ip": "10.0.1.21", "cidr_netmask": "24"}
+    assert pairs(resources.find(".//primitive[@id='nc_S01_ERS']")) == {"port": "62101"}

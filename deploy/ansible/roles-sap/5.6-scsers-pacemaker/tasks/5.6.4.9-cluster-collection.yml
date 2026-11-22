@@ -1,0 +1,53 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+---
+# Maps the framework's variables to the azure.sap_automation ASCS/ERS resource
+# agent role. scs_collection_step selects what is configured:
+#   ascs, ers  - the group of that instance, before SWPM installs it
+#   resources  - the SAPInstance resources and constraints, after both installs
+# The caller decides on which node this runs and keeps the node standby and
+# online sequence of the existing tasks.
+
+- name:                                "5.6.4.9 SCS/ERS Pacemaker - Configure the {{ scs_collection_step }} cluster resources"
+  ansible.builtin.include_role:
+    name:                              azure.sap_automation.ha_pacemaker_ra_sap_ascs_ers
+    tasks_from:                        "{{ 'main.yml' if scs_collection_step == 'resources' else 'group.yml' }}"
+  vars:
+    ha_pacemaker_ra_sap_ascs_ers_config_node:           "{{ ansible_hostname }}"
+    ha_pacemaker_ra_sap_ascs_ers_group:                 "{{ scs_collection_step if scs_collection_step != 'resources' else 'ascs' }}"
+    ha_pacemaker_ra_sap_ascs_ers_sid:                   "{{ sap_sid | upper }}"
+    ha_pacemaker_ra_sap_ascs_ers_instance_type:         "{{ instance_type | upper }}"
+    ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number:  "{{ scs_instance_number }}"
+    ha_pacemaker_ra_sap_ascs_ers_ers_instance_number:   "{{ ers_instance_number }}"
+    ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_hostname: "{{ scs_virtual_hostname }}"
+    ha_pacemaker_ra_sap_ascs_ers_ers_virtual_hostname:  "{{ ers_virtual_hostname }}"
+    ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_ip:       "{{ scs_lb_ip }}"
+    ha_pacemaker_ra_sap_ascs_ers_ers_virtual_ip:        "{{ ers_lb_ip }}"
+    ha_pacemaker_ra_sap_ascs_ers_cidr_netmask:          "{{ subnet_prefix | default('') }}"
+    # The devices the earlier tasks derive from sap_mnt on Azure Files and
+    # Azure NetApp Files; otherwise the configured devices.
+    ha_pacemaker_ra_sap_ascs_ers_ascs_device: >-
+                                       {{ (sap_mnt ~ '/usrsap' ~ (sap_sid | upper) ~ (instance_type | lower) ~ scs_instance_number)
+                                          if NFS_provider in ['AFS', 'ANF'] and sap_mnt is defined
+                                          else ascs_filesystem_device }}
+    ha_pacemaker_ra_sap_ascs_ers_ers_device: >-
+                                       {{ (sap_mnt ~ '/usrsap' ~ (sap_sid | upper) ~ 'ers' ~ ers_instance_number)
+                                          if NFS_provider in ['AFS', 'ANF'] and sap_mnt is defined
+                                          else ers_filesystem_device }}
+    ha_pacemaker_ra_sap_ascs_ers_fstype:                "{{ nfs_fs_type }}"
+    ha_pacemaker_ra_sap_ascs_ers_nfs_options:           "{{ clus_nfs_options }}"
+    ha_pacemaker_ra_sap_ascs_ers_fs_monitor_timeout:    "{{ clus_fs_mon_timeout | int }}"
+    ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout:   "{{ clus_sap_mon_timeout | int }}"
+    ha_pacemaker_ra_sap_ascs_ers_enqueue:               "{{ 'ensa1' if ensa1 | default(false) | bool else 'ensa2' }}"
+    # The nodes are restarted next, still in maintenance mode.
+    ha_pacemaker_ra_sap_ascs_ers_leave_maintenance:     false
+
+# The earlier tasks always left the cluster in maintenance mode here, also
+# when nothing had to change, and the restart that follows relies on it.
+- name:                                "5.6.4.9 SCS/ERS Pacemaker - Keep the cluster in maintenance mode for the restart"
+  azure.sap_automation.pacemaker_cib:
+    xml:                               <crm_config><cluster_property_set><nvpair name="maintenance-mode" value="true"/></cluster_property_set></crm_config>
+  when:                                scs_collection_step == 'resources'
+
+...

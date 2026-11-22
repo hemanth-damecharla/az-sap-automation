@@ -39,6 +39,15 @@ options:
     type: str
     choices: [present, absent]
     default: present
+  replace:
+    description:
+      - With V(false), elements and properties that already exist are kept as
+        they are, even when they differ from O(xml); only missing ones are
+        added. Use it for a configuration step that must not undo a later one.
+      - Only used with O(state=present).
+    type: bool
+    default: true
+    version_added: "0.2.0"
 attributes:
   check_mode:
     support: full
@@ -145,6 +154,7 @@ def main():
         argument_spec={
             "xml": {"type": "str", "required": True},
             "state": {"type": "str", "choices": ["present", "absent"], "default": "present"},
+            "replace": {"type": "bool", "default": True},
         },
         supports_check_mode=True,
     )
@@ -165,7 +175,7 @@ def main():
             continue
         current = read_section(module, cibadmin, name)
         try:
-            new_xml, changed = reconcile(current, desired[name], state)
+            new_xml, changed = reconcile(current, desired[name], state, module.params["replace"])
         except CibError as exc:
             module.fail_json(msg=str(exc))
         if not changed:

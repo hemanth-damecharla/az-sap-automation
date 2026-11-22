@@ -1,0 +1,22 @@
+---
+# Entry point before SWPM installs an instance: creates the group of
+# ha_pacemaker_ra_sap_ascs_ers_group with its file system, virtual IP and
+# load balancer probe. Runs on the node it is called on, which the caller
+# keeps active while the other node is on standby.
+- name: group | Load platform variables
+  ansible.builtin.import_tasks: set_vars.yml
+
+- name: group | Read the installed package versions
+  ansible.builtin.package_facts:
+  when: ansible_facts['packages'] is not defined
+
+# Only missing elements are added, so running this entry point again does
+# not undo the main entry point, which adds the SAP instance to the group.
+- name: group | Configure the group
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/ascs_ers.xml.j2') }}"
+    replace: false
+  vars:
+    __ha_pacemaker_ra_sap_ascs_ers_render: ["{{ ha_pacemaker_ra_sap_ascs_ers_group }}"]
+    __ha_pacemaker_ra_sap_ascs_ers_with_sap: []
+    __ha_pacemaker_ra_sap_ascs_ers_constraints: false

@@ -1,0 +1,94 @@
+{#- Renders the groups in __ha_pacemaker_ra_sap_ascs_ers_render. A group holds
+    its SAPInstance resource when __ha_pacemaker_ra_sap_ascs_ers_with_sap
+    lists the instance; constraints and properties are rendered with
+    __ha_pacemaker_ra_sap_ascs_ers_constraints. -#}
+{% set spec = __ha_pacemaker_ra_sap_ascs_ers_spec %}
+{% set instances = __ha_pacemaker_ra_sap_ascs_ers_instances %}
+{% macro nvpairs(tag, values) %}
+{% set present = values | dict2items | rejectattr('value', 'equalto', '') | list %}
+{% if present %}
+<{{ tag }}>
+{% for pair in present | sort(attribute='key') %}
+  <nvpair name="{{ pair['key'] }}" value="{{ pair['value'] }}"/>
+{% endfor %}
+</{{ tag }}>
+{% endif %}
+{% endmacro %}
+{% macro operations(items, id='') %}
+{% if items %}
+<operations{% if id %} id="{{ id }}"{% endif %}>
+{% for operation in items %}
+  <op{% for key, value in operation.items() %} {{ key }}="{{ value }}"{% endfor %}/>
+{% endfor %}
+</operations>
+{% endif %}
+{% endmacro %}
+{% if spec['rsc_defaults'] %}
+<rsc_defaults>
+  {{ nvpairs('meta_attributes', spec['rsc_defaults']) }}
+</rsc_defaults>
+{% endif %}
+{% if __ha_pacemaker_ra_sap_ascs_ers_constraints and spec['priority_fencing_delay'] %}
+<crm_config>
+  <cluster_property_set>
+    <nvpair name="priority-fencing-delay" value="{{ spec['priority_fencing_delay'] }}"/>
+  </cluster_property_set>
+</crm_config>
+{% endif %}
+<resources>
+{% for name in __ha_pacemaker_ra_sap_ascs_ers_render %}
+{% set instance = instances[name] %}
+  <group id="{{ instance['group'] }}">
+    {{ nvpairs('meta_attributes', instance['group_meta']) }}
+{% for member in spec['members'] %}
+{% if member == 'fs' %}
+    <primitive id="{{ instance['fs'] }}" class="ocf" provider="heartbeat" type="Filesystem">
+      {{ nvpairs('instance_attributes', {'device': instance['device'], 'directory': instance['directory'],
+                                         'fstype': ha_pacemaker_ra_sap_ascs_ers_fstype,
+                                         'options': ha_pacemaker_ra_sap_ascs_ers_nfs_options}
+                                        | combine(spec['fs_parameters'])) }}
+      {{ operations(spec['fs_operations']) }}
+    </primitive>
+{% elif member == 'vip' %}
+    <primitive id="{{ instance['vip'] }}" class="ocf" provider="heartbeat" type="IPaddr2">
+      {{ nvpairs('instance_attributes', {'ip': instance['ip'], 'cidr_netmask': ha_pacemaker_ra_sap_ascs_ers_cidr_netmask | string}) }}
+      {{ operations(spec['vip_operations']) }}
+    </primitive>
+{% else %}
+    <primitive id="{{ instance['nc'] }}" class="ocf" provider="heartbeat" type="azure-lb">
+      {{ nvpairs('instance_attributes', {'port': instance['port'] | string}) }}
+      {{ operations(spec['nc_operations']) }}
+    </primitive>
+{% endif %}
+{% endfor %}
+{% if name in __ha_pacemaker_ra_sap_ascs_ers_with_sap %}
+    <primitive id="{{ instance['sap'] }}" class="ocf" provider="heartbeat" type="SAPInstance">
+      {{ nvpairs('instance_attributes', {
+           'InstanceName': instance['instance'],
+           'START_PROFILE': '/sapmnt/' + __ha_pacemaker_ra_sap_ascs_ers_sid + '/profile/' + instance['instance'],
+           'AUTOMATIC_RECOVER': 'false',
+           'IS_ERS': 'true' if name == 'ers' else ''}) }}
+      {{ nvpairs('meta_attributes', spec[name + '_meta']) }}
+      {{ operations(spec['sap_operations'], instance['sap'] + '-operations') }}
+    </primitive>
+{% endif %}
+  </group>
+{% endfor %}
+</resources>
+{% if __ha_pacemaker_ra_sap_ascs_ers_constraints %}
+{% set first = instances['ascs'][spec['order_on']] %}
+{% set then = instances['ers'][spec['order_on']] %}
+<constraints>
+  <rsc_colocation id="{{ __ha_pacemaker_ra_sap_ascs_ers_constraint_ids['colocation'] }}" score="-5000"
+                  rsc="{{ instances['ers']['group'] }}" with-rsc="{{ instances['ascs']['group'] }}"/>
+  <rsc_order id="{{ __ha_pacemaker_ra_sap_ascs_ers_constraint_ids['order'] }}" kind="Optional" symmetrical="false"
+             first="{{ first }}" first-action="start" then="{{ then }}" then-action="stop"/>
+{% if spec['failover_location'] %}
+  <rsc_location id="{{ __ha_pacemaker_ra_sap_ascs_ers_constraint_ids['location'] }}" rsc="{{ instances['ascs']['sap'] }}">
+    <rule score="2000">
+      <expression attribute="runs_ers_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}" operation="eq" value="1"/>
+    </rule>
+  </rsc_location>
+{% endif %}
+</constraints>
+{% endif %}

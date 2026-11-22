@@ -1,0 +1,44 @@
+---
+ha_pacemaker_ra_sap_ascs_ers_config_node: "{{ ha_pacemaker_config_node }}"
+
+# ha_pacemaker_ra_sap_ascs_ers_sid:
+# ASCS for ABAP, SCS for Java.
+ha_pacemaker_ra_sap_ascs_ers_instance_type: ASCS
+# ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number:
+# ha_pacemaker_ra_sap_ascs_ers_ers_instance_number:
+
+# Virtual host names the instances were installed with; they name the
+# instance profiles.
+# ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_hostname:
+# ha_pacemaker_ra_sap_ascs_ers_ers_virtual_hostname:
+
+# Front-end IP addresses of the Azure load balancer, and the prefix length
+# of the subnet (optional).
+# ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_ip:
+# ha_pacemaker_ra_sap_ascs_ers_ers_virtual_ip:
+ha_pacemaker_ra_sap_ascs_ers_cidr_netmask: ""
+ha_pacemaker_ra_sap_ascs_ers_ascs_probe_port: "620{{ ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number }}"
+ha_pacemaker_ra_sap_ascs_ers_ers_probe_port: "621{{ ha_pacemaker_ra_sap_ascs_ers_ers_instance_number }}"
+
+# NFS sources of /usr/sap/<SID>/<type><nr> and /usr/sap/<SID>/ERS<nr>.
+# ha_pacemaker_ra_sap_ascs_ers_ascs_device:
+# ha_pacemaker_ra_sap_ascs_ers_ers_device:
+ha_pacemaker_ra_sap_ascs_ers_fstype: nfs
+# Mount options; the guides use sec=sys,nfsvers=4.1 for Azure NetApp Files
+# NFSv4.1 and none for NFSv3.
+ha_pacemaker_ra_sap_ascs_ers_nfs_options: ""
+
+# Monitor timeouts in seconds. The guides use 40 and 60 for NFSv3 and 105
+# for both with Azure NetApp Files NFSv4.1.
+ha_pacemaker_ra_sap_ascs_ers_fs_monitor_timeout: 40
+ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout: 60
+
+# ensa1 or ensa2 (standalone enqueue server 1 or 2).
+ha_pacemaker_ra_sap_ascs_ers_enqueue: ensa2
+
+# Leave maintenance mode after changing the SAP resources. Set to false when
+# the caller restarts the nodes before the cluster takes over.
+ha_pacemaker_ra_sap_ascs_ers_leave_maintenance: true
+
+# Entry point group.yml: the instance whose group is configured.
+ha_pacemaker_ra_sap_ascs_ers_group: ascs

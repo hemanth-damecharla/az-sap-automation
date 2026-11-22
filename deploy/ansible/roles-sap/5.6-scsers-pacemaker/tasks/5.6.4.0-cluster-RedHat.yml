@@ -23,6 +23,7 @@
         pcs_update_cmd:                "{{ 'update' if ansible_distribution_major_version | int >= 10 else '' }}"
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - Central Services - Configure cluster default properties"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell: |
                                        pcs resource defaults{% if pcs_update_cmd %} {{ pcs_update_cmd }}{% endif %} resource-stickiness=1
                                        pcs resource defaults{% if pcs_update_cmd %} {{ pcs_update_cmd }}{% endif %} migration-threshold=3
@@ -40,6 +41,7 @@
         ascs_filesystem_device:        "{{ sap_mnt }}/usrsap{{ sap_sid | upper }}{{ instance_type | lower }}{{ scs_instance_number }}"
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - Central Services - Configure File system resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create fs_{{ sap_sid | upper }}_{{ instance_type | upper }} Filesystem \
                                        device='{{ ascs_filesystem_device }}' \
@@ -52,6 +54,7 @@
       failed_when:                     ascs_fs_resource.rc > 1
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - Central Services - Create ASCS VIP - This is LB frontend ASCS/SCS IP"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create vip_{{ sap_sid | upper }}_{{ instance_type | upper }} IPaddr2 \
                                        ip={{ scs_lb_ip }} cidr_netmask={{ subnet_prefix }} \
@@ -60,11 +63,18 @@
       failed_when:                     ascs_vip.rc > 1
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - Central Services - create Azure LB resource"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create nc_{{ sap_sid | upper }}_{{ instance_type | upper }} azure-lb port=620{{ scs_instance_number }} \
                                        --group g-{{ sap_sid | upper }}_{{ instance_type | upper }}
       register:                        ascs_lb
       failed_when:                     ascs_lb.rc > 1
+
+    - name:                            "5.6.4.0 SCS/ERS Pacemaker - Configure the ascs group (azure.sap_automation collection)"
+      ansible.builtin.include_tasks:   5.6.4.9-cluster-collection.yml
+      vars:
+        scs_collection_step:           ascs
+      when:                            scs_resources_use_collection | default(false)
 
   when:
     - inventory_hostname == primary_instance_name
@@ -204,6 +214,7 @@
         ers_filesystem_device:        "{{ sap_mnt }}/usrsap{{ sap_sid | upper }}ers{{ ers_instance_number }}"
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - ERS - Configure File system resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create fs_{{ sap_sid | upper }}_ERS Filesystem \
                                        device='{{ ers_filesystem_device }}' \
@@ -216,6 +227,7 @@
       failed_when:                     ers_fs_resource.rc > 1
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - ERS - Create ERS VIP - This is LB frontend ERS IP"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create vip_{{ sap_sid | upper }}_ERS IPaddr2 \
                                        ip={{ ers_lb_ip }} cidr_netmask={{ subnet_prefix }} \
@@ -224,11 +236,18 @@
       failed_when:                     ers_vip.rc > 1
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - ERS - create Azure LB resource "
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create nc_{{ sap_sid | upper }}_ERS azure-lb port=621{{ ers_instance_number }} \
                                        --group g-{{ sap_sid | upper }}_ERS
       register:                        ers_alb
       failed_when:                     ers_alb.rc > 1
+
+    - name:                            "5.6.4.0 SCS/ERS Pacemaker - Configure the ers group (azure.sap_automation collection)"
+      ansible.builtin.include_tasks:   5.6.4.9-cluster-collection.yml
+      vars:
+        scs_collection_step:           ers
+      when:                            scs_resources_use_collection | default(false)
 
   when:
     - inventory_hostname == secondary_instance_name

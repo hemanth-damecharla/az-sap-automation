@@ -21,6 +21,7 @@
   when:
     - inventory_hostname == primary_instance_name
     - ensa1 | default(false)
+    - not (scs_resources_use_collection | default(false))
   block:
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources  - REDHAT - ENSA1 - Enable Maintenance mode for the cluster"
       ansible.builtin.shell:           pcs property set maintenance-mode=true
@@ -75,6 +76,7 @@
   when:
     - inventory_hostname == primary_instance_name
     - ensa2 | default(false)
+    - not (scs_resources_use_collection | default(false))
   block:
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources  - REDHAT - ENSA2 - Enable Maintenance mode for the cluster"
       ansible.builtin.shell:           pcs property set maintenance-mode=true
@@ -125,6 +127,7 @@
   when:
     - inventory_hostname == primary_instance_name
     - is_pcmk_ver_gt_204 | default(false)
+    - not (scs_resources_use_collection | default(false))
   block:
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources  - REDHAT - set resource defaults 'priority'"
       ansible.builtin.shell:           "pcs resource defaults{% if pcs_update_cmd | default('') %} {{ pcs_update_cmd }}{% endif %} priority=1"
@@ -145,6 +148,23 @@
 # | Systemd-Based SAP Startup Framework - BEGIN                                |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
+
+# With use_sap_automation_collection the resources, constraints and
+# properties of both enqueue server generations come from the collection.
+- name:                                "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - Configure the SAP resources (azure.sap_automation collection)"
+  when:
+    - scs_resources_use_collection | default(false)
+    - inventory_hostname == primary_instance_name
+    - ensa1 | default(false) or ensa2 | default(false)
+  block:
+    - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - Configure the SAP resources"
+      ansible.builtin.include_tasks:   5.6.4.9-cluster-collection.yml
+      vars:
+        scs_collection_step:           resources
+
+    - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - Bring the primary node online"
+      ansible.builtin.command:         pcs node unstandby {{ primary_instance_name }}
+      changed_when:                    false
 
 - name:                                "5.6.4.2 SCS/ERS Pacemaker - SAP Resources  - REDHAT - Systemd-Based SAP Startup Framework"
   ansible.builtin.include_tasks:

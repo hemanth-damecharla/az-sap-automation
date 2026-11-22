@@ -160,7 +160,7 @@ def _find_top(section, element_id):
     return None, None
 
 
-def _reconcile_replace(current, desired, state):
+def _reconcile_replace(current, desired, state, replace=True):
     changed = False
     for want in desired:
         want_id = want.get("id")
@@ -184,7 +184,7 @@ def _reconcile_replace(current, desired, state):
                 )
             current.append(want)
             changed = True
-        elif normalize(have) != normalize(want):
+        elif replace and normalize(have) != normalize(want):
             current.remove(have)
             current.insert(index, want)
             changed = True
@@ -202,7 +202,7 @@ def _target_set(current, want, section_name):
     return have, want.get("id") or default_id
 
 
-def _reconcile_merge(current, desired, state, section_name):
+def _reconcile_merge(current, desired, state, section_name, replace=True):
     changed = False
     for want in desired:
         have, set_id = _target_set(current, want, section_name)
@@ -230,17 +230,19 @@ def _reconcile_merge(current, desired, state, section_name):
                     },
                 )
                 changed = True
-            elif found.get("value") != pair.get("value", ""):
+            elif replace and found.get("value") != pair.get("value", ""):
                 found.set("value", pair.get("value", ""))
                 changed = True
     return changed
 
 
-def reconcile(current_xml, desired, state="present"):
+def reconcile(current_xml, desired, state="present", replace=True):
     """Merge a desired section into the current one.
 
     ``current_xml`` is the XML text of the live section, or ``None`` when the
-    section does not exist yet. Returns ``(new_xml_text, changed)``.
+    section does not exist yet. With ``replace`` false, elements and
+    properties that already exist are kept as they are and only missing ones
+    are added. Returns ``(new_xml_text, changed)``.
     """
     name = desired.tag
     if current_xml:
@@ -254,11 +256,11 @@ def reconcile(current_xml, desired, state="present"):
         current = ET.Element(name)
 
     if name in MERGE_SECTIONS:
-        changed = _reconcile_merge(current, desired, state, name)
+        changed = _reconcile_merge(current, desired, state, name, replace)
     else:
         if state == "present":
             assign_ids(desired, name, name)
-        changed = _reconcile_replace(current, desired, state)
+        changed = _reconcile_replace(current, desired, state, replace)
     return ET.tostring(current, encoding="unicode"), changed
 
 

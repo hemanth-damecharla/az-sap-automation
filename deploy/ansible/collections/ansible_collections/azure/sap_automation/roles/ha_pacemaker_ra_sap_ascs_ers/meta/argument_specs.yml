@@ -1,0 +1,192 @@
+---
+argument_specs:
+  main:
+    short_description: Pacemaker resources for SAP ASCS/SCS and ERS
+    description:
+      - Adds the SAPInstance resources of an installed ASCS/SCS and ERS pair to their groups, with the
+        colocation, order and location constraints and the priorities of the enqueue server generation,
+        following the Microsoft Learn guides for SAP NetWeaver on SLES and RHEL with Azure NetApp Files.
+        Creates the groups if they do not exist.
+      - Applied on the configuration node, under maintenance mode when anything changes.
+    options:
+      ha_pacemaker_ra_sap_ascs_ers_config_node:
+        description: Node on which the cluster configuration is applied. Defaults to C(ha_pacemaker_config_node).
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_sid:
+        description: SAP system ID.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_instance_type:
+        description: V(ASCS) for ABAP or V(SCS) for Java.
+        type: str
+        choices:
+          - ASCS
+          - SCS
+        default: ASCS
+      ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number:
+        description: Two-digit instance number of the ASCS/SCS instance.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ers_instance_number:
+        description: Two-digit instance number of the ERS instance.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_hostname:
+        description: Virtual host name the ASCS/SCS instance was installed with.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ers_virtual_hostname:
+        description: Virtual host name the ERS instance was installed with.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_ip:
+        description: Load balancer front-end IP address of the ASCS/SCS instance.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ers_virtual_ip:
+        description: Load balancer front-end IP address of the ERS instance.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_cidr_netmask:
+        description: Prefix length of the subnet, for the IPaddr2 resources. Empty to leave it to the
+          agent.
+        type: str
+        default: ''
+      ha_pacemaker_ra_sap_ascs_ers_ascs_probe_port:
+        description: Load balancer health probe port of the ASCS/SCS instance. Defaults to 620 followed
+          by the instance number.
+        type: str
+      ha_pacemaker_ra_sap_ascs_ers_ers_probe_port:
+        description: Load balancer health probe port of the ERS instance. Defaults to 621 followed by
+          the instance number.
+        type: str
+      ha_pacemaker_ra_sap_ascs_ers_ascs_device:
+        description: NFS source of the ASCS/SCS instance directory.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ers_device:
+        description: NFS source of the ERS instance directory.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_fstype:
+        description: File system type of the Filesystem resources.
+        type: str
+        default: nfs
+      ha_pacemaker_ra_sap_ascs_ers_nfs_options:
+        description: Mount options of the Filesystem resources.
+        type: str
+        default: ''
+      ha_pacemaker_ra_sap_ascs_ers_fs_monitor_timeout:
+        description: Monitor timeout of the Filesystem resources, in seconds.
+        type: int
+        default: 40
+      ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout:
+        description: Monitor timeout of the SAPInstance resources, in seconds.
+        type: int
+        default: 60
+      ha_pacemaker_ra_sap_ascs_ers_enqueue:
+        description: Standalone enqueue server generation.
+        type: str
+        choices:
+          - ensa1
+          - ensa2
+        default: ensa2
+      ha_pacemaker_ra_sap_ascs_ers_leave_maintenance:
+        description: Leave maintenance mode after changing the resources.
+        type: bool
+        default: true
+  group:
+    short_description: Pacemaker group of one SAP ASCS/SCS or ERS instance
+    description:
+      - Creates the group of the instance in O(ha_pacemaker_ra_sap_ascs_ers_group) with its Filesystem,
+        IPaddr2 and azure-lb resources, before SWPM installs the instance into the mounted directory.
+      - Runs on the node it is called on. An existing group, and a SAPInstance resource already in it,
+        are left as they are.
+    options:
+      ha_pacemaker_ra_sap_ascs_ers_sid:
+        description: SAP system ID.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_instance_type:
+        description: V(ASCS) for ABAP or V(SCS) for Java.
+        type: str
+        choices:
+          - ASCS
+          - SCS
+        default: ASCS
+      ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number:
+        description: Two-digit instance number of the ASCS/SCS instance.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ers_instance_number:
+        description: Two-digit instance number of the ERS instance.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_hostname:
+        description: Virtual host name the ASCS/SCS instance was installed with.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ers_virtual_hostname:
+        description: Virtual host name the ERS instance was installed with.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ascs_virtual_ip:
+        description: Load balancer front-end IP address of the ASCS/SCS instance.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ers_virtual_ip:
+        description: Load balancer front-end IP address of the ERS instance.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_cidr_netmask:
+        description: Prefix length of the subnet, for the IPaddr2 resources. Empty to leave it to the
+          agent.
+        type: str
+        default: ''
+      ha_pacemaker_ra_sap_ascs_ers_ascs_probe_port:
+        description: Load balancer health probe port of the ASCS/SCS instance. Defaults to 620 followed
+          by the instance number.
+        type: str
+      ha_pacemaker_ra_sap_ascs_ers_ers_probe_port:
+        description: Load balancer health probe port of the ERS instance. Defaults to 621 followed by
+          the instance number.
+        type: str
+      ha_pacemaker_ra_sap_ascs_ers_ascs_device:
+        description: NFS source of the ASCS/SCS instance directory.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_ers_device:
+        description: NFS source of the ERS instance directory.
+        type: str
+        required: true
+      ha_pacemaker_ra_sap_ascs_ers_fstype:
+        description: File system type of the Filesystem resources.
+        type: str
+        default: nfs
+      ha_pacemaker_ra_sap_ascs_ers_nfs_options:
+        description: Mount options of the Filesystem resources.
+        type: str
+        default: ''
+      ha_pacemaker_ra_sap_ascs_ers_fs_monitor_timeout:
+        description: Monitor timeout of the Filesystem resources, in seconds.
+        type: int
+        default: 40
+      ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout:
+        description: Monitor timeout of the SAPInstance resources, in seconds.
+        type: int
+        default: 60
+      ha_pacemaker_ra_sap_ascs_ers_group:
+        description: Instance whose group is configured.
+        type: str
+        choices:
+          - ascs
+          - ers
+        default: ascs
+      ha_pacemaker_ra_sap_ascs_ers_enqueue:
+        description: Standalone enqueue server generation.
+        type: str
+        choices:
+          - ensa1
+          - ensa2
+        default: ensa2
