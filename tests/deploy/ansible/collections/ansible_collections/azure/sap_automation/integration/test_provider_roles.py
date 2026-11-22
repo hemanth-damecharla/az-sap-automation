@@ -224,3 +224,26 @@ def test_ascs_ers_steps_apply_and_repeat_without_change(cluster, os_family, enqu
     assert properties["maintenance-mode"] == "false"
     if os_family == "Suse":
         assert properties.get("priority-fencing-delay") == ("30" if enqueue == "ensa2" else None)
+
+
+@pytest.mark.parametrize("os_family, flavor", [("RedHat", "classic"), ("Suse", "angi")])
+def test_hana_scaleout_apply_and_second_run(cluster, os_family, flavor):
+    extra = ("-e", "os_family=%s flavor=%s" % (os_family, flavor))
+    assert cluster(flavor, "--check", *extra, playbook="hana_scaleout.yml") > 0
+    assert cluster.writes() == []
+    assert cluster(flavor, *extra, playbook="hana_scaleout.yml") > 0
+    assert cluster(flavor, *extra, playbook="hana_scaleout.yml") == 0, "second run must not change"
+
+    configuration = ET.parse(cluster.cib).getroot().find("configuration")
+    controller = configuration.find(".//primitive[@type='SAPHanaController']")
+    assert controller is not None
+    attributes = Path(str(cluster.cib) + ".attrs.json")
+    if os_family == "RedHat":
+        assert json.loads(attributes.read_text()) == {
+            "n1/NFS_HN1_SITE": "S1",
+            "n3/NFS_HN1_SITE": "S2",
+        }
+        assert configuration.find("alerts") is None
+    else:
+        assert not attributes.exists()
+        assert configuration.find("alerts/alert[@id='fencing-1']") is not None

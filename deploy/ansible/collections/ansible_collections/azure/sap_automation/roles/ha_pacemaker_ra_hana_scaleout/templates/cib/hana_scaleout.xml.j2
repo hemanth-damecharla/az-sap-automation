@@ -1,0 +1,164 @@
+{% set spec = __ha_pacemaker_ra_hana_scaleout_spec %}
+{% set mm = __ha_pacemaker_ra_hana_scaleout_mm %}
+{% macro nvpairs(tag, values) %}
+{% set present = values | dict2items | rejectattr('value', 'equalto', '') | list %}
+{% if present %}
+<{{ tag }}>
+{% for pair in present | sort(attribute='key') %}
+  <nvpair name="{{ pair['key'] }}" value="{{ pair['value'] }}"/>
+{% endfor %}
+</{{ tag }}>
+{% endif %}
+{% endmacro %}
+{% macro operations(items) %}
+{% if items %}
+<operations>
+{% for operation in items %}
+  <op{% for key, value in operation.items() %} {{ key }}="{{ value }}"{% endfor %}/>
+{% endfor %}
+</operations>
+{% endif %}
+{% endmacro %}
+{% macro checked_monitor(interval, timeout) %}
+<op name="monitor" interval="{{ interval }}" timeout="{{ timeout }}" on-fail="fence">
+  <instance_attributes>
+    <nvpair name="OCF_CHECK_LEVEL" value="20"/>
+  </instance_attributes>
+</op>
+{% endmacro %}
+{% set agent = {'SID': __ha_pacemaker_ra_hana_scaleout_sid, 'InstanceNumber': __ha_pacemaker_ra_hana_scaleout_nr} %}
+<rsc_defaults>
+  {{ nvpairs('meta_attributes', __ha_pacemaker_ra_hana_scaleout_rsc_defaults) }}
+</rsc_defaults>
+<resources>
+  <clone id="{{ spec['topology']['clone_id'] }}">
+    {{ nvpairs('meta_attributes', spec['topology']['clone_meta']) }}
+    <primitive id="{{ spec['topology']['id'] }}" class="ocf" provider="{{ spec['provider'] }}" type="SAPHanaTopology">
+      {{ nvpairs('instance_attributes', agent) }}
+      {{ operations(spec['topology']['operations']) }}
+    </primitive>
+  </clone>
+  <clone id="{{ spec['controller']['clone_id'] }}">
+    {{ nvpairs('meta_attributes', spec['controller']['clone_meta']) }}
+    <primitive id="{{ spec['controller']['id'] }}" class="ocf" provider="{{ spec['provider'] }}" type="SAPHanaController">
+      {{ nvpairs('instance_attributes', agent | combine({
+           'PREFER_SITE_TAKEOVER': ha_pacemaker_ra_hana_scaleout_prefer_site_takeover | bool | string | lower,
+           'AUTOMATED_REGISTER': ha_pacemaker_ra_hana_scaleout_automated_register | bool | string | lower,
+           'DUPLICATE_PRIMARY_TIMEOUT': ha_pacemaker_ra_hana_scaleout_duplicate_primary_timeout | string},
+           spec['controller']['parameters'])) }}
+      {{ operations(spec['controller']['operations']) }}
+    </primitive>
+  </clone>
+{% if spec['filesystem'] %}
+  <clone id="{{ spec['filesystem']['clone_id'] }}">
+    {{ nvpairs('meta_attributes', {'clone-node-max': '1', 'interleave': 'true'}) }}
+    <primitive id="{{ spec['filesystem']['id'] }}" class="ocf" provider="{{ spec['provider'] }}" type="SAPHanaFilesystem">
+      {{ nvpairs('instance_attributes', agent | combine({'ON_FAIL_ACTION': 'fence'})) }}
+      {{ operations(__ha_pacemaker_ra_hana_scaleout_filesystem_operations) }}
+    </primitive>
+  </clone>
+{% endif %}
+{% if spec['fscheck'] %}
+{% set check = spec['fscheck'] %}
+  <clone id="{{ check['clone_id'] }}">
+    {{ nvpairs('meta_attributes', {'clone-node-max': '1', 'interleave': 'true'}) }}
+    <primitive id="{{ check['id'] }}" class="ocf" provider="heartbeat" type="Filesystem">
+      {{ nvpairs('instance_attributes', {'device': check['device'], 'directory': check['directory'],
+                                         'fstype': 'nfs4', 'options': check['options']}) }}
+      <operations>
+        {{ checked_monitor('120', '120') }}
+        <op name="start" interval="0" timeout="120"/>
+        <op name="stop" interval="0" timeout="120"/>
+      </operations>
+    </primitive>
+  </clone>
+{% endif %}
+{% if spec['topology_nfs_rule'] %}
+{% for site in __ha_pacemaker_ra_hana_scaleout_nfs_sites %}
+  <clone id="{{ site['fs'] }}-clone">
+    {{ nvpairs('meta_attributes', {'clone-node-max': '1', 'interleave': 'true'}) }}
+    <primitive id="{{ site['fs'] }}" class="ocf" provider="heartbeat" type="Filesystem">
+      {{ nvpairs('instance_attributes', {'device': site['device'], 'directory': '/hana/shared', 'fstype': 'nfs',
+                                         'options': ha_pacemaker_ra_hana_scaleout_nfs_options, 'fast_stop': 'no'}) }}
+      <operations>
+        {{ checked_monitor('20s', '120s') }}
+        <op name="start" interval="0" timeout="120"/>
+        <op name="stop" interval="0" timeout="120"/>
+      </operations>
+    </primitive>
+  </clone>
+  <clone id="{{ site['attribute'] }}-clone">
+    {{ nvpairs('meta_attributes', {'clone-node-max': '1', 'interleave': 'true'}) }}
+    <primitive id="{{ site['attribute'] }}" class="ocf" provider="pacemaker" type="attribute">
+      {{ nvpairs('instance_attributes', {'active_value': 'true', 'inactive_value': 'false', 'name': site['attribute']}) }}
+    </primitive>
+  </clone>
+{% endfor %}
+{% endif %}
+  <group id="{{ spec['group']['id'] }}">
+{% for member in spec['group']['members'] %}
+{% if member == 'ip' %}
+    <primitive id="{{ spec['ip']['id'] }}" class="ocf" provider="heartbeat" type="IPaddr2">
+      {{ nvpairs('instance_attributes', {'ip': ha_pacemaker_ra_hana_scaleout_virtual_ip}) }}
+      {{ operations(spec['ip']['operations']) }}
+    </primitive>
+{% else %}
+    <primitive id="{{ spec['nc']['id'] }}" class="ocf" provider="heartbeat" type="azure-lb">
+      {{ nvpairs('instance_attributes', {'port': ha_pacemaker_ra_hana_scaleout_probe_port | string}) }}
+      {{ nvpairs('meta_attributes', spec['nc']['meta']) }}
+      {{ operations(spec['nc']['operations']) }}
+    </primitive>
+{% endif %}
+{% endfor %}
+  </group>
+</resources>
+<constraints>
+  <rsc_colocation id="{{ spec['colocation_id'] }}" score="4000" rsc="{{ spec['group']['id'] }}"
+{%- if spec['colocation_rsc_role'] %} rsc-role="{{ spec['colocation_rsc_role'] }}"{% endif %}
+ with-rsc="{{ spec['controller']['clone_id'] }}" with-rsc-role="{{ spec['controller']['promoted_role'] }}"/>
+  <rsc_order id="{{ spec['order_id'] }}" first="{{ spec['topology']['clone_id'] }}" then="{{ spec['controller']['clone_id'] }}"
+{%- if spec['order_kind'] %} kind="{{ spec['order_kind'] }}"{% endif %}
+{%- if spec['order_symmetrical'] %} symmetrical="{{ spec['order_symmetrical'] }}"{% endif %}/>
+{% for location in spec['mm_locations'] %}
+  <rsc_location id="{{ location['id'] }}" rsc="{{ spec[location['rsc']]['clone_id'] }}" node="{{ mm }}" score="-INFINITY"/>
+{% endfor %}
+{% if spec['filesystem'] and spec['filesystem']['location_id'] %}
+  <rsc_location id="{{ spec['filesystem']['location_id'] }}" rsc="{{ spec['filesystem']['clone_id'] }}" node="{{ mm }}" score="-INFINITY"/>
+{% endif %}
+{% if spec['fscheck'] %}
+  <rsc_location id="{{ spec['fscheck']['location_id'] }}" rsc="{{ spec['fscheck']['clone_id'] }}" node="{{ mm }}" score="-INFINITY"/>
+{% endif %}
+{% if spec['mm_pattern'] %}
+  <rsc_location id="avoid-{{ mm }}" rsc-pattern=".*SAPHana.*" node="{{ mm }}" score="-INFINITY" resource-discovery="never"/>
+{% endif %}
+{% if spec['topology_nfs_rule'] %}
+{% set attribute = __ha_pacemaker_ra_hana_scaleout_site_attribute %}
+{% for site in __ha_pacemaker_ra_hana_scaleout_nfs_sites %}
+  <rsc_location id="loc_{{ site['fs'] }}-clone" rsc="{{ site['fs'] }}-clone" resource-discovery="never">
+    <rule score="-INFINITY">
+      <expression attribute="{{ attribute }}" operation="ne" value="{{ site['code'] }}"/>
+    </rule>
+  </rsc_location>
+  <rsc_order id="ord_{{ site['fs'] }}-clone_then_{{ site['attribute'] }}-clone" first="{{ site['fs'] }}-clone" then="{{ site['attribute'] }}-clone"/>
+{% endfor %}
+  <rsc_location id="loc_{{ spec['topology']['clone_id'] }}_nfs_active" rsc="{{ spec['topology']['clone_id'] }}" resource-discovery="never">
+    <rule score="-INFINITY" boolean-op="and">
+{% for site in __ha_pacemaker_ra_hana_scaleout_nfs_sites %}
+      <expression attribute="{{ site['attribute'] }}" operation="ne" value="true"/>
+{% endfor %}
+    </rule>
+  </rsc_location>
+{% endif %}
+</constraints>
+{% if spec['alert'] %}
+<alerts>
+  <alert id="{{ spec['alert']['id'] }}" path="/usr/bin/SAPHanaSR-alert-fencing">
+    {{ nvpairs('instance_attributes', {'alert_uptime_threshold': spec['alert']['threshold']}) }}
+    <select>
+{% for kind in spec['alert']['select'] %}
+      <{{ kind }}/>
+{% endfor %}
+    </select>
+  </alert>
+</alerts>
+{% endif %}

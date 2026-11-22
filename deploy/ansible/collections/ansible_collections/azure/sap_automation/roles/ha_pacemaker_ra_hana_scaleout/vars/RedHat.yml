@@ -1,0 +1,93 @@
+---
+# Microsoft Learn, "High availability of SAP HANA scale-out system on Red Hat
+# Enterprise Linux", sections "Configure the file systems" and "Create SAP
+# HANA cluster resources".
+__ha_pacemaker_ra_hana_scaleout_default_migration_threshold: "5000"
+__ha_pacemaker_ra_hana_scaleout_rhel_roles: {promoted: Master, unpromoted: Slave}
+__ha_pacemaker_ra_hana_scaleout_rhel_ip: &rhel_ip
+  ip:
+    id: "vip_{{ __ha_pacemaker_ra_hana_scaleout_rhel_suffix }}"
+    operations:
+      - {name: monitor, interval: 10s, timeout: 20s}
+  nc:
+    id: "nc_{{ __ha_pacemaker_ra_hana_scaleout_rhel_suffix }}"
+    meta: {}
+    operations: []
+  group:
+    id: "g_ip_{{ __ha_pacemaker_ra_hana_scaleout_rhel_suffix }}"
+    members: [nc, ip]
+  colocation_id: "col_saphana_ip_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+  colocation_rsc_role: ""
+  order_id: "ord_SAPHana_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+  order_kind: ""
+  fscheck: {}
+
+__ha_pacemaker_ra_hana_scaleout_flavors:
+  classic:
+    <<: *rhel_ip
+    provider: heartbeat
+    topology:
+      id: "SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}-clone"
+      clone_meta: {clone-node-max: "1", interleave: "true"}
+      operations:
+        - {name: methods, interval: 0s, timeout: "5"}
+        - {name: start, interval: "0", timeout: "600"}
+        - {name: stop, interval: "0", timeout: "300"}
+        - {name: monitor, interval: "10", timeout: "600"}
+    controller:
+      id: "SAPHana_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "SAPHana_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}-clone"
+      clone_meta: {promotable: "true", master-max: "1", clone-node-max: "1", interleave: "true"}
+      parameters: {}
+      promoted_role: "{{ __ha_pacemaker_ra_hana_scaleout_rhel_roles['promoted'] }}"
+      operations:
+        - {name: demote, interval: 0s, timeout: "320"}
+        - {name: methods, interval: 0s, timeout: "5"}
+        - {name: start, interval: "0", timeout: "3600"}
+        - {name: stop, interval: "0", timeout: "3600"}
+        - {name: promote, interval: "0", timeout: "3600"}
+        - {name: monitor, interval: "60", role: "{{ __ha_pacemaker_ra_hana_scaleout_rhel_roles['promoted'] }}", timeout: "700"}
+        - {name: monitor, interval: "61", role: "{{ __ha_pacemaker_ra_hana_scaleout_rhel_roles['unpromoted'] }}", timeout: "700"}
+    filesystem: {}
+    alert: {}
+    order_symmetrical: ""
+    # HANA runs only where a site's /hana/shared is mounted, which also keeps
+    # it off the majority maker.
+    topology_nfs_rule: true
+    mm_locations: []
+    mm_pattern: false
+  angi:
+    <<: *rhel_ip
+    provider: heartbeat
+    topology:
+      id: "rsc_SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "cln_SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_meta: {clone-node-max: "1", interleave: "true"}
+      operations:
+        - {name: start, interval: "0", timeout: "600"}
+        - {name: stop, interval: "0", timeout: "300"}
+        - {name: monitor, interval: "30", timeout: "300"}
+    controller:
+      id: "rsc_SAPHanaController_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "cln_SAPHanaController_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_meta: {promotable: "true", clone-node-max: "1", interleave: "true"}
+      parameters: {}
+      promoted_role: Promoted
+      operations:
+        - {name: stop, interval: "0", timeout: "3600"}
+        - {name: monitor, interval: "59", role: Promoted, timeout: "700"}
+        - {name: monitor, interval: "61", role: Unpromoted, timeout: "700"}
+    filesystem:
+      id: "rsc_SAPHanaFilesystem_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "cln_SAPHanaFilesystem_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      location_id: ""
+    alert:
+      id: alert-hana-1
+      threshold: "600"
+      select: [select_nodes, select_fencing]
+    order_symmetrical: "false"
+    topology_nfs_rule: false
+    mm_locations: []
+    # One rule keeps every SAPHana* resource off the majority maker.
+    mm_pattern: true

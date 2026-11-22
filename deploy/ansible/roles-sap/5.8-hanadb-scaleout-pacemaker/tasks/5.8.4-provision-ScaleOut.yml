@@ -11,11 +11,32 @@
     DB:                                "{{ db_sid | upper }}/HDB{{ db_instance_number }}"
     db_sid_admin_user:                 "{{ db_sid | lower }}adm"
 
+# Opt-in: with use_sap_automation_collection the cluster resources are applied
+# by the azure.sap_automation collection (5.8.4.2-cluster-collection.yml) on
+# RHEL 8 or later and SLES 15 or later. The active/read-enabled secondary
+# virtual IP, and on RHEL with the classic agents a /hana/shared that is not
+# one volume per site on Azure NetApp Files or Azure Files, stay with these
+# tasks.
+- name:                                "5.8 HANA Pacemaker Scale-out - Determine the implementation of the cluster resources"
+  ansible.builtin.set_fact:
+    hana_scaleout_angi:                "{{ is_certified_for_hanasr_angi | default(false) | bool and use_hanasr_angi | default(false) | bool }}"
+    hana_scaleout_use_collection: >-
+                                       {{ use_sap_automation_collection | default(false) | bool
+                                          and not (database_active_active | default(false) | bool)
+                                          and ansible_distribution_major_version | int >= (8 if ansible_os_family | upper == 'REDHAT' else 15)
+                                          and (ansible_os_family | upper != 'REDHAT'
+                                               or is_certified_for_hanasr_angi | default(false) | bool
+                                               or (NFS_provider in ['ANF', 'AFS'] and hana_shared_mountpoint | default([]) | length > 1)) }}
+
 - name:                                "5.8 HANA Pacemaker Scale-out - configure pre-requisites"
   ansible.builtin.include_tasks:       "5.8.4.0-clusterPrep-ScaleOut-{{ ansible_os_family }}.yml"
 
 - name:                                "5.8 HANA Pacemaker Scale-out - configure cluster resources"
   ansible.builtin.include_tasks:       "5.8.4.1-cluster-ScaleOut-{{ ansible_os_family }}.yml"
+
+- name:                                "5.8 HANA Pacemaker Scale-out - configure cluster resources (azure.sap_automation collection)"
+  ansible.builtin.include_tasks:       5.8.4.2-cluster-collection.yml
+  when:                                hana_scaleout_use_collection | bool
 
 
 ...

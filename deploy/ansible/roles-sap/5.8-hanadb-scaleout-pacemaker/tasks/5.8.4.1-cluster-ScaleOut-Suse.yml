@@ -11,6 +11,7 @@
 
 - name:                                "5.8 HANA Pacemaker Scale-out - Ensure the Cluster STONITH is configured"
   when:
+                                       - not (hana_scaleout_use_collection | default(false))
                                        - inventory_hostname == primary_instance_name
                                        - not (is_certified_for_hanasr_angi | default(false) and use_hanasr_angi | default(false))
   block:
@@ -215,6 +216,7 @@
 
 - name:                                "5.8 HANA Pacemaker Scale-out [angi] - Ensure the Cluster resources are configured"
   when:
+                                       - not (hana_scaleout_use_collection | default(false))
                                        - inventory_hostname == primary_instance_name
                                        - is_certified_for_hanasr_angi | default(false)
                                        - use_hanasr_angi | default(false)
@@ -396,6 +398,7 @@
 
 - name:                                "5.8 HANA Pacemaker Scale-out - Configure the ANF specific resources when relevant"
   when:
+                                       - not (hana_scaleout_use_collection | default(false))
                                        - ansible_hostname in [ primary_instance_name , secondary_instance_name ]
                                        - database_high_availability
                                        - NFS_provider == "ANF"

@@ -39,6 +39,7 @@ The default behaviour of every playbook is unchanged.
 | [`sap_db_hana_hadr_hooks`](roles/sap_db_hana_hadr_hooks/README.md) | Database function | `roles-sap/5.5-hanadb-pacemaker/tasks/5.5.3-SAPHanaSR.yml` |
 | [`az_instance_metadata`](roles/az_instance_metadata/README.md) | Azure facts | Instance metadata queries repeated in playbooks and roles |
 | [`ha_pacemaker_ra_hana_scaleup`](roles/ha_pacemaker_ra_hana_scaleup/README.md) | Resource agent provider | `roles-sap/5.5-hanadb-pacemaker/tasks/5.5.4.1-cluster-*.yml` |
+| [`ha_pacemaker_ra_hana_scaleout`](roles/ha_pacemaker_ra_hana_scaleout/README.md) | Resource agent provider | Cluster resources in `roles-sap/5.8-hanadb-scaleout-pacemaker/tasks/5.8.4.*-ScaleOut-*.yml` |
 | [`ha_pacemaker_ra_sap_ascs_ers`](roles/ha_pacemaker_ra_sap_ascs_ers/README.md) | Resource agent provider | Cluster resources in `roles-sap/5.6-scsers-pacemaker/tasks/5.6.4.0-cluster-*.yml` and `5.6.4.2-sap-resources-*.yml` |
 
 ## Using it from the SDAF playbooks
@@ -61,6 +62,7 @@ Ansible finds the collection without further configuration because it sits in
 | Cluster bootstrap and fencing (`roles-os/1.17-generic-pacemaker`) | HANA scale-up on RHEL 8 or later or SLES other than SLES 12 SP4, with `database_cluster_type` `AFA`; or `ASD` on RHEL 8.8 or SLES 15 SP1 and later; or `ISCSI` on RHEL 8.8 or SLES 12 SP5 and later | Existing tasks |
 | System replication (`roles-db/4.0.1-hdb-hsr`) | HANA scale-up | Existing tasks |
 | HANA data, log and shared volumes on Azure NetApp Files (`roles-sap-os/2.6-sap-mounts`, step 2.6.1) | HANA scale-up with `NFS_provider` `ANF` | Existing tasks |
+| HANA scale-out cluster resources (`roles-sap/5.8-hanadb-scaleout-pacemaker`, step 5.8.4) | No active/read-enabled secondary; RHEL 8 or later, with the classic agents only for one /hana/shared volume per site on ANF or Azure Files; SLES 15 or later | Existing tasks |
 | ASCS/ERS cluster resources (`roles-sap/5.6-scsers-pacemaker`, steps 5.6.4.0 and 5.6.4.2); the node sequence, installations and restarts stay in the existing tasks | Not the simple mount architecture, RHEL 8 or later or SLES | Existing tasks |
 | HANA HA/DR provider hooks (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.3) | HANA scale-up on RHEL 8 or later or SLES | Existing tasks |
 | HANA cluster resources (`roles-sap/5.5-hanadb-pacemaker`, steps 5.5.4.0 and 5.5.4.1), including the Azure NetApp Files file system resources | No active/read-enabled secondary, RHEL 8 or later or SLES | Existing tasks |
@@ -71,7 +73,7 @@ rewritten. The hook step runs every time, but once the cluster is configured
 it only writes the configuration and does not restart HANA. The files that
 translate the framework's variables into role inputs are
 `1.17.9-collection.yml`, `2.6.1.9-anf-mounts-hana-collection.yaml`,
-`4.0.1.9-collection.yml`, `5.5.3.1-SAPHanaSR-collection.yml`, `5.6.4.9-cluster-collection.yml` and `5.5.4.2-cluster-collection.yml`.
+`4.0.1.9-collection.yml`, `5.5.3.1-SAPHanaSR-collection.yml`, `5.6.4.9-cluster-collection.yml`, `5.8.4.2-cluster-collection.yml` and `5.5.4.2-cluster-collection.yml`.
 
 ## Extending without changing the collection
 

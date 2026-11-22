@@ -1,0 +1,101 @@
+---
+# Microsoft Learn, "SAP HANA scale-out with HSR and Pacemaker on SLES",
+# section "Create SAP HANA cluster resources".
+__ha_pacemaker_ra_hana_scaleout_default_migration_threshold: "50"
+__ha_pacemaker_ra_hana_scaleout_sles_ip: &sles_ip
+  ip:
+    id: "rsc_ip_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+    operations:
+      - {name: start, interval: "0", timeout: 60s, on-fail: fence}
+      - {name: monitor, interval: 10s, timeout: 20s}
+  nc:
+    id: "rsc_nc_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+    meta: {resource-stickiness: "0"}
+    operations:
+      - {name: monitor, interval: "10", timeout: 20s}
+  group:
+    id: "g_ip_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+    members: [ip, nc]
+  colocation_id: "col_saphana_ip_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+  colocation_rsc_role: Started
+  order_id: "ord_SAPHana_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+  order_kind: Optional
+  order_symmetrical: ""
+  topology_nfs_rule: false
+  mm_pattern: false
+
+__ha_pacemaker_ra_hana_scaleout_flavors:
+  classic:
+    <<: *sles_ip
+    provider: suse
+    topology:
+      id: "rsc_SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "cln_SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_meta: {clone-node-max: "1", target-role: Started, interleave: "true"}
+      operations:
+        - {name: monitor, interval: "10", timeout: "600"}
+        - {name: start, interval: "0", timeout: "600"}
+        - {name: stop, interval: "0", timeout: "300"}
+    controller:
+      id: "rsc_SAPHana_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "msl_SAPHana_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_meta: {clone-node-max: "1", master-max: "1", interleave: "true", promotable: "true"}
+      parameters: {}
+      promoted_role: Master
+      operations:
+        - {name: start, interval: "0", timeout: "3600"}
+        - {name: stop, interval: "0", timeout: "3600"}
+        - {name: promote, interval: "0", timeout: "3600"}
+        - {name: monitor, interval: "60", role: Master, timeout: "700"}
+        - {name: monitor, interval: "61", role: Slave, timeout: "700"}
+    filesystem: {}
+    # Bind mount of /hana/shared/<SID>/check that fails, and fences, when the
+    # share is not writable.
+    fscheck:
+      id: "fs_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}_fscheck"
+      clone_id: "cln_fs_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}_fscheck"
+      location_id: "loc_cln_fs_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}_fscheck_not_on_mm"
+      device: "/hana/shared/{{ __ha_pacemaker_ra_hana_scaleout_sid }}/check"
+      directory: /hana/check
+      options: bind,defaults,rw,hard,timeo=600,proto=tcp,noatime,nfsvers=4.1,lock
+    alert: {}
+    mm_locations:
+      - {id: loc_SAPHanaCon_not_on_majority_maker, rsc: controller}
+      - {id: loc_SAPHanaTop_not_on_majority_maker, rsc: topology}
+  angi:
+    <<: *sles_ip
+    provider: suse
+    topology:
+      id: "rsc_SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "cln_SAPHanaTopology_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_meta: {clone-node-max: "1", interleave: "true"}
+      operations:
+        - {name: monitor, interval: "50", timeout: "600"}
+        - {name: start, interval: "0", timeout: "600"}
+        - {name: stop, interval: "0", timeout: "300"}
+    controller:
+      id: "rsc_SAPHanaController_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "mst_SAPHanaController_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_meta: {clone-node-max: "1", interleave: "true", promotable: "true"}
+      parameters: {HANA_CALL_TIMEOUT: "120"}
+      promoted_role: Promoted
+      operations:
+        - {name: start, interval: "0", timeout: "3600"}
+        - {name: stop, interval: "0", timeout: "3600"}
+        - {name: promote, interval: "0", timeout: "900"}
+        - {name: demote, interval: "0", timeout: "320"}
+        - {name: monitor, interval: "60", role: Promoted, timeout: "700"}
+        - {name: monitor, interval: "61", role: Unpromoted, timeout: "700"}
+    filesystem:
+      id: "rsc_SAPHanaFilesystem_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      clone_id: "cln_SAPHanaFilesystem_{{ __ha_pacemaker_ra_hana_scaleout_suffix }}"
+      location_id: loc_SAPHanaFilesystem_not_on_majority_maker
+    fscheck: {}
+    # Required with ON_FAIL_ACTION=fence (man SAPHanaSR-alert-fencing).
+    alert:
+      id: fencing-1
+      threshold: "480"
+      select: [select_fencing]
+    mm_locations:
+      - {id: loc_SAPHanaController_not_on_majority_maker, rsc: controller}
+      - {id: loc_SAPHanaTopology_not_on_majority_maker, rsc: topology}

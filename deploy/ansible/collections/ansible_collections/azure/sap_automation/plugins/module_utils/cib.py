@@ -25,6 +25,7 @@ SECTIONS = (
     "resources",
     "constraints",
     "fencing-topology",
+    "alerts",
 )
 
 # Sections that hold name/value sets shared with other tools and with

@@ -1,0 +1,49 @@
+---
+# The Filesystem resource of a site's /hana/shared runs only on nodes with
+# that site's attribute.
+- name: resources | Assign the nodes to their system replication site
+  azure.sap_automation.pacemaker_attribute:
+    name: "{{ __ha_pacemaker_ra_hana_scaleout_site_attribute }}"
+    node: "{{ __ha_pacemaker_ra_hana_scaleout_site_node[1] }}"
+    value: "{{ __ha_pacemaker_ra_hana_scaleout_site_node[0]['code'] }}"
+  loop: "{{ __ha_pacemaker_ra_hana_scaleout_nfs_sites | subelements('nodes') }}"
+  loop_control:
+    loop_var: __ha_pacemaker_ra_hana_scaleout_site_node
+    label: "{{ __ha_pacemaker_ra_hana_scaleout_site_node[1] }}"
+  when: __ha_pacemaker_ra_hana_scaleout_spec['topology_nfs_rule'] | bool
+
+- name: resources | Determine whether the HANA resources need to change
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/hana_scaleout.xml.j2') }}"
+  check_mode: true
+  register: __ha_pacemaker_ra_hana_scaleout_plan
+
+- name: resources | Apply the HANA resources under maintenance mode
+  when: __ha_pacemaker_ra_hana_scaleout_plan['sections'] | length > 0
+  block:
+    - name: resources | Enter maintenance mode
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/maintenance.xml.j2') }}"
+      vars:
+        __ha_pacemaker_ra_hana_scaleout_maintenance: "true"
+
+    - name: resources | Configure the HANA resources and constraints
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/hana_scaleout.xml.j2') }}"
+
+    - name: resources | Leave maintenance mode
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/maintenance.xml.j2') }}"
+      vars:
+        __ha_pacemaker_ra_hana_scaleout_maintenance: "false"
+
+- name: resources | Wait for the cluster to be out of maintenance with all nodes online
+  azure.sap_automation.pacemaker_cluster_info:
+  register: __ha_pacemaker_ra_hana_scaleout_state
+  until:
+    - not __ha_pacemaker_ra_hana_scaleout_state['maintenance_mode']
+    - ha_pacemaker_ra_hana_scaleout_nodes | map(attribute='name')
+      | difference(__ha_pacemaker_ra_hana_scaleout_state['online_nodes']) | length == 0
+  retries: "{{ ha_pacemaker_ra_hana_scaleout_settle_retries }}"
+  delay: "{{ ha_pacemaker_ra_hana_scaleout_settle_delay }}"
+  when: not ansible_check_mode

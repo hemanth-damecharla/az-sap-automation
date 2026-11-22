@@ -24,6 +24,7 @@
   # Ref : https://learn.microsoft.com/en-us/azure/sap/workloads/sap-hana-high-availability-scale-out-hsr-rhel?tabs=lb-portal#create-file-system-resources
 - name:                                "5.8 HANA Pacemaker Scale-out - Configure the ANF/AFS file system resources"
   when:
+    - not (hana_scaleout_use_collection | default(false))
     - database_high_availability
     - database_scale_out
     - NFS_provider in ["ANF","AFS"]

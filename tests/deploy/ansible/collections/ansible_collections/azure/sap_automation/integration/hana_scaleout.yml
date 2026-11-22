@@ -1,0 +1,30 @@
+- name: Exercise the HANA scale-out resource agent role against a file-backed CIB
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars:
+    os_family: RedHat
+    flavor: classic
+  tasks:
+    - name: Present the cluster node platform
+      fake_platform:
+        os_family: "{{ os_family }}"
+        distribution: "{{ 'SLES_SAP' if os_family == 'Suse' else 'RedHat' }}"
+        version: "{{ '15.5' if os_family == 'Suse' else '9.4' }}"
+    - name: HANA scale-out resources
+      ansible.builtin.include_role:
+        name: azure.sap_automation.ha_pacemaker_ra_hana_scaleout
+      vars:
+        # The stand-in crm_mon reports n1 and n2 online; n2 plays the majority maker.
+        ha_pacemaker_nodes:
+          - {name: n1, address: 10.0.0.1}
+          - {name: n2, address: 10.0.0.2}
+        ha_pacemaker_config_node: "{{ ansible_facts['hostname'] }}"
+        ha_pacemaker_ra_hana_scaleout_sid: HN1
+        ha_pacemaker_ra_hana_scaleout_instance_number: "03"
+        ha_pacemaker_ra_hana_scaleout_virtual_ip: 10.23.0.27
+        ha_pacemaker_ra_hana_scaleout_flavor: "{{ flavor }}"
+        ha_pacemaker_ra_hana_scaleout_majority_maker: n2
+        ha_pacemaker_ra_hana_scaleout_site1_nodes: [n1]
+        ha_pacemaker_ra_hana_scaleout_site2_nodes: [n3]
+        ha_pacemaker_ra_hana_scaleout_shared_devices: ["anf:/HN1-shared-s1", "anf:/HN1-shared-s2"]

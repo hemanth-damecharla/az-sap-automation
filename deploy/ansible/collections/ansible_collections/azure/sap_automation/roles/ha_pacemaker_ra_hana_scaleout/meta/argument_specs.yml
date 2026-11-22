@@ -1,0 +1,100 @@
+---
+argument_specs:
+  main:
+    short_description: Pacemaker resources for SAP HANA scale-out system replication
+    description:
+      - Creates the SAP HANA topology and controller clones, the virtual IP with
+        its Azure load balancer probe, the file system checks and the
+        constraints that keep HANA off the majority maker, following the
+        Microsoft Learn guides for HANA scale-out with HSR and Pacemaker on SLES
+        and RHEL.
+      - With V(angi) also the SAPHanaFilesystem clone and the
+        SAPHanaSR-alert-fencing alert; with V(classic) on RHEL the cloned
+        Filesystem resources of each site's /hana/shared and their node
+        attributes; with V(classic) on SLES the /hana/shared check clone.
+      - HANA System Replication and the HA/DR provider hooks must already be
+        configured, and every node, including the majority maker, must be in
+        the cluster.
+    options:
+      ha_pacemaker_ra_hana_scaleout_nodes:
+        description: Cluster nodes including the majority maker. Defaults to C(ha_pacemaker_nodes).
+        type: list
+        elements: dict
+        required: true
+      ha_pacemaker_ra_hana_scaleout_config_node:
+        description: Node on which the cluster configuration is applied.
+        type: str
+        required: true
+      ha_pacemaker_ra_hana_scaleout_sid:
+        description: SAP HANA system ID.
+        type: str
+        required: true
+      ha_pacemaker_ra_hana_scaleout_instance_number:
+        description: Two-digit SAP HANA instance number.
+        type: str
+        required: true
+      ha_pacemaker_ra_hana_scaleout_virtual_ip:
+        description: Front-end IP address of the load balancer for the HANA primary.
+        type: str
+        required: true
+      ha_pacemaker_ra_hana_scaleout_probe_port:
+        description: Load balancer health probe port. Defaults to 625 followed by the instance number.
+        type: str
+      ha_pacemaker_ra_hana_scaleout_flavor:
+        description: Resource agent generation to configure.
+        type: str
+        choices: [classic, angi]
+        default: classic
+      ha_pacemaker_ra_hana_scaleout_majority_maker:
+        description: Cluster node name of the majority maker.
+        type: str
+        required: true
+      ha_pacemaker_ra_hana_scaleout_site1_nodes:
+        description: HANA nodes of system replication site 1. Required with V(classic) on RHEL.
+        type: list
+        elements: str
+        default: []
+      ha_pacemaker_ra_hana_scaleout_site2_nodes:
+        description: HANA nodes of system replication site 2. Required with V(classic) on RHEL.
+        type: list
+        elements: str
+        default: []
+      ha_pacemaker_ra_hana_scaleout_shared_devices:
+        description:
+          - NFS sources of /hana/shared of site 1 and site 2. Required with
+            V(classic) on RHEL, where the cluster mounts them; /hana/shared must
+            then not be in C(/etc/fstab).
+        type: list
+        elements: str
+        default: []
+      ha_pacemaker_ra_hana_scaleout_nfs_options:
+        description: Mount options of those Filesystem resources.
+        type: str
+        default: defaults,rw,hard,timeo=600,rsize=262144,wsize=262144,proto=tcp,noatime,sec=sys,nfsvers=4.1,lock,_netdev
+      ha_pacemaker_ra_hana_scaleout_prefer_site_takeover:
+        description: Value of the C(PREFER_SITE_TAKEOVER) agent parameter.
+        type: bool
+        default: true
+      ha_pacemaker_ra_hana_scaleout_automated_register:
+        description: Value of the C(AUTOMATED_REGISTER) agent parameter.
+        type: bool
+        default: true
+      ha_pacemaker_ra_hana_scaleout_duplicate_primary_timeout:
+        description: Value of the C(DUPLICATE_PRIMARY_TIMEOUT) agent parameter, in seconds.
+        type: int
+        default: 7200
+      ha_pacemaker_ra_hana_scaleout_resource_stickiness:
+        description: Cluster-wide default resource stickiness.
+        type: int
+        default: 1000
+      ha_pacemaker_ra_hana_scaleout_migration_threshold:
+        description: Cluster-wide default migration threshold. Defaults to 50 on SLES and 5000 on RHEL.
+        type: int
+      ha_pacemaker_ra_hana_scaleout_settle_retries:
+        description: Number of polls while waiting for the cluster to leave maintenance mode.
+        type: int
+        default: 12
+      ha_pacemaker_ra_hana_scaleout_settle_delay:
+        description: Seconds between those polls.
+        type: int
+        default: 10

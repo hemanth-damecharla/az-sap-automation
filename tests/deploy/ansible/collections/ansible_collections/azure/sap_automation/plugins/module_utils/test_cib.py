@@ -267,3 +267,27 @@ def test_replace_false_only_adds_missing_elements_and_properties():
         live, section(defaults % ("migration-threshold", "3"), "rsc_defaults"), replace=False
     )
     assert changed and "migration-threshold" in more
+
+
+def test_alerts_are_reconciled_by_id():
+    alerts = section(
+        """
+        <alerts>
+          <alert id="fencing-1" path="/usr/bin/SAPHanaSR-alert-fencing">
+            <instance_attributes>
+              <nvpair name="alert_uptime_threshold" value="480"/>
+            </instance_attributes>
+            <select><select_fencing/></select>
+          </alert>
+        </alerts>
+        """,
+        "alerts",
+    )
+    new_xml, changed = cib.reconcile(None, alerts)
+    alert = ET.fromstring(new_xml).find("alert")
+    assert (
+        changed and alert.find("instance_attributes").get("id") == "fencing-1-instance_attributes"
+    )
+    assert alert.find("select").get("id") is None
+    _again, changed_again = cib.reconcile(new_xml, alerts)
+    assert not changed_again

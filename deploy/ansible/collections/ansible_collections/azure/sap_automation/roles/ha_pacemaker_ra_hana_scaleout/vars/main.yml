@@ -1,0 +1,41 @@
+---
+__ha_pacemaker_ra_hana_scaleout_is_config_node: "{{ ansible_facts['hostname'] == ha_pacemaker_ra_hana_scaleout_config_node }}"
+__ha_pacemaker_ra_hana_scaleout_sid: "{{ ha_pacemaker_ra_hana_scaleout_sid | upper }}"
+__ha_pacemaker_ra_hana_scaleout_nr: "{{ ha_pacemaker_ra_hana_scaleout_instance_number }}"
+__ha_pacemaker_ra_hana_scaleout_suffix: "{{ __ha_pacemaker_ra_hana_scaleout_sid }}_HDB{{ __ha_pacemaker_ra_hana_scaleout_nr }}"
+__ha_pacemaker_ra_hana_scaleout_rhel_suffix: "{{ __ha_pacemaker_ra_hana_scaleout_sid }}_{{ __ha_pacemaker_ra_hana_scaleout_nr }}"
+__ha_pacemaker_ra_hana_scaleout_mm: "{{ ha_pacemaker_ra_hana_scaleout_majority_maker }}"
+
+# Set by the platform file, one entry per flavor.
+__ha_pacemaker_ra_hana_scaleout_flavors: {}
+__ha_pacemaker_ra_hana_scaleout_default_migration_threshold: "50"
+__ha_pacemaker_ra_hana_scaleout_spec: "{{ __ha_pacemaker_ra_hana_scaleout_flavors[ha_pacemaker_ra_hana_scaleout_flavor] }}"
+
+__ha_pacemaker_ra_hana_scaleout_rsc_defaults:
+  resource-stickiness: "{{ ha_pacemaker_ra_hana_scaleout_resource_stickiness | string }}"
+  migration-threshold: >-
+    {{ ha_pacemaker_ra_hana_scaleout_migration_threshold
+       | default(__ha_pacemaker_ra_hana_scaleout_default_migration_threshold, true) | string }}
+
+# Shared by both platforms with angi.
+__ha_pacemaker_ra_hana_scaleout_filesystem_operations:
+  - {name: start, interval: "0", timeout: "10"}
+  - {name: stop, interval: "0", timeout: "20"}
+  - {name: monitor, interval: "120", timeout: "120"}
+
+# RHEL with classic: per site a cloned Filesystem resource for /hana/shared,
+# placed by a node attribute, and an attribute resource that reports it.
+__ha_pacemaker_ra_hana_scaleout_nfs_sites: >-
+  {% set sites = [] -%}
+  {% for nodes in [ha_pacemaker_ra_hana_scaleout_site1_nodes, ha_pacemaker_ra_hana_scaleout_site2_nodes] -%}
+  {%   set n = loop.index | string -%}
+  {%   set _ = sites.append({
+         'code': 'S' + n,
+         'nodes': nodes,
+         'fs': 'fs_hana_shared_s' + n,
+         'attribute': 'hana_nfs_s' + n + '_active',
+         'device': ha_pacemaker_ra_hana_scaleout_shared_devices[loop.index0]
+                   if ha_pacemaker_ra_hana_scaleout_shared_devices | length > loop.index0 else ''}) -%}
+  {% endfor -%}
+  {{ sites }}
+__ha_pacemaker_ra_hana_scaleout_site_attribute: "NFS_{{ __ha_pacemaker_ra_hana_scaleout_sid }}_SITE"

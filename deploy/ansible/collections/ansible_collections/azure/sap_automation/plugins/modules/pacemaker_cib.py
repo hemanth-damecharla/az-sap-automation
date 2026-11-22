@@ -12,12 +12,13 @@ module: pacemaker_cib
 short_description: Declaratively manage Pacemaker CIB configuration from XML
 version_added: "0.1.0"
 description:
-  - Reconciles resources, constraints, fencing topology, cluster properties and
-    resource/operation defaults against a desired CIB XML document.
+  - Reconciles resources, constraints, fencing topology, alerts, cluster
+    properties and resource/operation defaults against a desired CIB XML
+    document.
   - Works identically on RHEL and SLES because it only uses C(cibadmin), which
     ships with Pacemaker itself; neither C(pcs) nor C(crmsh) is required.
-  - Elements in C(resources), C(constraints) and C(fencing-topology) are
-    matched by C(id) and replaced when they differ. Elements not mentioned are
+  - Elements in C(resources), C(constraints), C(fencing-topology) and
+    C(alerts) are matched by C(id) and replaced when they differ. Elements not mentioned are
     left untouched.
   - C(crm_config), C(rsc_defaults) and C(op_defaults) are merged by nvpair
     name, so values owned by Pacemaker or other tools are preserved.
@@ -29,7 +30,7 @@ options:
       - Desired configuration. Either a C(<configuration>) document or a
         sequence of section elements (C(<crm_config>), C(<rsc_defaults>),
         C(<op_defaults>), C(<resources>), C(<constraints>),
-        C(<fencing-topology>)).
+        C(<fencing-topology>), C(<alerts>)).
       - With O(state=absent) only the C(id) of each top-level element (or the
         C(name) of each nvpair in merged sections) is significant.
     type: str

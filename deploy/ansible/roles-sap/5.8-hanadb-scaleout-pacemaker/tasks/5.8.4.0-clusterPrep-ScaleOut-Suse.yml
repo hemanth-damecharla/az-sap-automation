@@ -18,6 +18,7 @@
 
 - name:                                "Configure the ANF specific resources when relevant"
   when:
+    - not (hana_scaleout_use_collection | default(false))
     - database_high_availability
     - hana_shared_mountpoint is defined
     - hana_shared_mountpoint | length > 1

@@ -1,0 +1,49 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+---
+# Maps the framework's input variables to the azure.sap_automation HANA
+# scale-out resource agent role. The play hosts are the HANA nodes: those at
+# even positions form site 1, those at odd positions site 2, as in
+# 5.8.4.0-clusterPrep-ScaleOut-RedHat.yml. The majority maker is the first
+# host of the <SID>_OBSERVER_DB group.
+
+# With the classic agents on RHEL the cluster mounts /hana/shared, so the
+# fstab entries the earlier mount tasks wrote are removed, as the existing
+# cluster preparation did. With angi the volumes stay in fstab.
+- name:                                "5.8.4.2 HANA Pacemaker Scale-out - Remove the /hana/shared entries the cluster mounts from fstab"
+  ansible.builtin.lineinfile:
+    path:                              /etc/fstab
+    regexp:                            "^{{ item }}"
+    state:                             absent
+  loop:                                "{{ hana_shared_mountpoint[:2] }}"
+  when:
+    - ansible_os_family | upper == 'REDHAT'
+    - not (hana_scaleout_angi | bool)
+
+- name:                                "5.8.4.2 HANA Pacemaker Scale-out - Configure the HANA resources"
+  ansible.builtin.include_role:
+    name:                              azure.sap_automation.ha_pacemaker_ra_hana_scaleout
+  vars:
+    __mm:                              "{{ query('inventory_hostnames', (sap_sid | upper) ~ '_OBSERVER_DB') | first }}"
+    ha_pacemaker_ra_hana_scaleout_nodes: >-
+                                       {{ (ansible_play_hosts_all + [__mm]) | map('community.general.dict_kv', 'name') | list }}
+    ha_pacemaker_ra_hana_scaleout_config_node:       "{{ primary_instance_name }}"
+    ha_pacemaker_ra_hana_scaleout_sid:               "{{ db_sid | upper }}"
+    ha_pacemaker_ra_hana_scaleout_instance_number:   "{{ db_instance_number }}"
+    ha_pacemaker_ra_hana_scaleout_virtual_ip:        "{{ database_loadbalancer_ip }}"
+    ha_pacemaker_ra_hana_scaleout_flavor:            "{{ 'angi' if hana_scaleout_angi | bool else 'classic' }}"
+    ha_pacemaker_ra_hana_scaleout_majority_maker:    "{{ __mm }}"
+    ha_pacemaker_ra_hana_scaleout_site1_nodes:       "{{ ansible_play_hosts_all[0::2] }}"
+    ha_pacemaker_ra_hana_scaleout_site2_nodes:       "{{ ansible_play_hosts_all[1::2] }}"
+    # As the existing cluster preparation: on Azure NetApp Files the shared
+    # directory of each volume, on Azure Files the share itself.
+    ha_pacemaker_ra_hana_scaleout_shared_devices: >-
+                                       {{ hana_shared_mountpoint | default([]) | batch(2) | first | default([]) | map('regex_replace', '$',
+                                          '/shared' if NFS_provider == 'ANF' else '') | list }}
+    ha_pacemaker_ra_hana_scaleout_nfs_options: >-
+                                       {{ 'defaults,rw,hard,rsize=262144,wsize=262144,proto=tcp,noatime,_netdev,nfsvers=4.1,lock,sec=sys'
+                                          if NFS_provider == 'ANF'
+                                          else 'noresvport,defaults,rw,hard,proto=tcp,noatime,nfsvers=4.1,lock' }}
+
+...

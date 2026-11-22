@@ -1,0 +1,35 @@
+---
+ha_pacemaker_ra_hana_scaleout_nodes: "{{ ha_pacemaker_nodes }}"
+ha_pacemaker_ra_hana_scaleout_config_node: "{{ ha_pacemaker_config_node }}"
+
+# ha_pacemaker_ra_hana_scaleout_sid:
+# ha_pacemaker_ra_hana_scaleout_instance_number:
+# ha_pacemaker_ra_hana_scaleout_virtual_ip:
+ha_pacemaker_ra_hana_scaleout_probe_port: "625{{ ha_pacemaker_ra_hana_scaleout_instance_number }}"
+
+# classic: SAPHanaSR-ScaleOut (SLES) or resource-agents-sap-hana-scaleout (RHEL).
+# angi:    SAPHanaSR-angi (SLES) or sap-hana-ha (RHEL).
+ha_pacemaker_ra_hana_scaleout_flavor: classic
+
+# Cluster node that only provides quorum; no HANA resource runs on it.
+# ha_pacemaker_ra_hana_scaleout_majority_maker:
+
+# HANA nodes of each system replication site, by cluster node name. Used on
+# RHEL with classic, where each site mounts its own /hana/shared.
+ha_pacemaker_ra_hana_scaleout_site1_nodes: []
+ha_pacemaker_ra_hana_scaleout_site2_nodes: []
+
+# NFS sources of /hana/shared of site 1 and site 2 (RHEL, classic).
+ha_pacemaker_ra_hana_scaleout_shared_devices: []
+ha_pacemaker_ra_hana_scaleout_nfs_options: defaults,rw,hard,timeo=600,rsize=262144,wsize=262144,proto=tcp,noatime,sec=sys,nfsvers=4.1,lock,_netdev
+
+ha_pacemaker_ra_hana_scaleout_prefer_site_takeover: true
+ha_pacemaker_ra_hana_scaleout_automated_register: true
+ha_pacemaker_ra_hana_scaleout_duplicate_primary_timeout: 7200
+
+ha_pacemaker_ra_hana_scaleout_resource_stickiness: 1000
+# Defaults to the documented value: 50 on SLES, 5000 on RHEL.
+# ha_pacemaker_ra_hana_scaleout_migration_threshold:
+
+ha_pacemaker_ra_hana_scaleout_settle_retries: 12
+ha_pacemaker_ra_hana_scaleout_settle_delay: 10

@@ -599,3 +599,139 @@ def test_ascs_ers_group_step_creates_one_group_without_constraints(platform):
     vip = resources.find(".//primitive[@id='vip_S01_ERS']")
     assert pairs(vip) == {"ip": "10.0.1.21", "cidr_netmask": "24"}
     assert pairs(resources.find(".//primitive[@id='nc_S01_ERS']")) == {"port": "62101"}
+
+
+SCALEOUT = {
+    "ha_pacemaker_ra_hana_scaleout_sid": "hn1",
+    "ha_pacemaker_ra_hana_scaleout_instance_number": "03",
+    "ha_pacemaker_ra_hana_scaleout_virtual_ip": "10.23.0.27",
+    "ha_pacemaker_ra_hana_scaleout_majority_maker": "hana-s-mm",
+    "ha_pacemaker_ra_hana_scaleout_site1_nodes": ["hana-s1-db1", "hana-s1-db2"],
+    "ha_pacemaker_ra_hana_scaleout_site2_nodes": ["hana-s2-db1", "hana-s2-db2"],
+    "ha_pacemaker_ra_hana_scaleout_shared_devices": ["anf:/HN1-shared-s1", "anf:/HN1-shared-s2"],
+}
+
+
+def scaleout(platform, flavor):
+    return render(
+        "ha_pacemaker_ra_hana_scaleout",
+        "hana_scaleout.xml.j2",
+        platform,
+        ha_pacemaker_ra_hana_scaleout_flavor=flavor,
+        **SCALEOUT,
+    )
+
+
+def mm_locations(constraints):
+    return {
+        c.get("rsc") or c.get("rsc-pattern")
+        for c in constraints.iter("rsc_location")
+        if c.get("node") == "hana-s-mm"
+    }
+
+
+@pytest.mark.parametrize("platform", ["rhel9", "rhel10", "sles15", "sles16"])
+@pytest.mark.parametrize("flavor", ["classic", "angi"])
+def test_hana_scaleout_renders_for_every_platform(platform, flavor):
+    sections = scaleout(platform, flavor)
+    all_ids = [e.get("id") for s in sections.values() for e in s.iter() if e.get("id")]
+    assert len(all_ids) == len(set(all_ids)), "duplicate ids"
+    resources, constraints = sections["resources"], sections["constraints"]
+    top = {child.get("id") for child in resources}
+    for constraint in constraints:
+        for key in ("rsc", "with-rsc", "first", "then"):
+            if constraint.get(key):
+                assert constraint.get(key) in top, (constraint.get("id"), key)
+    controller = resources.find(".//primitive[@type='SAPHanaController']")
+    assert pairs(controller.find("instance_attributes"))["AUTOMATED_REGISTER"] == "true"
+    assert ("alerts" in sections) == (flavor == "angi")
+    assert pairs(sections["rsc_defaults"])["migration-threshold"] == (
+        "50" if platform.startswith("sles") else "5000"
+    )
+
+
+def test_hana_scaleout_sles_classic_follows_the_suse_guide():
+    sections = scaleout("sles15", "classic")
+    resources, constraints = sections["resources"], sections["constraints"]
+    assert ids(resources, "clone") == [
+        "cln_SAPHanaTopology_HN1_HDB03",
+        "msl_SAPHana_HN1_HDB03",
+        "cln_fs_HN1_HDB03_fscheck",
+    ]
+    check = resources.find(".//primitive[@id='fs_HN1_HDB03_fscheck']")
+    assert pairs(check.find("instance_attributes")) == {
+        "device": "/hana/shared/HN1/check",
+        "directory": "/hana/check",
+        "fstype": "nfs4",
+        "options": "bind,defaults,rw,hard,timeo=600,proto=tcp,noatime,nfsvers=4.1,lock",
+    }
+    monitor = check.find("operations/op[@name='monitor']")
+    assert monitor.get("on-fail") == "fence" and pairs(monitor) == {"OCF_CHECK_LEVEL": "20"}
+    assert mm_locations(constraints) == {
+        "msl_SAPHana_HN1_HDB03",
+        "cln_SAPHanaTopology_HN1_HDB03",
+        "cln_fs_HN1_HDB03_fscheck",
+    }
+    colocation = constraints.find("rsc_colocation")
+    assert (colocation.get("rsc-role"), colocation.get("with-rsc-role")) == ("Started", "Master")
+    assert constraints.find("rsc_order").get("kind") == "Optional"
+
+
+def test_hana_scaleout_sles_angi_adds_filesystem_and_fencing_alert():
+    sections = scaleout("sles16", "angi")
+    resources = sections["resources"]
+    controller = resources.find(".//primitive[@id='rsc_SAPHanaController_HN1_HDB03']")
+    assert pairs(controller.find("instance_attributes"))["HANA_CALL_TIMEOUT"] == "120"
+    assert resources.find("clone[@id='cln_SAPHanaFilesystem_HN1_HDB03']") is not None
+    alert = sections["alerts"].find("alert")
+    assert (alert.get("id"), alert.get("path")) == ("fencing-1", "/usr/bin/SAPHanaSR-alert-fencing")
+    assert pairs(alert) == {"alert_uptime_threshold": "480"}
+    assert [e.tag for e in alert.find("select")] == ["select_fencing"]
+    assert "cln_SAPHanaFilesystem_HN1_HDB03" in mm_locations(sections["constraints"])
+
+
+def test_hana_scaleout_rhel_classic_mounts_each_sites_shared_volume():
+    sections = scaleout("rhel9", "classic")
+    resources, constraints = sections["resources"], sections["constraints"]
+    fs = resources.find("clone[@id='fs_hana_shared_s2-clone']/primitive")
+    assert pairs(fs.find("instance_attributes"))["device"] == "anf:/HN1-shared-s2"
+    assert pairs(fs.find("instance_attributes"))["fast_stop"] == "no"
+    assert (
+        resources.find("clone[@id='hana_nfs_s1_active-clone']/primitive").get("type") == "attribute"
+    )
+    site = constraints.find("rsc_location[@id='loc_fs_hana_shared_s1-clone']")
+    assert site.get("resource-discovery") == "never"
+    expression = site.find("rule/expression")
+    assert (expression.get("attribute"), expression.get("operation"), expression.get("value")) == (
+        "NFS_HN1_SITE",
+        "ne",
+        "S1",
+    )
+    topology = constraints.find("rsc_location[@rsc='SAPHanaTopology_HN1_HDB03-clone']/rule")
+    assert topology.get("boolean-op") == "and"
+    assert [e.get("attribute") for e in topology] == ["hana_nfs_s1_active", "hana_nfs_s2_active"]
+    assert mm_locations(constraints) == set()
+    assert ids(resources.find("group"), "primitive") == ["nc_HN1_03", "vip_HN1_03"]
+    order = constraints.find("rsc_order[@id='ord_SAPHana_HN1_HDB03']")
+    assert order.get("kind") is None and order.get("symmetrical") is None
+
+
+def test_hana_scaleout_rhel_angi_keeps_every_saphana_resource_off_the_majority_maker():
+    sections = scaleout("rhel10", "angi")
+    constraints = sections["constraints"]
+    avoid = constraints.find("rsc_location[@id='avoid-hana-s-mm']")
+    assert (avoid.get("rsc-pattern"), avoid.get("resource-discovery")) == (".*SAPHana.*", "never")
+    assert "fs_hana_shared_s1-clone" not in ids(sections["resources"], "clone")
+    alert = sections["alerts"].find("alert")
+    assert alert.get("id") == "alert-hana-1" and pairs(alert) == {"alert_uptime_threshold": "600"}
+    assert [e.tag for e in alert.find("select")] == ["select_nodes", "select_fencing"]
+    assert constraints.find("rsc_order").get("symmetrical") == "false"
+
+
+def test_hana_scaleout_rhel10_classic_uses_promoted_roles():
+    roles = {
+        op.get("role")
+        for op in scaleout("rhel10", "classic")["resources"].iter("op")
+        if op.get("role")
+    }
+    assert roles == {"Promoted", "Unpromoted"}
