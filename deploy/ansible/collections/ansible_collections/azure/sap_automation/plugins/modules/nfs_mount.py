@@ -17,6 +17,8 @@ description:
   - When O(subdir) is set and O(path) is not already mounted from it, the
     share is mounted at a private temporary directory, O(subdir) is created
     there if it is missing, and the temporary mount is removed again.
+  - Several nodes may run the module for the same share at once; a
+    subdirectory another node creates in the meantime is accepted.
   - Creates the mount point when it is missing and can make it immutable, so
     that nothing is written to the local directory while the share is not
     mounted.
@@ -290,7 +292,11 @@ class Mounter:
                 target = os.path.join(temporary, self.params["subdir"].strip("/"))
                 if os.path.isdir(target):
                     return False
-                self.make_directory(target)
+                try:
+                    self.make_directory(target)
+                except FileExistsError:
+                    # Another node created it at the same time.
+                    return False
                 return True
             finally:
                 self.unmount(temporary)

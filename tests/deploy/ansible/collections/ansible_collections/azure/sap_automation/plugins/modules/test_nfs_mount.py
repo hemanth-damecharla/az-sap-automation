@@ -230,3 +230,18 @@ def test_helpers(monkeypatch, tmp_path):
         "b /y nfs4 o 0 0\n",
         "c /z nfs4 o 0 0\n",
     ]
+
+
+def test_subdir_created_by_another_node_meanwhile_is_accepted(run_module, system, monkeypatch):
+    real_mkdir = nfs_mount.os.mkdir
+
+    def racing_mkdir(path, mode=0o777):
+        if path.endswith("hanadata"):
+            real_mkdir(path, mode)
+            raise FileExistsError(path)
+        return real_mkdir(path, mode)
+
+    monkeypatch.setattr(nfs_mount.os, "mkdir", racing_mkdir)
+    run_module.commands.add().add().add()
+    result = run_module(nfs_mount.main, params(system))
+    assert not result.get("failed") and not result["subdir_created"] and result["mounted"]

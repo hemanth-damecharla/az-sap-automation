@@ -21,6 +21,7 @@
 
 - name:                                "2.6.0.1 AFS Mount block {{ item.type }}"
   when:
+                                       - not (use_sap_automation_collection | default(false) | bool)
                                        - item.mount is defined
                                        - ansible_hostname == primary_host
                                        - item.create_temp_folders
@@ -93,6 +94,7 @@
 
 - name:                                "2.6.0.1 AFS Mount - Create SAP Directories ({{ item.path }})"
   when:
+                                       - not (use_sap_automation_collection | default(false) | bool)
                                        - node_tier in item.target_nodes or item.target_nodes == ['all']
   ansible.builtin.file:
     owner:                             "{{ item.owner }}"
@@ -108,6 +110,7 @@
   become:                              true
   become_user:                         "root"
   when:
+                                       - not (use_sap_automation_collection | default(false) | bool)
                                        - node_tier in item.target_nodes or item.target_nodes == "all"
                                        - is_created_now.changed
                                        - item.set_chattr_on_dir
@@ -120,6 +123,7 @@
 
 - name:                                "2.6.0.1 AFS Mount"
   when:
+                                       - not (use_sap_automation_collection | default(false) | bool)
                                        - single_server or ( node_tier in item.target_nodes or item.target_nodes == ['all'] )
   block:
     - name:                            "2.6.0.1 AFS Mount - Mount ({{ item.path }} on {% if item.create_temp_folders %}{{ item.mount }}/{{ item.folder }}{% else %}{{ item.mount }}{% endif %})"
@@ -141,3 +145,24 @@
         fstype:                        "{{ item.fstype }}"
         opts:                          "{{ item.opts }}"
         state:                         mounted
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Opt-in: with use_sap_automation_collection one module prepares the         |
+# | directory on the share, creates the mount point and mounts the share.      |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+- name:                                "2.6.0.1 AFS Mount - Mount {{ item.path }} (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ item.mount }}"
+    subdir:                            "{{ item.folder if item.create_temp_folders | bool else omit }}"
+    path:                              "{{ item.path }}"
+    fstype:                            "{{ item.fstype }}"
+    opts:                              "{{ item.opts }}"
+    owner:                             "{{ item.owner | string }}"
+    group:                             sapsys
+    mode:                              "{{ item.permissions if item.permissions is string else '%04o' % item.permissions }}"
+    immutable:                         "{{ item.set_chattr_on_dir | bool }}"
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - single_server | default(false) or node_tier in item.target_nodes or 'all' in item.target_nodes

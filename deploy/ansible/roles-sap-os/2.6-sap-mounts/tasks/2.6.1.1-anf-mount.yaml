@@ -24,6 +24,7 @@
 
 - name:                                "2.6.1 1 ANF Mount - Block {{ item.type }}"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - item.mount is defined
     - ansible_hostname == primary_host
     - item.create_temp_folders
@@ -104,6 +105,7 @@
     recurse:                           true
   register:                            is_created_now
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - node_tier in item.target_nodes or item.target_nodes == ['all']
 
 - name:                                "2.6.1 1 ANF Mount - Create SAP Directories ({{ item.path }})"
@@ -120,11 +122,13 @@
     mode:                              0755
     attr:                              i+
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - node_tier in item.target_nodes or item.target_nodes == "all"
     - is_created_now.changed
     - item.set_chattr_on_dir
 
 - name:                                "2.6.1 1 ANF Mount - ({{ item.path }} "
+  when:                                not (use_sap_automation_collection | default(false) | bool)
   block:
     - name:                            "2.6.1 1 ANF Mount - ({{ item.path }} on {% if item.create_temp_folders %}{{ item.mount }}/{{ item.folder }}{% else %}{{ item.mount }}{% endif %})"
       ansible.posix.mount:
@@ -152,7 +156,9 @@
 
 # Remove entries from fstab
 - name:                                "2.6.1 1 ANF Mount - RHEL DB high availability configuration"
-  when:                                ansible_os_family | upper == "REDHAT" and database_high_availability
+  when:
+    - ansible_os_family | upper == "REDHAT" and database_high_availability
+    - not (use_sap_automation_collection | default(false) | bool)
   block:
     - name:                            "2.6.1 1 ANF Mount - remove entry in fstab for {{ item.path }} when DB high availability"
       ansible.posix.mount:
@@ -207,3 +213,32 @@
 #         - item.target_nodes == ['hana']
 #         - item.type in ['data','log']
 #         - db_high_availability
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Opt-in: with use_sap_automation_collection one module prepares the         |
+# | directory on the volume, creates the mount point and mounts the volume.    |
+# | On RHEL with database high availability the HANA scale-up volumes get no   |
+# | fstab entry, as above.                                                     |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+- name:                                "2.6.1.1 ANF Mount - Mount {{ item.path }} (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ item.mount }}"
+    subdir:                            "{{ item.folder if item.create_temp_folders | bool else omit }}"
+    path:                              "{{ item.path }}"
+    fstype:                            nfs4
+    opts:                              "{{ item.opts }}"
+    owner:                             "{{ (hdbadm_uid if item.target_nodes is search('hana') else sidadm_uid) | string }}"
+    group:                             sapsys
+    mode:                              "0755"
+    immutable:                         "{{ item.set_chattr_on_dir | bool }}"
+    persist: >-
+                                       {{ not (ansible_os_family | upper == 'REDHAT'
+                                               and database_high_availability | default(false) | bool
+                                               and item.target_nodes == ['hana']
+                                               and item.type in ['data', 'log', 'shared']
+                                               and not (database_scale_out | default(false) | bool)) }}
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - node_tier in item.target_nodes or 'all' in item.target_nodes
