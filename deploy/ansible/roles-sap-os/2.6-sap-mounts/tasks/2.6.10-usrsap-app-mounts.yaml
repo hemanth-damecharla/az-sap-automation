@@ -57,6 +57,7 @@
 # +------------------------------------4--------------------------------------*/
 
 - name:                                "2.6.10 usr/sap Mount - Create the per server directory on the share"
+  when:                                not (use_sap_automation_collection | default(false) | bool)
   block:
     - name:                            "2.6.10 usr/sap Mount - Create /saptmp_usrsap"
       ansible.builtin.file:
@@ -121,6 +122,7 @@
 # +------------------------------------4--------------------------------------*/
 
 - name:                                "2.6.10 usr/sap Mount - usr/sap"
+  when:                                not (use_sap_automation_collection | default(false) | bool)
   block:
     - name:                            "2.6.10 usr/sap Mount - usr/sap"
       ansible.posix.mount:
@@ -141,6 +143,33 @@
         fstype:                        "{{ usr_sap_fstype }}"
         opts:                          "{{ usr_sap_opts }}"
         state:                         mounted
+
+# Opt-in: with use_sap_automation_collection azure.sap_automation.nfs_mount
+# creates the per server directory and mounts it.
+- name:                                "2.6.10 usr/sap Mount - Create the per server directory on the share (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ usr_sap_prep_root }}"
+    state:                             prepared
+    fstype:                            "{{ usr_sap_fstype }}"
+    opts:                              "{{ usr_sap_opts }}"
+    owner:                             "{{ usr_sap_owner | string }}"
+    group:                             sapsys
+    mode:                              "0755"
+    directories:
+      - path:                          "{{ usr_sap_prep_folder }}"
+    retries:                           1
+    delay:                             15
+  when:                                use_sap_automation_collection | default(false) | bool
+
+- name:                                "2.6.10 usr/sap Mount - usr/sap (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ usr_sap_server_path }}"
+    path:                              /usr/sap
+    fstype:                            "{{ usr_sap_fstype }}"
+    opts:                              "{{ usr_sap_opts }}"
+    retries:                           1
+    delay:                             15
+  when:                                use_sap_automation_collection | default(false) | bool
 
 - name:                                "2.6.10 usr/sap Mount - Set the ownership of /usr/sap"
   ansible.builtin.file:

@@ -60,6 +60,12 @@ Added:
   RHEL. The SDAF playbooks use it for simple mount systems with the switch on.
 - `pacemaker_cib` option `replace`: with `false`, only missing elements and
   properties are added.
+- `nfs_mount` `state: prepared` creates a list of directories on a share
+  without mounting it at a mount point, for directories that a cluster
+  resource or another node mounts later. A missing `subdir` is created with
+  its parents. The SDAF sapmnt flows (`2.6.0`, `2.6.1`, `2.6.7`, `2.6.8`) and
+  the application server `/usr/sap` mount (`2.6.10`) use `nfs_mount` with the
+  switch on.
 
 ## 0.1.0
 

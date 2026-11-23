@@ -145,6 +145,7 @@
         - sap_mnt is defined
         - use_simple_mount is defined and use_simple_mount
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - "'scs' in supported_tiers"
     - use_simple_mount is defined and use_simple_mount
@@ -197,6 +198,7 @@
         - item.item is changed
       register: set_immutable_attribute
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - node_tier not in ['hana','observer']
     - sap_mnt is defined
@@ -264,12 +266,14 @@
         state:                         mounted
 
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - scs_high_availability
     - node_tier != 'hana'
     - sap_mnt is defined
 
 - name:                                "AFS Mount: usr/sap/{{ sap_sid | upper }}"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - node_tier in ['scs','ers']
     - sap_mnt is defined
     - use_simple_mount is defined and use_simple_mount
@@ -311,6 +315,76 @@
   tags:
     - sap_app_ha_sys_mount
 
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Opt-in: with use_sap_automation_collection the sap_mnt share is prepared   |
+# | and mounted by azure.sap_automation.nfs_mount. The local /usr/sap/<SID>    |
+# | directory above stays as it is.                                            |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+- name:                                "AFS Mount: Prepare the sap_mnt directories (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ sap_mnt }}"
+    state:                             prepared
+    fstype:                            "{{ nfs_fs_type }}"
+    opts:                              "{{ afs_mnt_options }}"
+    owner:                             "{{ sapadm_uid | string }}"
+    group:                             sapsys
+    mode:                              "0755"
+    directories:                       "{{ __sapmnt_directories }}"
+  vars:
+    __sapmnt_directories: >-
+                                       {%- set directories = [{'path': 'usrsap' ~ sap_sid | upper}] -%}
+                                       {%- for sid in all_sap_mounts -%}
+                                         {%- set _ = directories.append({'path': 'sapmnt' ~ sid.sid | upper, 'owner': sid.sidadm_uid | string}) -%}
+                                       {%- endfor -%}
+                                       {{- directories -}}
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - tier == 'sapos'
+    - "'scs' in supported_tiers"
+    - sap_mnt is defined
+    - use_simple_mount is defined and use_simple_mount
+
+- name:                                "AFS Mount: Mount sapmnt/{{ sap_sid | upper }} (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ sap_mnt }}"
+    subdir:                            "sapmnt{{ sap_sid | upper }}"
+    path:                              "/sapmnt/{{ sap_sid | upper }}"
+    fstype:                            "{{ nfs_fs_type }}"
+    opts:                              "{{ afs_mnt_options }}"
+    owner:                             "{{ this_sid.sidadm_uid | string }}"
+    group:                             sapsys
+    mode:                              "0755"
+    immutable:                         "{{ tier == 'sapos' and node_tier not in ['hana', 'observer'] }}"
+    retries:                           1
+    delay:                             15
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - scs_high_availability
+    - node_tier != 'hana'
+    - sap_mnt is defined
+
+- name:                                "AFS Mount: Mount usr/sap/{{ sap_sid | upper }} (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ sap_mnt }}"
+    subdir:                            "usrsap{{ sap_sid | upper }}"
+    path:                              "/usr/sap/{{ sap_sid | upper }}"
+    fstype:                            "{{ nfs_fs_type }}"
+    opts:                              "{{ afs_mnt_options }}"
+    owner:                             "{{ this_sid.sidadm_uid | string }}"
+    group:                             sapsys
+    mode:                              "0755"
+    retries:                           1
+    delay:                             15
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - node_tier in ['scs', 'ers']
+    - sap_mnt is defined
+    - use_simple_mount is defined and use_simple_mount
+  tags:
+    - sap_app_ha_sys_mount
 
 - name:                                "AFS Mount: sap_trans"
   ansible.builtin.include_tasks:       2.6.0.1-afs-mount.yaml

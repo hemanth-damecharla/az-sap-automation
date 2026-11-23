@@ -28,17 +28,44 @@ description:
   - Never replaces a mount from another source and never remounts a mounted
     file system. A change of options is written to C(/etc/fstab) and
     reported in RV(remount_required).
+  - With O(state=prepared) nothing is mounted at O(path); the share is
+    mounted at a private temporary directory only to create O(directories)
+    on it, for directories that other nodes or a Pacemaker C(Filesystem)
+    resource mount later.
 options:
   path:
-    description: Mount point.
+    description: Mount point. Required unless O(state=prepared).
     type: path
-    required: true
   src:
-    description: NFS export, as C(server:/export). Required unless O(state=absent) or O(state=unmounted).
+    description: NFS export, as C(server:/export). Required for O(state=mounted) and O(state=prepared).
     type: str
   subdir:
-    description: Directory inside the export to mount instead of the export itself.
+    description:
+      - Directory inside the export to mount instead of the export itself.
+      - Missing parent directories inside the export are created as well.
     type: str
+  directories:
+    description:
+      - Directories to create inside the export with O(state=prepared),
+        relative to its root. Missing parents are created with the same
+        owner, group and mode. Existing directories are not changed. A
+        repeated entry is ignored.
+    type: list
+    elements: dict
+    suboptions:
+      path:
+        description: Directory relative to the root of the export.
+        type: str
+        required: true
+      owner:
+        description: User name or ID; defaults to O(owner).
+        type: str
+      group:
+        description: Group name or ID; defaults to O(group).
+        type: str
+      mode:
+        description: Octal mode; defaults to O(mode).
+        type: str
   fstype:
     description: File system type, for example V(nfs4), V(nfs) or V(aznfs).
     type: str
@@ -52,8 +79,9 @@ options:
       - V(mounted) mounts the file system.
       - V(unmounted) unmounts it and keeps its C(/etc/fstab) entry.
       - V(absent) unmounts it and removes its C(/etc/fstab) entry. Directories are kept.
+      - V(prepared) only creates O(directories) on the share.
     type: str
-    choices: [mounted, unmounted, absent]
+    choices: [mounted, unmounted, absent, prepared]
     default: mounted
   persist:
     description: Keep an C(/etc/fstab) entry for O(path). With V(false) any entry for O(path) is removed.
@@ -97,7 +125,8 @@ attributes:
 notes:
   - In check mode the share is not mounted, so whether O(subdir) exists is
     not known; it is reported as missing unless O(path) is already mounted
-    from it.
+    from it. Likewise every entry of O(directories) is reported in
+    RV(created).
   - With O(fstype=aznfs) the mount table shows a local proxy address instead
     of the export, so the source of an existing mount is not compared.
 author:
@@ -114,6 +143,18 @@ EXAMPLES = r"""
     owner: "1001"
     group: sapsys
     persist: false
+
+- name: Create the sapmnt and ASCS/ERS directories on the sapmnt volume
+  azure.sap_automation.nfs_mount:
+    src: 10.0.2.4:/sapmnt-x00
+    state: prepared
+    opts: rw,hard,rsize=65536,wsize=65536,sec=sys,vers=4.1,tcp
+    group: sapsys
+    directories:
+      - path: sapmntX00
+        owner: "2000"
+      - path: usrsapX00ascs00
+      - path: usrsapX00ers01
 """
 
 RETURN = r"""
@@ -138,6 +179,12 @@ remount_required:
   description: The entry changed while the file system stays mounted with its old options.
   returned: always
   type: bool
+created:
+  description: Entries of O(directories) that were, or in check mode may need to be, created.
+  returned: when O(state=prepared)
+  type: list
+  elements: str
+  sample: [usrsapX00ascs00]
 """
 
 import grp
@@ -235,14 +282,29 @@ def resolve_id(module, value, database):
         module.fail_json(msg="unknown %s: %s" % ("user" if database is pwd else "group", value))
 
 
+def parse_mode(module, value):
+    try:
+        return int(value, 8)
+    except ValueError:
+        module.fail_json(msg="invalid mode: %s" % value)
+
+
+def relative_parts(module, value):
+    """Components of a path inside the export; refuses to leave it."""
+    parts = [part for part in value.split("/") if part and part != "."]
+    if not parts or ".." in parts:
+        module.fail_json(msg="invalid directory inside the export: %s" % value)
+    return parts
+
+
 class Mounter:
     def __init__(self, module):
         self.module = module
         self.params = module.params
-        self.path = os.path.normpath(self.params["path"])
+        self.path = os.path.normpath(self.params["path"]) if self.params["path"] else None
         self.uid = resolve_id(module, self.params["owner"], pwd)
         self.gid = resolve_id(module, self.params["group"], grp)
-        self.mode = int(self.params["mode"], 8)
+        self.mode = parse_mode(module, self.params["mode"])
 
     def run(self, command, check=True):
         rc, out, err = self.module.run_command(command)
@@ -252,13 +314,30 @@ class Mounter:
             )
         return rc, out, err
 
-    def make_directory(self, path, parents=False):
+    def make_directory(self, path, parents=False, attributes=None):
+        uid, gid, mode = attributes or (self.uid, self.gid, self.mode)
         if parents:
             os.makedirs(os.path.dirname(path) or "/", exist_ok=True)
-        os.mkdir(path, self.mode)
-        os.chmod(path, self.mode)
-        if self.uid != -1 or self.gid != -1:
-            os.chown(path, self.uid, self.gid)
+        os.mkdir(path, mode)
+        os.chmod(path, mode)
+        if uid != -1 or gid != -1:
+            os.chown(path, uid, gid)
+
+    def make_tree(self, root, parts, attributes=None):
+        """Create root/parts and its missing parents; True when any was missing."""
+        created = False
+        current = root
+        for part in parts:
+            current = os.path.join(current, part)
+            if os.path.isdir(current):
+                continue
+            try:
+                self.make_directory(current, attributes=attributes)
+            except FileExistsError:
+                # Another node created it at the same time.
+                continue
+            created = True
+        return created
 
     def mount(self, source, target):
         command = [
@@ -283,25 +362,54 @@ class Mounter:
     def unmount(self, target):
         self.run([self.module.get_bin_path("umount", required=True), target])
 
-    def ensure_subdir(self):
-        """Create the subdirectory on the share; True when it was missing."""
+    def on_share(self, action):
+        """Run action(root) with the export mounted at a private temporary directory."""
         temporary = tempfile.mkdtemp(prefix=".nfs-mount-")
         try:
             self.mount(self.params["src"], temporary)
             try:
-                target = os.path.join(temporary, self.params["subdir"].strip("/"))
-                if os.path.isdir(target):
-                    return False
-                try:
-                    self.make_directory(target)
-                except FileExistsError:
-                    # Another node created it at the same time.
-                    return False
-                return True
+                return action(temporary)
             finally:
                 self.unmount(temporary)
         finally:
             os.rmdir(temporary)
+
+    def ensure_subdir(self):
+        """Create the subdirectory on the share; True when it was missing."""
+        parts = relative_parts(self.module, self.params["subdir"])
+        return self.on_share(lambda root: self.make_tree(root, parts))
+
+    def directory_entries(self):
+        """(relative path, components, (uid, gid, mode)) of each entry of directories."""
+        if not self.params["directories"]:
+            self.module.fail_json(msg="state=prepared needs at least one entry in directories")
+        entries = []
+        for entry in self.params["directories"]:
+            owner = entry.get("owner")
+            group = entry.get("group")
+            mode = entry.get("mode")
+            attributes = (
+                self.uid if owner is None else resolve_id(self.module, owner, pwd),
+                self.gid if group is None else resolve_id(self.module, group, grp),
+                self.mode if mode is None else parse_mode(self.module, mode),
+            )
+            parts = relative_parts(self.module, entry["path"])
+            if "/".join(parts) in [name for name, _parts, _attributes in entries]:
+                continue
+            entries.append(("/".join(parts), parts, attributes))
+        return entries
+
+    def prepare(self, entries):
+        """Create the directories on the share; the relative paths that were missing."""
+
+        def create(root):
+            return [
+                name
+                for name, parts, attributes in entries
+                if self.make_tree(root, parts, attributes)
+            ]
+
+        return self.on_share(create)
 
     def is_immutable(self):
         _rc, out, _err = self.run(
@@ -347,14 +455,24 @@ def update_fstab(module, path, entry, result):
 def main():
     module = AnsibleModule(
         argument_spec={
-            "path": {"type": "path", "required": True},
+            "path": {"type": "path"},
             "src": {"type": "str"},
             "subdir": {"type": "str"},
             "fstype": {"type": "str", "default": "nfs4"},
             "opts": {"type": "str", "default": "defaults"},
+            "directories": {
+                "type": "list",
+                "elements": "dict",
+                "options": {
+                    "path": {"type": "str", "required": True},
+                    "owner": {"type": "str"},
+                    "group": {"type": "str"},
+                    "mode": {"type": "str"},
+                },
+            },
             "state": {
                 "type": "str",
-                "choices": ["mounted", "unmounted", "absent"],
+                "choices": ["mounted", "unmounted", "absent", "prepared"],
                 "default": "mounted",
             },
             "persist": {"type": "bool", "default": True},
@@ -366,7 +484,12 @@ def main():
             "delay": {"type": "int", "default": 10},
             "fstab": {"type": "path", "default": "/etc/fstab"},
         },
-        required_if=[("state", "mounted", ["src"])],
+        required_if=[
+            ("state", "mounted", ["src", "path"]),
+            ("state", "unmounted", ["path"]),
+            ("state", "absent", ["path"]),
+            ("state", "prepared", ["src", "directories"]),
+        ],
         supports_check_mode=True,
     )
     params = module.params
@@ -379,6 +502,16 @@ def main():
         "fstab_changed": False,
         "remount_required": False,
     }
+
+    if params["state"] == "prepared":
+        entries = mounter.directory_entries()
+        if module.check_mode:
+            result["created"] = [name for name, _parts, _attributes in entries]
+        else:
+            result["created"] = mounter.prepare(entries)
+        result["changed"] = bool(result["created"])
+        module.exit_json(**result)
+
     current = mount_source(path)
 
     if params["state"] != "mounted":

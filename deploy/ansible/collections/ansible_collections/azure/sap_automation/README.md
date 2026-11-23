@@ -25,7 +25,7 @@ The default behaviour of every playbook is unchanged.
 | `sbd_device` | Write an SBD header to devices that have none |
 | `disk_by_id` | Stable `/dev/disk/by-id` name of a block device |
 | `hana_hadr_provider_info` | HA/DR providers the HANA name server loaded |
-| `nfs_mount` | Mount a directory of an NFS share, creating it on the share first |
+| `nfs_mount` | Mount a directory of an NFS share, creating it on the share first, or only create directories on the share (`state: prepared`) |
 
 | Roles | Layer | Replaces |
 | --- | --- | --- |
@@ -64,6 +64,7 @@ Ansible finds the collection without further configuration because it sits in
 | System replication (`roles-db/4.0.1-hdb-hsr`) | HANA scale-up | Existing tasks |
 | HANA data, log and shared volumes on Azure NetApp Files (`roles-sap-os/2.6-sap-mounts`, step 2.6.1) | HANA scale-up with `NFS_provider` `ANF` | Existing tasks |
 | Every share mounted through the per-item helpers `2.6.0.1-afs-mount.yaml` and `2.6.1.1-anf-mount.yaml` (install media, HANA scale-out volumes, simple mount shares, Oracle observer) | Always | Existing tasks |
+| The sapmnt share, `/usr/sap/<SID>/SYS` (simple mount: `/usr/sap/<SID>`) and the ASCS/ERS directories on the share (`roles-sap-os/2.6-sap-mounts`, steps 2.6.0, 2.6.1, 2.6.7 and 2.6.8), and the application server `/usr/sap` on shared storage (step 2.6.10) | Always | Existing tasks |
 | Db2 HADR cluster resources (`roles-sap/5.7-db2-pacemaker`, step 5.7.3) | RHEL 8 or later or SLES 15 or later | Existing tasks |
 | HANA scale-out cluster resources (`roles-sap/5.8-hanadb-scaleout-pacemaker`, step 5.8.4) | No active/read-enabled secondary; RHEL 8 or later, with the classic agents only for one /hana/shared volume per site on ANF or Azure Files; SLES 15 or later | Existing tasks |
 | ASCS/ERS cluster resources (`roles-sap/5.6-scsers-pacemaker`, steps 5.6.4.0 and 5.6.4.2, classic and simple mount); the node sequence, installations and restarts stay in the existing tasks | RHEL 8 or later (simple mount: 9 or later) or SLES | Existing tasks |

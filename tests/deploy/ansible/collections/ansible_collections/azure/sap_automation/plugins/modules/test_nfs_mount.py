@@ -245,3 +245,81 @@ def test_subdir_created_by_another_node_meanwhile_is_accepted(run_module, system
     run_module.commands.add().add().add()
     result = run_module(nfs_mount.main, params(system))
     assert not result.get("failed") and not result["subdir_created"] and result["mounted"]
+
+
+def prepared(system, directories, **extra):
+    base = {
+        "src": SRC,
+        "state": "prepared",
+        "opts": OPTS,
+        "owner": str(os.getuid()),
+        "group": str(os.getgid()),
+        "directories": directories,
+    }
+    base.update(extra)
+    return base
+
+
+def test_prepared_creates_only_the_missing_directories(run_module, system):
+    (system.share / "sapmntX00").mkdir(mode=0o700)
+    run_module.commands.add().add()
+    result = run_module(
+        nfs_mount.main,
+        prepared(
+            system,
+            [
+                {"path": "sapmntX00", "mode": "0755"},
+                {"path": "/usrsapX00ascs00/"},
+                {"path": "usrsapappX00/app01", "mode": "0750"},
+            ],
+        ),
+    )
+    assert result["changed"] and result["created"] == ["usrsapX00ascs00", "usrsapappX00/app01"]
+    assert not result["mounted"] and "source" not in result
+    assert run_module.commands.argv == [
+        ["/usr/sbin/mount", "-t", "nfs4", "-o", OPTS, SRC, str(system.share)],
+        ["/usr/sbin/umount", str(system.share)],
+    ]
+    assert oct((system.share / "sapmntX00").stat().st_mode & 0o777) == "0o700"
+    assert oct((system.share / "usrsapX00ascs00").stat().st_mode & 0o777) == "0o755"
+    assert oct((system.share / "usrsapappX00").stat().st_mode & 0o777) == "0o750"
+    assert oct((system.share / "usrsapappX00" / "app01").stat().st_mode & 0o777) == "0o750"
+
+    run_module.commands.add().add()
+    result = run_module(nfs_mount.main, prepared(system, [{"path": "usrsapX00ascs00"}]))
+    assert not result["changed"] and result["created"] == []
+
+
+def test_prepared_check_mode_mounts_nothing(run_module, system):
+    result = run_module(
+        nfs_mount.main,
+        prepared(system, [{"path": "a"}, {"path": "b/c"}, {"path": "/a/"}]),
+        check_mode=True,
+    )
+    assert result["changed"] and result["created"] == ["a", "b/c"]
+    assert run_module.commands.calls == []
+    assert list(system.share.iterdir()) == []
+
+
+def test_prepared_refusals(run_module, system):
+    for path in ("../etc", "a/../../b", "/", "."):
+        result = run_module(nfs_mount.main, prepared(system, [{"path": path}]))
+        assert result["failed"] and "invalid directory" in result["msg"], path
+    result = run_module(nfs_mount.main, prepared(system, [{"path": "a", "mode": "rwx"}]))
+    assert result["failed"] and "invalid mode" in result["msg"]
+    result = run_module(nfs_mount.main, prepared(system, [{"path": "a", "owner": "no-such-x"}]))
+    assert result["failed"] and "unknown user" in result["msg"]
+    result = run_module(nfs_mount.main, prepared(system, [{"path": "a", "group": "no-such-x"}]))
+    assert result["failed"] and "unknown group" in result["msg"]
+    assert run_module.commands.calls == [], "nothing is mounted before the input is checked"
+    result = run_module(nfs_mount.main, prepared(system, None))
+    assert result["failed"] and "directories" in result["msg"]
+    result = run_module(nfs_mount.main, {"src": SRC})
+    assert result["failed"] and "path" in result["msg"]
+
+
+def test_nested_subdir_is_created_with_its_parents(run_module, system):
+    run_module.commands.add().add().add()
+    result = run_module(nfs_mount.main, params(system, subdir="usrsapappX00/app01"))
+    assert result["subdir_created"] and result["source"] == SRC + "/usrsapappX00/app01"
+    assert (system.share / "usrsapappX00" / "app01").is_dir()

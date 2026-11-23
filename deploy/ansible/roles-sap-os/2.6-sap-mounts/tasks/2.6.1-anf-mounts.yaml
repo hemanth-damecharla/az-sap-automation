@@ -145,6 +145,7 @@
         state:                         absent
 
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - "'scs' in supported_tiers"
     - sap_mnt is defined
@@ -166,6 +167,7 @@
   register: is_created_now
   loop:                                "{{ all_sap_mounts }}"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - node_tier in ['app','scs','ers', 'pas'] or 'scs' in supported_tiers
     - sap_mnt is defined
@@ -178,6 +180,7 @@
     attr:                              i+
   loop: "{{ is_created_now.results }}"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - item.item is changed
   register: set_immutable_attribute
@@ -227,6 +230,7 @@
   loop:
     - { type: 'nfs4',  src: '{{ sap_mnt }}/sapmnt{{ sap_sid | upper }}',    path: '/sapmnt/{{ sap_sid | upper }}'      }
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - sap_mnt is defined
     - not scs_high_availability
@@ -243,6 +247,7 @@
   loop:
     - { type: 'nfs4',  src: '{{ sap_mnt }}/sapmnt{{ sap_sid | upper }}',    path: '/sapmnt/{{ sap_sid | upper }}'      }
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - sap_mnt is defined
     - not scs_high_availability
@@ -260,6 +265,7 @@
     state:                             mounted
   loop:                                "{{ MULTI_SIDS }}"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - not scs_high_availability
     - sap_mnt is defined
     - MULTI_SIDS is defined
@@ -274,6 +280,7 @@
   loop:
     - { type: 'nfs4',  src: '{{ sap_mnt }}/sapmnt{{ sap_sid | upper }}',    path: '/sapmnt/{{ sap_sid | upper }}'      }
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - scs_high_availability
     - tier in ['sapos']
     - node_tier != 'hana'
@@ -297,11 +304,88 @@
   loop:
     - { type: 'nfs4',  src: '{{ sap_mnt }}/usrsap{{ sap_sid | upper }}sys', path: '/usr/sap/{{ sap_sid | upper }}/SYS' }
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - scs_high_availability
     - tier in ['sapos']
     - node_tier in ['scs','ers']
     - sap_mnt is defined
 
+
+# /*---------------------------------------------------------------------------8
+# |                                                                            |
+# | Opt-in: with use_sap_automation_collection the sap_mnt volume is prepared  |
+# | and mounted by azure.sap_automation.nfs_mount. The ASCS/ERS directories    |
+# | on the volume are only created here; the cluster mounts them later. The    |
+# | local /usr/sap/<SID> directories and the /sapmnt ownership above stay.     |
+# |                                                                            |
+# +------------------------------------4--------------------------------------*/
+- name:                                "2.6.1 ANF Mount - Prepare the sap_mnt directories (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ sap_mnt }}"
+    state:                             prepared
+    fstype:                            nfs4
+    opts:                              "rw,hard,rsize=65536,wsize=65536,sec=sys,vers=4.1,tcp"
+    mode:                              "0755"
+    directories:                       "{{ __sapmnt_directories }}"
+  vars:
+    __sapmnt_directories: >-
+                                       {%- set directories = [
+                                         {'path': 'sapmnt' ~ sap_sid | upper},
+                                         {'path': 'usrsap' ~ sap_sid | upper},
+                                         {'path': 'usrsap' ~ sap_sid | upper ~ instance_type | lower ~ scs_instance_number},
+                                         {'path': 'usrsap' ~ sap_sid | upper ~ 'ers' ~ ers_instance_number},
+                                         {'path': 'usrsap' ~ sap_sid | upper ~ 'sys'}
+                                       ] -%}
+                                       {%- for sid in (MULTI_SIDS if MULTI_SIDS is defined else []) -%}
+                                         {%- set _ = directories.append({'path': 'sapmnt' ~ sid.sid | upper}) -%}
+                                       {%- endfor -%}
+                                       {{- directories -}}
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - tier == 'sapos'
+    - "'scs' in supported_tiers"
+    - sap_mnt is defined
+
+- name:                                "2.6.1 ANF Mount - Mount sapmnt (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ sap_mnt }}"
+    subdir:                            "sapmnt{{ item.sid | upper }}"
+    path:                              "/sapmnt/{{ item.sid | upper }}"
+    fstype:                            nfs4
+    opts:                              "rw,hard,rsize=65536,wsize=65536,sec=sys,vers=4.1,tcp"
+    owner:                             "{{ item.sidadm_uid | string }}"
+    group:                             sapsys
+    mode:                              "0755"
+    immutable:                         "{{ tier == 'sapos' and (node_tier in ['app', 'scs', 'ers', 'pas'] or 'scs' in supported_tiers) }}"
+  loop: >-
+                                       {{ ((MULTI_SIDS if (MULTI_SIDS is defined and not scs_high_availability) else [])
+                                           + ([this_sid] if (tier == 'sapos'
+                                                             and (node_tier != 'hana'
+                                                                  or (not scs_high_availability and ansible_play_hosts_all | length == 1)))
+                                              else []))
+                                          | unique(attribute='sid') }}
+  loop_control:
+    label:                             "/sapmnt/{{ item.sid | upper }}"
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - sap_mnt is defined
+
+- name:                                "2.6.1 ANF Mount - Mount usr/sap/{{ sap_sid | upper }}/SYS (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ sap_mnt }}"
+    subdir:                            "usrsap{{ sap_sid | upper }}sys"
+    path:                              "/usr/sap/{{ sap_sid | upper }}/SYS"
+    fstype:                            nfs4
+    opts:                              "rw,hard,rsize=65536,wsize=65536,sec=sys,vers=4.1,tcp"
+    owner:                             "{{ sidadm_uid | string }}"
+    group:                             sapsys
+    mode:                              "0755"
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - scs_high_availability
+    - tier == 'sapos'
+    - node_tier in ['scs', 'ers']
+    - sap_mnt is defined
 
 # /*---------------------------------------------------------------------------8
 # |                                                                            |
