@@ -16,6 +16,7 @@
   vars:
     ha_pacemaker_ra_sap_ascs_ers_config_node:           "{{ ansible_hostname }}"
     ha_pacemaker_ra_sap_ascs_ers_group:                 "{{ scs_collection_step if scs_collection_step != 'resources' else 'ascs' }}"
+    ha_pacemaker_ra_sap_ascs_ers_simple_mount:          "{{ use_simple_mount | default(false) | bool }}"
     ha_pacemaker_ra_sap_ascs_ers_sid:                   "{{ sap_sid | upper }}"
     ha_pacemaker_ra_sap_ascs_ers_instance_type:         "{{ instance_type | upper }}"
     ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number:  "{{ scs_instance_number }}"
@@ -38,7 +39,12 @@
     ha_pacemaker_ra_sap_ascs_ers_fstype:                "{{ nfs_fs_type }}"
     ha_pacemaker_ra_sap_ascs_ers_nfs_options:           "{{ clus_nfs_options }}"
     ha_pacemaker_ra_sap_ascs_ers_fs_monitor_timeout:    "{{ clus_fs_mon_timeout | int }}"
-    ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout:   "{{ clus_sap_mon_timeout | int }}"
+    # The simple mount guides use 120 seconds on Azure NetApp Files NFSv4.1,
+    # where the classic guides use 105.
+    ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout: >-
+                                       {{ 120 if use_simple_mount | default(false) | bool
+                                                 and NFS_provider == 'ANF' and NFS_version | default('') == 'NFSv4.1'
+                                          else clus_sap_mon_timeout | int }}
     ha_pacemaker_ra_sap_ascs_ers_enqueue:               "{{ 'ensa1' if ensa1 | default(false) | bool else 'ensa2' }}"
     # The nodes are restarted next, still in maintenance mode.
     ha_pacemaker_ra_sap_ascs_ers_leave_maintenance:     false

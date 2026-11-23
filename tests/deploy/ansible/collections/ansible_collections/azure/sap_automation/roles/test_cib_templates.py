@@ -826,18 +826,124 @@ def test_db2_rhel_follows_the_red_hat_guide_and_earlier_priorities():
             ha_pacemaker_ra_hana_scaleup_flavor="angi",
         ),
         lambda p: ascs_ers(p),
+        lambda p: ascs_ers(p, ha_pacemaker_ra_sap_ascs_ers_simple_mount=True),
         lambda p: scaleout(p, "classic") if p != "sles12" else {"resources": cib.ET.Element("x")},
         lambda p: scaleout(p, "angi") if p != "sles12" else {"resources": cib.ET.Element("x")},
         lambda p: db2(p) if p != "sles12" else {"resources": cib.ET.Element("x")},
     ],
-    ids=["scaleup-classic", "scaleup-angi", "ascs-ers", "scaleout-classic", "scaleout-angi", "db2"],
+    ids=[
+        "scaleup-classic",
+        "scaleup-angi",
+        "ascs-ers",
+        "ascs-ers-simple",
+        "scaleout-classic",
+        "scaleout-angi",
+        "db2",
+    ],
 )
 def test_every_resource_is_monitored(layout, platform):
     """pcs adds a monitor from the agent defaults; the CIB the roles write must state it."""
     unmonitored = [
         primitive.get("id")
         for primitive in layout(platform)["resources"].iter("primitive")
-        if primitive.get("type") != "attribute"
+        # attribute only sets a node attribute; SAPStartSrv is watched through
+        # SAPInstance, and the guides leave it without (SLES) or with a disabled
+        # (RHEL) monitor.
+        if primitive.get("type") not in ("attribute", "SAPStartSrv")
         and primitive.find("operations/op[@name='monitor']") is None
     ]
     assert unmonitored == []
+
+
+def simple(platform, enqueue="ensa2", step="main", **extra):
+    return ascs_ers(
+        platform, enqueue, step, ha_pacemaker_ra_sap_ascs_ers_simple_mount=True, **extra
+    )
+
+
+@pytest.mark.parametrize("platform", ["rhel9", "rhel10", "sles15", "sles16"])
+@pytest.mark.parametrize("enqueue", ["ensa1", "ensa2"])
+def test_simple_mount_has_no_file_systems_and_starts_sapstartsrv_first(platform, enqueue):
+    sections = simple(platform, enqueue)
+    resources = sections["resources"]
+    assert "Filesystem" not in [p.get("type") for p in resources.iter("primitive")]
+    for group in resources.iter("group"):
+        types = [p.get("type") for p in group.iter("primitive")]
+        assert types[-2:] == ["SAPStartSrv", "SAPInstance"], types
+    sap = resources.find(".//primitive[@type='SAPInstance']")
+    assert pairs(sap.find("instance_attributes"))["MINIMAL_PROBE"] == "true"
+    assert pairs(sections["rsc_defaults"])["resource-stickiness"] == "1"
+    all_ids = [e.get("id") for s in sections.values() for e in s.iter() if e.get("id")]
+    assert len(all_ids) == len(set(all_ids)), "duplicate ids"
+    top = {c.get("id") for c in resources} | {p.get("id") for p in resources.iter("primitive")}
+    for constraint in sections["constraints"]:
+        for key in ("rsc", "with-rsc", "first", "then"):
+            if constraint.get(key):
+                assert constraint.get(key) in top
+
+
+def test_simple_mount_sles_follows_the_suse_guide():
+    sections = simple("sles15", "ensa1")
+    group = sections["resources"].find("group[@id='g-S01_ASCS']")
+    assert [p.get("id") for p in group.iter("primitive")] == [
+        "nc_S01_ASCS",
+        "vip_S01_ASCS",
+        "rsc_sapstartsrv_S01_ASCS00",
+        "rsc_sap_S01_ASCS00",
+    ]
+    startsrv = group.find("primitive[@type='SAPStartSrv']")
+    assert startsrv.get("provider") == "suse" and startsrv.find("operations") is None
+    sap = group.find("primitive[@type='SAPInstance']")
+    assert pairs(sap.find("instance_attributes")) == {
+        "InstanceName": "S01_ASCS00_s01scs00cl1",
+        "START_PROFILE": "/sapmnt/S01/profile/S01_ASCS00_s01scs00cl1",
+        "AUTOMATIC_RECOVER": "false",
+        "MINIMAL_PROBE": "true",
+    }
+    assert pairs(sap.find("meta_attributes")) == {
+        "resource-stickiness": "5000",
+        "priority": "10",
+        "failure-timeout": "60",
+        "migration-threshold": "1",
+    }
+    assert sections["constraints"].find("rsc_location").get("rsc") == "rsc_sap_S01_ASCS00"
+    assert "crm_config" not in sections
+
+
+def test_simple_mount_rhel_follows_the_red_hat_guide():
+    sections = simple("rhel9", "ensa1")
+    resources, constraints = sections["resources"], sections["constraints"]
+    group = resources.find("group[@id='g-S01_ASCS']")
+    assert [p.get("id") for p in group.iter("primitive")] == [
+        "vip_S01_ASCS",
+        "nc_S01_ASCS",
+        "rsc_SAPStartSrv_S01_ASCS00",
+        "rsc_SAPInstance_S01_ASCS00",
+    ]
+    startsrv = group.find("primitive[@type='SAPStartSrv']")
+    assert ops(startsrv) == [{"name": "monitor", "interval": "0", "timeout": "20", "enabled": "0"}]
+    sap = group.find("primitive[@type='SAPInstance']")
+    assert pairs(sap.find("instance_attributes")) == {
+        "InstanceName": "S01_ASCS00_s01scs00cl1",
+        "MINIMAL_PROBE": "true",
+    }
+    assert pairs(sap.find("meta_attributes")) == {
+        "resource-stickiness": "5000",
+        "priority": "100",
+        "migration-threshold": "1",
+    }
+    assert [o["name"] for o in ops(sap)] == ["monitor"]
+    ers = resources.find(".//primitive[@id='rsc_SAPInstance_S01_ERS01']")
+    assert [o["name"] for o in ops(ers)] == ["monitor", "start", "stop"]
+    assert constraints.find("rsc_location").get("rsc") == "g-S01_ASCS"
+    assert pairs(sections["crm_config"]) == {"priority-fencing-delay": "15"}
+    assert pairs(sections["rsc_defaults"]) == {
+        "resource-stickiness": "1",
+        "migration-threshold": "3",
+    }
+
+
+@pytest.mark.parametrize("platform", ["rhel9", "sles15"])
+def test_simple_mount_group_step_has_only_ip_and_probe(platform):
+    resources = simple(platform, step="ascs")["resources"]
+    assert {p.get("type") for p in resources.iter("primitive")} == {"IPaddr2", "azure-lb"}

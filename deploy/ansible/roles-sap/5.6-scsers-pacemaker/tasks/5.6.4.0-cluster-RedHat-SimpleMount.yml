@@ -25,6 +25,7 @@
         pcs_update_cmd:                "{{ 'update' if ansible_distribution_major_version | int >= 10 else '' }}"
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - SimpleMount - Configure cluster default properties"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell: |
                                        pcs resource defaults{% if pcs_update_cmd %} {{ pcs_update_cmd }}{% endif %} resource-stickiness=1
                                        pcs resource defaults{% if pcs_update_cmd %} {{ pcs_update_cmd }}{% endif %} migration-threshold=3
@@ -35,6 +36,7 @@
       ansible.builtin.shell:           pcs node standby {{ secondary_instance_name }}
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - SimpleMount - Create ASCS VIP"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create vip_{{ sap_sid | upper }}_{{ instance_type | upper }} IPaddr2 \
                                        ip={{ scs_lb_ip }} cidr_netmask={{ subnet_prefix }}
@@ -42,17 +44,25 @@
       failed_when:                     ascs_vip.rc > 1
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - SimpleMount - Create ASCS Azure LB resource"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create nc_{{ sap_sid | upper }}_{{ instance_type | upper }} azure-lb port=620{{ scs_instance_number }}
       register:                        ascs_lb
       failed_when:                     ascs_lb.rc > 1
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - SimpleMount - Add ASCS VIP and LB to group"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource group add g-{{ sap_sid | upper }}_{{ instance_type | upper }} \
                                        vip_{{ sap_sid | upper }}_{{ instance_type | upper }} nc_{{ sap_sid | upper }}_{{ instance_type | upper }}
       register:                        ascs_group
       failed_when:                     ascs_group.rc > 1
+
+    - name:                            "5.6.4.0 SCS/ERS Pacemaker - Configure the ascs group (azure.sap_automation collection)"
+      ansible.builtin.include_tasks:   5.6.4.9-cluster-collection.yml
+      vars:
+        scs_collection_step:           ascs
+      when:                            scs_resources_use_collection | default(false)
 
   when:
     - inventory_hostname == primary_instance_name
@@ -140,6 +150,7 @@
       ansible.builtin.shell:           pcs node standby {{ primary_instance_name }}
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - SimpleMount - ERS - Create ERS VIP"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create vip_{{ sap_sid | upper }}_ERS IPaddr2 \
                                        ip={{ ers_lb_ip }} cidr_netmask={{ subnet_prefix }}
@@ -147,17 +158,25 @@
       failed_when:                     ers_vip.rc > 1
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - SimpleMount - ERS - Create ERS Azure LB resource"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource create nc_{{ sap_sid | upper }}_ERS azure-lb port=621{{ ers_instance_number }}
       register:                        ers_alb
       failed_when:                     ers_alb.rc > 1
 
     - name:                            "5.6.4.0 SCS/ERS Pacemaker - REDHAT - SimpleMount - ERS - Add ERS VIP and LB to group"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        pcs resource group add g-{{ sap_sid | upper }}_ERS \
                                        vip_{{ sap_sid | upper }}_ERS nc_{{ sap_sid | upper }}_ERS
       register:                        ers_group
       failed_when:                     ers_group.rc > 1
+
+    - name:                            "5.6.4.0 SCS/ERS Pacemaker - Configure the ers group (azure.sap_automation collection)"
+      ansible.builtin.include_tasks:   5.6.4.9-cluster-collection.yml
+      vars:
+        scs_collection_step:           ers
+      when:                            scs_resources_use_collection | default(false)
 
   when:
     - inventory_hostname == secondary_instance_name

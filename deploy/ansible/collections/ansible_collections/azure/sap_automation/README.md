@@ -65,7 +65,7 @@ Ansible finds the collection without further configuration because it sits in
 | HANA data, log and shared volumes on Azure NetApp Files (`roles-sap-os/2.6-sap-mounts`, step 2.6.1) | HANA scale-up with `NFS_provider` `ANF` | Existing tasks |
 | Db2 HADR cluster resources (`roles-sap/5.7-db2-pacemaker`, step 5.7.3) | RHEL 8 or later or SLES 15 or later | Existing tasks |
 | HANA scale-out cluster resources (`roles-sap/5.8-hanadb-scaleout-pacemaker`, step 5.8.4) | No active/read-enabled secondary; RHEL 8 or later, with the classic agents only for one /hana/shared volume per site on ANF or Azure Files; SLES 15 or later | Existing tasks |
-| ASCS/ERS cluster resources (`roles-sap/5.6-scsers-pacemaker`, steps 5.6.4.0 and 5.6.4.2); the node sequence, installations and restarts stay in the existing tasks | Not the simple mount architecture, RHEL 8 or later or SLES | Existing tasks |
+| ASCS/ERS cluster resources (`roles-sap/5.6-scsers-pacemaker`, steps 5.6.4.0 and 5.6.4.2, classic and simple mount); the node sequence, installations and restarts stay in the existing tasks | RHEL 8 or later (simple mount: 9 or later) or SLES | Existing tasks |
 | HANA HA/DR provider hooks (`roles-sap/5.5-hanadb-pacemaker`, step 5.5.3) | HANA scale-up on RHEL 8 or later or SLES | Existing tasks |
 | HANA cluster resources (`roles-sap/5.5-hanadb-pacemaker`, steps 5.5.4.0 and 5.5.4.1), including the Azure NetApp Files file system resources | No active/read-enabled secondary, RHEL 8 or later or SLES | Existing tasks |
 

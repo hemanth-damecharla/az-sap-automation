@@ -20,6 +20,12 @@ __ha_pacemaker_ra_sap_ascs_ers_platform:
     - {name: monitor, interval: "20", timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout }}", on-fail: restart}
     - {name: start, interval: "0", timeout: "600"}
     - {name: stop, interval: "0", timeout: "600"}
+  # Classic layout: the cluster mounts the instance directories.
+  startsrv: false
+  sap_prefix: rsc_sap_
+  sap_profile_parameters: true
+  minimal_probe: false
+  failover_on: sap
   order_on: group
   # Priorities and priority-fencing-delay need pacemaker 2.0.4-6.el8 or later.
   rsc_defaults: >-
@@ -43,3 +49,34 @@ __ha_pacemaker_ra_sap_ascs_ers_platform:
 
 __ha_pacemaker_ra_sap_ascs_ers_priority_fencing: >-
   {{ (ansible_facts['packages']['pacemaker'] | default([{'version': '0'}]))[0]['version'] is version('2.0.4', '>=') }}
+
+# Microsoft Learn, "High-availability SAP NetWeaver with simple mount and NFS
+# on RHEL for SAP Virtual Machines" (RHEL 9 and later).
+__ha_pacemaker_ra_sap_ascs_ers_simple_mount_platform:
+  members: [vip, nc]
+  startsrv: true
+  startsrv_prefix: rsc_SAPStartSrv_
+  startsrv_provider: heartbeat
+  # The guide disables the monitor of SAPStartSrv explicitly.
+  startsrv_operations:
+    - {name: monitor, interval: "0", timeout: "20", enabled: "0"}
+  sap_prefix: rsc_SAPInstance_
+  sap_profile_parameters: false
+  minimal_probe: true
+  sap_operations:
+    - {name: monitor, interval: "20", timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout }}", on-fail: restart}
+  ers_operations:
+    - {name: monitor, interval: "20", timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout }}", on-fail: restart}
+    - {name: start, interval: "0", timeout: "600"}
+    - {name: stop, interval: "0", timeout: "600"}
+  failover_on: group
+  rsc_defaults: {resource-stickiness: "1", migration-threshold: "3"}
+  enqueue:
+    ensa1:
+      ascs_meta: {resource-stickiness: "5000", priority: "100", migration-threshold: "1"}
+      ers_meta: {}
+      priority_fencing_delay: "15"
+    ensa2:
+      ascs_meta: {resource-stickiness: "5000", priority: "100"}
+      ers_meta: {}
+      priority_fencing_delay: "15"

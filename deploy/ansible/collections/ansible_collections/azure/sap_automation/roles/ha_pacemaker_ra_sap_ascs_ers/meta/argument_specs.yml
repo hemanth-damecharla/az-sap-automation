@@ -9,6 +9,14 @@ argument_specs:
         Creates the groups if they do not exist.
       - Applied on the configuration node, under maintenance mode when anything changes.
     options:
+      ha_pacemaker_ra_sap_ascs_ers_simple_mount:
+        description:
+          - 'Simple mount architecture: the instance directories are mounted outside the cluster, there
+            are no Filesystem resources, and each group runs a SAPStartSrv resource before its SAPInstance
+            resource.'
+          - Supported by SUSE on SLES for SAP 15 and later and by Red Hat on RHEL 9 and later.
+        type: bool
+        default: false
       ha_pacemaker_ra_sap_ascs_ers_config_node:
         description: Node on which the cluster configuration is applied. Defaults to C(ha_pacemaker_config_node).
         type: str
@@ -62,13 +70,13 @@ argument_specs:
           the instance number.
         type: str
       ha_pacemaker_ra_sap_ascs_ers_ascs_device:
-        description: NFS source of the ASCS/SCS instance directory.
+        description: NFS source of the ASCS/SCS instance directory. Not used with simple mount.
         type: str
-        required: true
+        default: ''
       ha_pacemaker_ra_sap_ascs_ers_ers_device:
-        description: NFS source of the ERS instance directory.
+        description: NFS source of the ERS instance directory. Not used with simple mount.
         type: str
-        required: true
+        default: ''
       ha_pacemaker_ra_sap_ascs_ers_fstype:
         description: File system type of the Filesystem resources.
         type: str
@@ -104,6 +112,14 @@ argument_specs:
       - Runs on the node it is called on. An existing group, and a SAPInstance resource already in it,
         are left as they are.
     options:
+      ha_pacemaker_ra_sap_ascs_ers_simple_mount:
+        description:
+          - 'Simple mount architecture: the instance directories are mounted outside the cluster, there
+            are no Filesystem resources, and each group runs a SAPStartSrv resource before its SAPInstance
+            resource.'
+          - Supported by SUSE on SLES for SAP 15 and later and by Red Hat on RHEL 9 and later.
+        type: bool
+        default: false
       ha_pacemaker_ra_sap_ascs_ers_sid:
         description: SAP system ID.
         type: str
@@ -153,13 +169,13 @@ argument_specs:
           the instance number.
         type: str
       ha_pacemaker_ra_sap_ascs_ers_ascs_device:
-        description: NFS source of the ASCS/SCS instance directory.
+        description: NFS source of the ASCS/SCS instance directory. Not used with simple mount.
         type: str
-        required: true
+        default: ''
       ha_pacemaker_ra_sap_ascs_ers_ers_device:
-        description: NFS source of the ERS instance directory.
+        description: NFS source of the ERS instance directory. Not used with simple mount.
         type: str
-        required: true
+        default: ''
       ha_pacemaker_ra_sap_ascs_ers_fstype:
         description: File system type of the Filesystem resources.
         type: str

@@ -20,9 +20,14 @@ ha_pacemaker_ra_sap_ascs_ers_cidr_netmask: ""
 ha_pacemaker_ra_sap_ascs_ers_ascs_probe_port: "620{{ ha_pacemaker_ra_sap_ascs_ers_ascs_instance_number }}"
 ha_pacemaker_ra_sap_ascs_ers_ers_probe_port: "621{{ ha_pacemaker_ra_sap_ascs_ers_ers_instance_number }}"
 
-# NFS sources of /usr/sap/<SID>/<type><nr> and /usr/sap/<SID>/ERS<nr>.
-# ha_pacemaker_ra_sap_ascs_ers_ascs_device:
-# ha_pacemaker_ra_sap_ascs_ers_ers_device:
+# Simple mount: the instance directories are mounted outside the cluster,
+# and each group runs a SAPStartSrv resource before the SAP instance.
+ha_pacemaker_ra_sap_ascs_ers_simple_mount: false
+
+# NFS sources of /usr/sap/<SID>/<type><nr> and /usr/sap/<SID>/ERS<nr>; not
+# used with simple mount.
+ha_pacemaker_ra_sap_ascs_ers_ascs_device: ""
+ha_pacemaker_ra_sap_ascs_ers_ers_device: ""
 ha_pacemaker_ra_sap_ascs_ers_fstype: nfs
 # Mount options; the guides use sec=sys,nfsvers=4.1 for Azure NetApp Files
 # NFSv4.1 and none for NFSv3.

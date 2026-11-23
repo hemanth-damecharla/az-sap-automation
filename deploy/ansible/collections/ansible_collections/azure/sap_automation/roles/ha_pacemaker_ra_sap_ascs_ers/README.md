@@ -33,6 +33,31 @@ With ENSA1 the ASCS instance prefers the node that runs ERS
 (`runs_ers_<SID> eq 1`). With both, the groups never share a node by
 preference (`-5000`).
 
+## Simple mount
+
+With `ha_pacemaker_ra_sap_ascs_ers_simple_mount: true` the layout follows the
+Microsoft Learn guides "High-availability SAP NetWeaver with simple mount and
+NFS" for SLES (15 and later) and RHEL (9 and later). The instance directories
+are mounted outside the cluster, so the groups hold only the IP and probe
+before the installation, and each group then gets a `SAPStartSrv` resource
+before its `SAPInstance` resource, which uses `MINIMAL_PROBE=true`. The
+resource defaults are `resource-stickiness=1` and `migration-threshold=3` on
+both platforms.
+
+| | SLES | RHEL |
+| --- | --- | --- |
+| Resource names | `rsc_sapstartsrv_*`, `rsc_sap_*` | `rsc_SAPStartSrv_*`, `rsc_SAPInstance_*` |
+| SAPInstance parameters | `START_PROFILE`, `AUTOMATIC_RECOVER=false` as in the classic layout | `InstanceName` and `MINIMAL_PROBE` only |
+| ASCS priority | 10 (ENSA1), 100 (ENSA2) | 100 |
+| ENSA1 `failure-timeout` | 60 | not set |
+| `priority-fencing-delay` | 30 (ENSA2), removed (ENSA1) | 15 |
+| ENSA1 failover rule on | the ASCS instance | the ASCS group |
+
+The SLES guide creates the primitives as `rsc_SAPStartSrv_*` and
+`rsc_SAPInstance_*` but adds `rsc_sapstartsrv_*` and `rsc_sap_*` to the groups
+and constraints; the role uses the names the groups need, which earlier SDAF
+releases also used.
+
 ## Inputs
 
 See [`meta/argument_specs.yml`](meta/argument_specs.yml). Set the monitor
@@ -51,9 +76,9 @@ and diff mode are supported.
 
 ## Status against `roles-sap/5.6-scsers-pacemaker`
 
-Covers the resources of `5.6.4.0-cluster-*.yml` and `5.6.4.2-sap-resources-*.yml`
-for RHEL 8 and later and SLES. Not covered: the simple mount architecture,
-RHEL 7, multi-SID, and everything outside the cluster configuration (node
+Covers the resources of `5.6.4.0-cluster-*.yml` and `5.6.4.2-sap-resources-*.yml`,
+including their `-SimpleMount` variants, for RHEL 8 and later (simple mount:
+9 and later) and SLES. Not covered: RHEL 7, multi-SID, and everything outside the cluster configuration (node
 standby, installation, profiles, systemd integration, restart, validation).
 
 Template-tested for RHEL 9 and 10 and SLES 12, 15 and 16, and run with real

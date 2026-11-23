@@ -52,6 +52,9 @@ Added:
   scale-up, HANA scale-out and ASCS/ERS roles have monitor operations. pcs
   adds them from the agent defaults; written into the CIB directly they were
   missing, so Pacemaker would not have noticed a failed IP or probe.
+- `ha_pacemaker_ra_sap_ascs_ers_simple_mount`: the simple mount layout
+  (SAPStartSrv and SAPInstance resources, no Filesystem resources) on SLES and
+  RHEL. The SDAF playbooks use it for simple mount systems with the switch on.
 - `pacemaker_cib` option `replace`: with `false`, only missing elements and
   properties are added.
 

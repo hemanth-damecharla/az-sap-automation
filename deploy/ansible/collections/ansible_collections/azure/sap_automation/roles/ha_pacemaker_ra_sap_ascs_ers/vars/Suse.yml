@@ -14,6 +14,12 @@ __ha_pacemaker_ra_sap_ascs_ers_platform:
     - {name: monitor, interval: "10", timeout: 20s}
   sap_operations:
     - {name: monitor, interval: "11", timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout }}", on-fail: restart}
+  # Classic layout: the cluster mounts the instance directories.
+  startsrv: false
+  sap_prefix: rsc_sap_
+  sap_profile_parameters: true
+  minimal_probe: false
+  failover_on: sap
   # The order is between the SAP instances on SLES and between the groups on RHEL.
   order_on: sap
   rsc_defaults: {}
@@ -33,3 +39,20 @@ __ha_pacemaker_ra_sap_ascs_ers_platform:
       ers_meta: {}
       failover_location: false
       priority_fencing_delay: "30"
+
+# Microsoft Learn, "High-availability SAP NetWeaver with simple mount and NFS
+# on SLES for SAP Virtual Machines". The guide creates the primitives as
+# rsc_SAPStartSrv_* and rsc_SAPInstance_* but adds rsc_sapstartsrv_* and
+# rsc_sap_* to the groups; the names here are the ones it adds, which earlier
+# SDAF releases also used.
+__ha_pacemaker_ra_sap_ascs_ers_simple_mount_platform:
+  members: [nc, vip]
+  startsrv: true
+  startsrv_prefix: rsc_sapstartsrv_
+  startsrv_provider: suse
+  startsrv_operations: []
+  minimal_probe: true
+  rsc_defaults: {resource-stickiness: "1", migration-threshold: "3"}
+  enqueue:
+    ensa1:
+      ascs_meta: {resource-stickiness: "5000", priority: "10", failure-timeout: "60", migration-threshold: "1"}

@@ -259,3 +259,13 @@ def test_db2_apply_and_second_run(cluster, os_family):
     configuration = ET.parse(cluster.cib).getroot().find("configuration")
     assert configuration.find(".//primitive[@type='db2']") is not None
     assert len(configuration.find("constraints")) == 2
+
+
+@pytest.mark.parametrize("os_family", ["Suse", "RedHat"])
+def test_ascs_ers_simple_mount_steps_apply_and_repeat_without_change(cluster, os_family):
+    extra = ("-e", "os_family=%s enqueue=ensa2 simple=true" % os_family)
+    assert cluster("classic", *extra, playbook="ascs_ers.yml") > 0
+    assert cluster("classic", *extra, playbook="ascs_ers.yml") == 0, "a second pass must not change"
+    resources = ET.parse(cluster.cib).getroot().find("configuration/resources")
+    types = [p.get("type") for p in resources.find("group[@id='g-S01_ERS']").iter("primitive")]
+    assert "Filesystem" not in types and types[-2:] == ["SAPStartSrv", "SAPInstance"]

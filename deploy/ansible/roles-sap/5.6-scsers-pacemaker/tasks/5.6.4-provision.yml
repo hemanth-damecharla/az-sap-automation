@@ -13,15 +13,15 @@
 
 # Opt-in: with use_sap_automation_collection the cluster resources are written
 # by the azure.sap_automation collection (5.6.4.9-cluster-collection.yml). The
-# node sequence, the installations and the restarts stay in these tasks. Simple
-# mount and RHEL 7 are only implemented by the existing tasks.
+# node sequence, the installations and the restarts stay in these tasks. RHEL 7,
+# and simple mount on RHEL 8, are only implemented by the existing tasks.
 - name:                                "5.6.4 SCS/ERS Pacemaker - Determine the implementation of the cluster resources"
   ansible.builtin.set_fact:
     scs_resources_use_collection: >-
                                        {{ use_sap_automation_collection | default(false) | bool
-                                          and not (use_simple_mount | default(false) | bool)
                                           and not (ansible_os_family | upper == 'REDHAT'
-                                                   and ansible_distribution_major_version | int < 8) }}
+                                                   and ansible_distribution_major_version | int
+                                                       < (9 if use_simple_mount | default(false) | bool else 8)) }}
 
 # Clustering commands are based on the Host OS
 - name:                                "5.6.4 SCS/ERS Pacemaker - SCS Installation - Check if installed"

@@ -5,6 +5,7 @@
   vars:
     os_family: Suse
     enqueue: ensa2
+    simple: false
     sap: &sap
       ha_pacemaker_config_node: "{{ ansible_facts['hostname'] }}"
       ha_pacemaker_ra_sap_ascs_ers_sid: S01
@@ -17,6 +18,7 @@
       ha_pacemaker_ra_sap_ascs_ers_ascs_device: 10.0.2.4:/sapS01/usrsapS01ascs00
       ha_pacemaker_ra_sap_ascs_ers_ers_device: 10.0.2.4:/sapS01/usrsapS01ers01
       ha_pacemaker_ra_sap_ascs_ers_enqueue: "{{ enqueue }}"
+      ha_pacemaker_ra_sap_ascs_ers_simple_mount: "{{ simple | bool }}"
   tasks:
     - name: Present the cluster node platform
       fake_platform:

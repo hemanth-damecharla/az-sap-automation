@@ -40,6 +40,7 @@
         get_status_maintenance_mode.stdout is search('false')
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA1 - Configure SAP ASCS/SCS/ERS start resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.blockinfile:
         path:                           "/var/tmp/{{ sap_sid | upper }}/crm_sapstartsrv.txt"
         block:                          |
@@ -54,9 +55,11 @@
         marker:                        "# {mark} ANSIBLE MANAGED BLOCK - SAP ASCS/SCS/ERS start resources"
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA1 - Load the SAP ASCS/SCS/ERS start resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:           crm configure load update /var/tmp/{{ sap_sid | upper }}/crm_sapstartsrv.txt
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA1 - Configure SAP ASCS/SCS resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        crm configure primitive rsc_sap_{{ sap_sid | upper }}_{{ instance_type | upper }}{{ scs_instance_number }} SAPInstance \
                                        op monitor interval=11 timeout={{ clus_sap_mon_timeout | int }} on-fail=restart \
@@ -68,6 +71,7 @@
       failed_when:                     ascs_rsc_sap.rc > 1
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA1 - Configure SAP ERS resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:   >
                                        crm configure primitive rsc_sap_{{ sap_sid | upper }}_ERS{{ ers_instance_number }} SAPInstance \
                                        op monitor interval=11 timeout={{ clus_sap_mon_timeout | int }} on-fail=restart \
@@ -79,6 +83,7 @@
       failed_when:                     ers_rsc_sap.rc > 1
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA1 - Modify SCS and ERS groups"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell: |
                                        crm configure modgroup g-{{ sap_sid | upper }}_{{ instance_type | upper }} add rsc_sapstartsrv_{{ sap_sid | upper }}_{{ instance_type | upper }}{{ scs_instance_number }}
                                        crm configure modgroup g-{{ sap_sid | upper }}_{{ instance_type | upper }} add rsc_sap_{{ sap_sid | upper }}_{{ instance_type | upper }}{{ scs_instance_number }}
@@ -88,6 +93,7 @@
       failed_when:                     scs_ers_group.rc > 1
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA1 - Configure Co-location Constraints"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell: |
                                        crm configure colocation col_sap_{{ sap_sid | upper }}_no_both -5000: g-{{ sap_sid | upper }}_ERS g-{{ sap_sid | upper }}_{{ instance_type | upper }}
                                        crm configure location loc_sap_{{ sap_sid | upper }}_failover_to_ers rsc_sap_{{ sap_sid | upper }}_{{ instance_type | upper }}{{ scs_instance_number }} rule 2000: runs_ers_{{ sap_sid | upper }} eq 1
@@ -96,6 +102,7 @@
       failed_when:                     co_location.rc > 1
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - Bring primary node online "
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:           crm node online {{ primary_instance_name }}
 
     # - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA1 - Set the Cluster out of maintenance mode"
@@ -138,9 +145,11 @@
         get_status_maintenance_mode.stdout is search('false')
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA2 - Set the priority fencing delay"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:           crm configure property priority-fencing-delay=30
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA2 - Configure SAP ASCS/SCS/ERS start resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.blockinfile:
         path:                           "/var/tmp/{{ sap_sid | upper }}/crm_sapstartsrv.txt"
         block:                          |
@@ -155,9 +164,11 @@
         marker:                        "# {mark} ANSIBLE MANAGED BLOCK - SAP ASCS/SCS/ERS start resources"
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA2 - Load the SAP ASCS/SCS/ERS start resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:           crm configure load update /var/tmp/{{ sap_sid | upper }}/crm_sapstartsrv.txt
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA2 - Configure SAP ASCS/SCS resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell: >
                                        crm configure primitive rsc_sap_{{ sap_sid | upper }}_{{ instance_type | upper }}{{ scs_instance_number }} SAPInstance \
                                        op monitor interval=11 timeout={{ clus_sap_mon_timeout | int }} on-fail=restart \
@@ -168,6 +179,7 @@
       failed_when:                     ascs_rsc_sap.rc > 1
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA2 - Configure SAP ERS resources"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell: >
                                        crm configure primitive rsc_sap_{{ sap_sid | upper }}_ERS{{ ers_instance_number }} SAPInstance \
                                        op monitor interval=11 timeout={{ clus_sap_mon_timeout | int }} on-fail=restart \
@@ -178,6 +190,7 @@
       failed_when:                     ers_rsc_sap.rc > 1
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA2 - Modify SCS and ERS groups"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell: |
                                        crm configure modgroup g-{{ sap_sid | upper }}_{{ instance_type | upper }} add rsc_sapstartsrv_{{ sap_sid | upper }}_{{ instance_type | upper }}{{ scs_instance_number }}
                                        crm configure modgroup g-{{ sap_sid | upper }}_{{ instance_type | upper }} add rsc_sap_{{ sap_sid | upper }}_{{ instance_type | upper }}{{ scs_instance_number }}
@@ -188,6 +201,7 @@
 
     # OLD CODE:                                        crm configure location loc_sap_{{ sap_sid | upper }}_failover_to_ers rsc_sap_{{ sap_sid | upper }}_{{ instance_type | upper }}{{ scs_instance_number }} rule 2000: runs_ers_{{ sap_sid | upper }} eq 1
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA2 - Configure Co-location Constraints"
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell: |
                                        crm configure colocation col_sap_{{ sap_sid | upper }}_no_both -5000: g-{{ sap_sid | upper }}_ERS g-{{ sap_sid | upper }}_{{ instance_type | upper }}
                                        crm configure order ord_sap_{{ sap_sid | upper }}_first_start_ascs Optional: rsc_sap_{{ sap_sid | upper }}_{{ instance_type | upper }}{{ scs_instance_number }}:start rsc_sap_{{ sap_sid | upper }}_ERS{{ ers_instance_number }}:stop symmetrical=false
@@ -195,6 +209,7 @@
       failed_when:                     co_location.rc > 1
 
     - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA2 - Bring primary node online "
+      when:                            not (scs_resources_use_collection | default(false))
       ansible.builtin.shell:           crm node online {{ primary_instance_name }}
 
     # - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE- ENSA2 - Set the Cluster out of maintenance mode"
@@ -209,6 +224,23 @@
 # | Systemd-Based SAP Startup Framework - BEGIN                                |
 # |                                                                            |
 # +------------------------------------4--------------------------------------*/
+
+# With use_sap_automation_collection the resources, constraints and
+# properties of both enqueue server generations come from the collection.
+- name:                                "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - Configure the SAP resources (azure.sap_automation collection)"
+  when:
+    - scs_resources_use_collection | default(false)
+    - inventory_hostname == primary_instance_name
+    - ensa1 | default(false) or ensa2 | default(false)
+  block:
+    - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - Configure the SAP resources"
+      ansible.builtin.include_tasks:   5.6.4.9-cluster-collection.yml
+      vars:
+        scs_collection_step:           resources
+
+    - name:                            "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - Bring the primary node online"
+      ansible.builtin.command:         crm node online {{ primary_instance_name }}
+      changed_when:                    false
 
 - name:                                "5.6.4.2 SCS/ERS Pacemaker - SAP Resources - SUSE - ENSA2 - SUSE - Systemd-Based SAP Startup Framework"
   ansible.builtin.include_tasks:

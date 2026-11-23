@@ -62,14 +62,23 @@
 {% endif %}
 {% endfor %}
 {% if name in __ha_pacemaker_ra_sap_ascs_ers_with_sap %}
+{% if spec['startsrv'] %}
+    <primitive id="{{ instance['startsrv'] }}" class="ocf" provider="{{ spec['startsrv_provider'] }}" type="SAPStartSrv">
+      {{ nvpairs('instance_attributes', {'InstanceName': instance['instance']}) }}
+      {{ operations(spec['startsrv_operations']) }}
+    </primitive>
+{% endif %}
     <primitive id="{{ instance['sap'] }}" class="ocf" provider="heartbeat" type="SAPInstance">
       {{ nvpairs('instance_attributes', {
            'InstanceName': instance['instance'],
-           'START_PROFILE': '/sapmnt/' + __ha_pacemaker_ra_sap_ascs_ers_sid + '/profile/' + instance['instance'],
-           'AUTOMATIC_RECOVER': 'false',
+           'START_PROFILE': ('/sapmnt/' + __ha_pacemaker_ra_sap_ascs_ers_sid + '/profile/' + instance['instance'])
+                            if spec['sap_profile_parameters'] else '',
+           'AUTOMATIC_RECOVER': 'false' if spec['sap_profile_parameters'] else '',
+           'MINIMAL_PROBE': 'true' if spec['minimal_probe'] else '',
            'IS_ERS': 'true' if name == 'ers' else ''}) }}
       {{ nvpairs('meta_attributes', spec[name + '_meta']) }}
-      {{ operations(spec['sap_operations'], instance['sap'] + '-operations') }}
+      {{ operations(spec['ers_operations'] if name == 'ers' and spec['ers_operations'] is defined else spec['sap_operations'],
+                    instance['sap'] + '-operations') }}
     </primitive>
 {% endif %}
   </group>
@@ -84,7 +93,7 @@
   <rsc_order id="{{ __ha_pacemaker_ra_sap_ascs_ers_constraint_ids['order'] }}" kind="Optional" symmetrical="false"
              first="{{ first }}" first-action="start" then="{{ then }}" then-action="stop"/>
 {% if spec['failover_location'] %}
-  <rsc_location id="{{ __ha_pacemaker_ra_sap_ascs_ers_constraint_ids['location'] }}" rsc="{{ instances['ascs']['sap'] }}">
+  <rsc_location id="{{ __ha_pacemaker_ra_sap_ascs_ers_constraint_ids['location'] }}" rsc="{{ instances['ascs'][spec['failover_on']] }}">
     <rule score="2000">
       <expression attribute="runs_ers_{{ __ha_pacemaker_ra_sap_ascs_ers_sid }}" operation="eq" value="1"/>
     </rule>
