@@ -142,7 +142,18 @@
           , opts: '{{ sapmnt_nfs_opts }}'
     }
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - item.tier == "db2"
+    - sap_mnt is undefined
+
+- name:                                "2.6.4 SAP Mount - DB2 - Mount SAP Filesystems on Database for installation (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ sapmnt_nfs_mount }}"
+    path:                              /sapmnt/{{ sap_sid | upper }}
+    fstype:                            nfs4
+    opts:                              "{{ sapmnt_nfs_opts }}"
+  when:
+    - use_sap_automation_collection | default(false) | bool
     - sap_mnt is undefined
 
 # Debug for testing

@@ -108,6 +108,20 @@
   loop:
     - {type: 'nfs4',    src: '{{ nfs_server }}:/sapmnt/{{ sap_sid | upper }}',    path: '/sapmnt/{{ sap_sid | upper }}' }
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
+    - sap_mnt is undefined
+
+- name:                                "2.6.2 Mount - ORACLE - Mount SAP File systems on Database for installation (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ nfs_server }}:/sapmnt/{{ sap_sid | upper }}"
+    path:                              /sapmnt/{{ sap_sid | upper }}
+    fstype:                            nfs4
+    opts:                              defaults
+  vars:
+    # The first host of the <SID>_SCS group exports the file systems.
+    nfs_server:                        "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_SCS') | first }}"
+  when:
+    - use_sap_automation_collection | default(false) | bool
     - sap_mnt is undefined
 
 # Mount install file system on Observer node.
@@ -124,6 +138,18 @@
   loop:
     - { type: 'nfs4', src: '{{ usr_sap_install_mountpoint }}/{{ bom_base_name }}', path: '{{ target_media_location }}' }
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
+    - node_tier in ['observer', 'oracle-asm']
+    - use_AFS
+
+- name:                                "2.6.2 Mount - ORACLE - Mount Install folder when using AFS (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ usr_sap_install_mountpoint }}/{{ bom_base_name }}"
+    path:                              "{{ target_media_location }}"
+    fstype:                            nfs4
+    opts:                              "vers=4,minorversion=1,sec=sys"
+  when:
+    - use_sap_automation_collection | default(false) | bool
     - node_tier in ['observer', 'oracle-asm']
     - use_AFS
 

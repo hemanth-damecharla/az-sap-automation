@@ -13,6 +13,7 @@
   # Run this check only on the first host of the matching target nodes
   run_once: "{{ node_tier in custom_mount.target_nodes or custom_mount.target_nodes == ['all'] }}"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - node_tier in custom_mount.target_nodes or custom_mount.target_nodes == ['all']
     - custom_mount.create_temp_folders
   changed_when: false
@@ -21,6 +22,7 @@
 
 - name:                                "Custom Mount: Create Directory on NFS ({{ custom_mount.path }})"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - existing_mount.rc is defined
     - existing_mount.rc != 0
     - custom_mount.create_temp_folders
@@ -52,6 +54,7 @@
 
 - name:                                "Custom Mount"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - node_tier in custom_mount.target_nodes or custom_mount.target_nodes == ['all']
   block:
     - name:                            "Custom Mount: ({{ custom_mount.path }} on {% if custom_mount.create_temp_folders %}{{ custom_mount.mount }}/{{ custom_mount.folder }}{% else %}{{ custom_mount.mount }}{% endif %})"
@@ -73,3 +76,19 @@
         fstype:                        "nfs4"
         opts:                          "{{ custom_mount.opts }}"
         state:                         mounted
+
+- name:                                "Custom Mount: {{ custom_mount.path }} (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ custom_mount.mount }}"
+    subdir:                            "{{ custom_mount.folder if custom_mount.create_temp_folders | bool else omit }}"
+    path:                              "{{ custom_mount.path }}"
+    fstype:                            nfs4
+    opts:                              "{{ custom_mount.opts }}"
+    owner:                             "{{ sidadm_uid | string }}"
+    group:                             sapsys
+    mode:                              "0755"
+    retries:                           1
+    delay:                             10
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - node_tier in custom_mount.target_nodes or custom_mount.target_nodes == ['all']

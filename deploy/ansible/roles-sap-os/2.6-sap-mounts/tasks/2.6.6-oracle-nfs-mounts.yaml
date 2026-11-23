@@ -11,9 +11,21 @@
     opts:                          "vers=4,minorversion=1,sec=sys"
     state:                         mounted
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - node_tier == 'oracle' or node_tier == 'oracle-asm'
     - use_AFS
 
+
+- name:                                "2.6.6 SAP Mount - ORACLE - Mount Installation folder when using AFS (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ usr_sap_install_mountpoint }}/{{ bom_base_name }}"
+    path:                              "{{ target_media_location }}"
+    fstype:                            nfs4
+    opts:                              "vers=4,minorversion=1,sec=sys"
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - node_tier == 'oracle' or node_tier == 'oracle-asm'
+    - use_AFS
 
 - name:                                "2.6.6 SAP Mount - ORACLE - Make orasid:dba as owners"
   become:                              true

@@ -66,6 +66,12 @@ Added:
   its parents. The SDAF sapmnt flows (`2.6.0`, `2.6.1`, `2.6.7`, `2.6.8`) and
   the application server `/usr/sap` mount (`2.6.10`) use `nfs_mount` with the
   switch on.
+- The remaining SDAF NFS mounts use `nfs_mount` with the switch on: the
+  exports of the SCS host when no Azure Files or Azure NetApp Files share is
+  configured (`/sapmnt`, `/usr/sap/trans`, the installation media, the
+  MULTI_SIDS `/sapmnt` directories), the Oracle, Oracle ASM, Oracle observer,
+  Db2 and SAP ASE `/sapmnt` and installation media mounts, and
+  `custom_mounts`.
 
 ## 0.1.0
 

@@ -247,6 +247,7 @@
 
 # Mount SAP TransFilesystems
 - name:                                Mount Filesystems block
+  when:                                not (use_sap_automation_collection | default(false) | bool)
   block:
     - name:                            "2.6 SAP Mounts - Mount SAP Transport Filesystems when not using external NFS (all app tier)"
       ansible.posix.mount:
@@ -262,6 +263,19 @@
         - node_tier in ['pas', 'app']
         - sap_trans is undefined
         - nfs_server != ansible_hostname
+
+- name:                                "2.6 SAP Mounts - Mount SAP Transport Filesystems when not using external NFS (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ nfs_server }}:/usr/sap/trans"
+    path:                              /usr/sap/trans
+    fstype:                            nfs4
+    opts:                              defaults
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - tier == 'sapos'
+    - node_tier in ['pas', 'app']
+    - sap_trans is undefined
+    - nfs_server != ansible_hostname
 
 - name:                                "2.6 SAP Mounts - Debug"
   ansible.builtin.debug:
@@ -320,6 +334,7 @@
 
 - name:                                "2.6 SAP Mounts - sapmnt"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - node_tier in ['pas', 'app', 'ers', 'oracle', 'oracle-asm', 'db2', 'sybase']
     - sap_mnt is undefined
@@ -345,6 +360,22 @@
         opts:                          defaults
         state:                         remounted
 
+- name:                                "2.6 SAP Mounts - Mount sapmnt file system when not using external NFS (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ nfs_server }}:/sapmnt/{{ sap_sid | upper }}"
+    path:                              /sapmnt/{{ sap_sid | upper }}
+    fstype:                            nfs4
+    opts:                              defaults
+    retries:                           1
+    delay:                             10
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - tier == 'sapos'
+    - node_tier in ['pas', 'app', 'ers', 'oracle', 'oracle-asm', 'db2', 'sybase']
+    - sap_mnt is undefined
+    - MULTI_SIDS is undefined
+    - nfs_server != ansible_hostname
+
 - name:                                "2.6 SAP Mounts - Mount Install folder when not using AFS"
   ansible.posix.mount:
     src:                               "{{ nfs_server }}:/usr/sap/install"
@@ -353,11 +384,26 @@
     opts:                              defaults
     state:                             mounted
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - node_tier != 'scs'
     - "'scs' not in supported_tiers"
     - usr_sap_install_mountpoint is not defined
     - not is_executed_by_acss or (is_executed_by_acss and (is_executed_by_acss and ( ansible_play_hosts_all | length  == 1) ))
+
+- name:                                "2.6 SAP Mounts - Mount Install folder when not using AFS (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ nfs_server }}:/usr/sap/install"
+    path:                              "{{ target_media_location }}"
+    fstype:                            nfs4
+    opts:                              defaults
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - tier == 'sapos'
+    - node_tier != 'scs'
+    - "'scs' not in supported_tiers"
+    - usr_sap_install_mountpoint is not defined
+    - not is_executed_by_acss or (is_executed_by_acss and (ansible_play_hosts_all | length == 1))
 
 # Mount File systems for SCS server in Multi-SID installations
 - name:                                "2.6 SAP Mounts - Mount local sapmnt (scs) for oracle shared home installation"
@@ -390,6 +436,7 @@
 
 - name:                                "2.6 SAP Mounts - Mount SAP File systems sapmnt for oracle shared home installation"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
     - tier == 'sapos'
     - MULTI_SIDS is defined
     - node_tier != 'scs'
@@ -405,6 +452,26 @@
     # Get all the hostnames in <SID>_SCS group and return only the first hostname
     nfs_server:                        "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_SCS') | first }}"
   loop:                                "{{ MULTI_SIDS }}"
+
+- name:                                "2.6 SAP Mounts - Mount SAP File systems sapmnt for oracle shared home installation (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ nfs_server }}:/sapmnt/{{ item.sid | upper }}"
+    path:                              /sapmnt/{{ item.sid | upper }}
+    fstype:                            nfs4
+    opts:                              defaults
+  vars:
+    # The first host of the <SID>_SCS group exports the file systems.
+    nfs_server:                        "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_SCS') | first }}"
+  loop:                                "{{ MULTI_SIDS }}"
+  loop_control:
+    label:                             "/sapmnt/{{ item.sid | upper }}"
+  when:
+    - use_sap_automation_collection | default(false) | bool
+    - tier == 'sapos'
+    - MULTI_SIDS is defined
+    - node_tier != 'scs'
+    - node_tier != 'oracle-multi-sid'
+    - sap_mnt is undefined
 
 - name:                                "2.6 SAP Mounts - Force simple mount for SLES 16+"
   when:

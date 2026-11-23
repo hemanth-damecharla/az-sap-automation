@@ -164,6 +164,26 @@
     nfs_server:                        "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_SCS') | first }}"
   loop:                                "{{ MULTI_SIDS }}"
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
+    - tier == 'sapos'
+    - MULTI_SIDS is defined
+    - node_tier != 'scs'
+    - sap_mnt is undefined
+
+- name:                                "2.6.3 SAP Mount - Mount SAP File systems for installation (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ nfs_server }}:/sapmnt/{{ item.sid | upper }}"
+    path:                              /sapmnt/{{ item.sid | upper }}
+    fstype:                            nfs4
+    opts:                              defaults
+  vars:
+    # The first host of the <SID>_SCS group exports the file systems.
+    nfs_server:                        "{{ query('inventory_hostnames', '{{ sap_sid | upper }}_SCS') | first }}"
+  loop:                                "{{ MULTI_SIDS }}"
+  loop_control:
+    label:                             "/sapmnt/{{ item.sid | upper }}"
+  when:
+    - use_sap_automation_collection | default(false) | bool
     - tier == 'sapos'
     - MULTI_SIDS is defined
     - node_tier != 'scs'

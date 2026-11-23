@@ -79,6 +79,22 @@
     - { type: 'nfs4',    src: '{{ nfs_server }}:{{ target_media_location }}',      path: '{{ target_media_location }}'  }
     - { type: 'nfs4',    src: '{{ nfs_server }}:/sapmnt/{{ db_sid | upper }}',     path: '/sapmnt/{{ db_sid | upper }}' }
   when:
+    - not (use_sap_automation_collection | default(false) | bool)
+    - NFS_provider == "NONE"
+
+- name:                                "2.6.3 SAP Mount - ORACLE ASM - Prerequisites - Mount SAP Filesystems on Database for installation when using NFS Cluster (azure.sap_automation collection)"
+  azure.sap_automation.nfs_mount:
+    src:                               "{{ item.src }}"
+    path:                              "{{ item.path }}"
+    fstype:                            nfs4
+    opts:                              defaults
+  loop:
+    - { src: '{{ nfs_server }}:{{ target_media_location }}',      path: '{{ target_media_location }}'  }
+    - { src: '{{ nfs_server }}:/sapmnt/{{ db_sid | upper }}',     path: '/sapmnt/{{ db_sid | upper }}' }
+  loop_control:
+    label:                             "{{ item.path }}"
+  when:
+    - use_sap_automation_collection | default(false) | bool
     - NFS_provider == "NONE"
 
 - name:                                "2.6.3 SAP Mount - ORACLE ASM - Prerequisites - Create sap_deployment_automation folder"
