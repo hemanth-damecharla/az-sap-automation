@@ -247,3 +247,15 @@ def test_hana_scaleout_apply_and_second_run(cluster, os_family, flavor):
     else:
         assert not attributes.exists()
         assert configuration.find("alerts/alert[@id='fencing-1']") is not None
+
+
+@pytest.mark.parametrize("os_family", ["Suse", "RedHat"])
+def test_db2_apply_and_second_run(cluster, os_family):
+    extra = ("-e", "os_family=%s" % os_family)
+    assert cluster("classic", "--check", *extra, playbook="db2.yml") > 0
+    assert cluster.writes() == []
+    assert cluster("classic", *extra, playbook="db2.yml") > 0
+    assert cluster("classic", *extra, playbook="db2.yml") == 0, "second run must not change"
+    configuration = ET.parse(cluster.cib).getroot().find("configuration")
+    assert configuration.find(".//primitive[@type='db2']") is not None
+    assert len(configuration.find("constraints")) == 2

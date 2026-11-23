@@ -1,0 +1,12 @@
+---
+- name: set_vars | Load platform specific variables
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/vars/{{ __ha_pacemaker_ra_db2_vars_file }}"
+  loop:
+    - "{{ ansible_facts['os_family'] }}.yml"
+    - "{{ ansible_facts['distribution'] }}.yml"
+    - "{{ ansible_facts['distribution'] }}_{{ ansible_facts['distribution_major_version'] }}.yml"
+    - "{{ ansible_facts['distribution'] }}_{{ ansible_facts['distribution_version'] }}.yml"
+  loop_control:
+    loop_var: __ha_pacemaker_ra_db2_vars_file
+  when: (role_path + '/vars/' + __ha_pacemaker_ra_db2_vars_file) is file

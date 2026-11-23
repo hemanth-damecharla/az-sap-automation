@@ -45,6 +45,8 @@ Added:
   resource agent generations on SLES and RHEL, with the majority maker
   constraints, the /hana/shared checks and the SAPHanaSR-alert-fencing alert.
   The SDAF playbooks use it with the switch on.
+- `ha_pacemaker_ra_db2`: IBM Db2 HADR resources on SLES and RHEL. The SDAF
+  playbooks use it with the switch on.
 - `pacemaker_cib` manages the `alerts` section.
 - `pacemaker_cib` option `replace`: with `false`, only missing elements and
   properties are added.

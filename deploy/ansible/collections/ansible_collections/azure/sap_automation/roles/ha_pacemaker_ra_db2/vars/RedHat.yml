@@ -1,0 +1,30 @@
+---
+# Microsoft Learn, "High availability of IBM Db2 LUW on Azure VMs on Red Hat
+# Enterprise Linux Server", section "Pacemaker configuration" (RHEL 8.x).
+__ha_pacemaker_ra_db2_platform:
+  db2:
+    id: "Db2_HADR_{{ __ha_pacemaker_ra_db2_sid }}"
+    meta: "{{ {'priority': '10'} if __ha_pacemaker_ra_db2_priority | bool else {} }}"
+    clone_id: "Db2_HADR_{{ __ha_pacemaker_ra_db2_sid }}-clone"
+    clone_meta: {promotable: "true", notify: "true", resource-stickiness: "5000"}
+  # pcs adds a monitor operation from the agent's defaults; the CIB written
+  # here has none unless it is given, so the values of the other Azure
+  # guides are used.
+  ip:
+    id: "vip_{{ __ha_pacemaker_ra_db2_suffix }}"
+    operations:
+      - {name: monitor, interval: 10s, timeout: 20s}
+  nc:
+    id: "nc_{{ __ha_pacemaker_ra_db2_suffix }}"
+    operations:
+      - {name: monitor, interval: "10", timeout: 20s}
+  group_id: "g_ipnc_{{ __ha_pacemaker_ra_db2_suffix }}"
+  colocation_id: "col_db2_{{ __ha_pacemaker_ra_db2_suffix }}"
+  colocation_rsc_role: ""
+  order_id: "ord_db2_ip_{{ __ha_pacemaker_ra_db2_suffix }}"
+  rsc_defaults: "{{ {'priority': '1'} if __ha_pacemaker_ra_db2_priority | bool else {} }}"
+  priority_fencing_delay: "{{ '15s' if __ha_pacemaker_ra_db2_priority | bool else '' }}"
+
+__ha_pacemaker_ra_db2_priority: >-
+  {{ ha_pacemaker_ra_db2_priority_fencing | bool
+     and (ansible_facts['packages']['pacemaker'] | default([{'version': '0'}]))[0]['version'] is version('2.0.4', '>') }}

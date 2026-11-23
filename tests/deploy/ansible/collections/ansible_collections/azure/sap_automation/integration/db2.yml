@@ -1,0 +1,23 @@
+- name: Exercise the Db2 resource agent role against a file-backed CIB
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars:
+    os_family: Suse
+  tasks:
+    - name: Present the cluster node platform
+      fake_platform:
+        os_family: "{{ os_family }}"
+        distribution: "{{ 'SLES_SAP' if os_family == 'Suse' else 'RedHat' }}"
+        version: "{{ '15.5' if os_family == 'Suse' else '9.4' }}"
+    - name: Db2 HADR resources
+      ansible.builtin.include_role:
+        name: azure.sap_automation.ha_pacemaker_ra_db2
+      vars:
+        ha_pacemaker_nodes:
+          - {name: n1, address: 10.0.0.1}
+          - {name: n2, address: 10.0.0.2}
+        ha_pacemaker_config_node: "{{ ansible_facts['hostname'] }}"
+        ha_pacemaker_ra_db2_sid: PTR
+        ha_pacemaker_ra_db2_instance_number: "00"
+        ha_pacemaker_ra_db2_virtual_ip: 10.100.0.10

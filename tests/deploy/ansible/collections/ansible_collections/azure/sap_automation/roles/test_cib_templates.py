@@ -735,3 +735,78 @@ def test_hana_scaleout_rhel10_classic_uses_promoted_roles():
         if op.get("role")
     }
     assert roles == {"Promoted", "Unpromoted"}
+
+
+DB2 = {
+    "ha_pacemaker_ra_db2_sid": "ptr",
+    "ha_pacemaker_ra_db2_instance_number": "00",
+    "ha_pacemaker_ra_db2_virtual_ip": "10.100.0.10",
+}
+
+
+def db2(platform, pacemaker="2.1.5", **extra):
+    return render("ha_pacemaker_ra_db2", "db2.xml.j2", platform, pacemaker, **dict(DB2, **extra))
+
+
+# SLES 12 (Pacemaker 1.1, no promotable clones) stays with the existing tasks.
+@pytest.mark.parametrize("platform", ["rhel9", "rhel10", "sles15", "sles16"])
+def test_db2_renders_for_every_platform(platform):
+    sections = db2(platform)
+    resources, constraints = sections["resources"], sections["constraints"]
+    all_ids = [e.get("id") for s in sections.values() for e in s.iter() if e.get("id")]
+    assert len(all_ids) == len(set(all_ids)), "duplicate ids"
+    primitive = resources.find("clone/primitive[@type='db2']")
+    assert pairs(primitive.find("instance_attributes")) == {"instance": "db2ptr", "dblist": "PTR"}
+    assert len(list(primitive.iter("op"))) == 6
+    for primitive in resources.find("group"):
+        assert primitive.find("operations/op[@name='monitor']") is not None, primitive.get("id")
+    top = {child.get("id") for child in resources}
+    for constraint in constraints:
+        for key in ("rsc", "with-rsc", "first", "then"):
+            if constraint.get(key):
+                assert constraint.get(key) in top
+    order = constraints.find("rsc_order")
+    assert (order.get("first-action"), order.get("then-action")) == ("promote", "start")
+    role = constraints.find("rsc_colocation").get("with-rsc-role")
+    assert role == ("Promoted" if platform in ("rhel10", "sles16") else "Master")
+
+
+def test_db2_sles_follows_the_suse_guide():
+    sections = db2("sles15")
+    clone = sections["resources"].find("clone")
+    assert clone.get("id") == "msl_Db2_db2ptr_PTR"
+    assert pairs(clone.find("meta_attributes")) == {
+        "promotable": "true",
+        "target-role": "Started",
+        "notify": "true",
+    }
+    assert ids(sections["resources"].find("group"), "primitive") == [
+        "rsc_ip_db2ptr_PTR",
+        "rsc_nc_db2ptr_PTR",
+    ]
+    assert sections["constraints"].find("rsc_colocation").get("rsc-role") == "Started"
+    assert pairs(sections["rsc_defaults"]) == {
+        "resource-stickiness": "1000",
+        "migration-threshold": "5000",
+    }
+    assert "crm_config" not in sections
+
+
+def test_db2_rhel_follows_the_red_hat_guide_and_earlier_priorities():
+    sections = db2("rhel9")
+    clone = sections["resources"].find("clone")
+    assert clone.get("id") == "Db2_HADR_PTR-clone"
+    assert pairs(clone.find("meta_attributes")) == {
+        "promotable": "true",
+        "notify": "true",
+        "resource-stickiness": "5000",
+    }
+    assert pairs(clone.find("primitive/meta_attributes")) == {"priority": "10"}
+    assert sections["resources"].find("group").get("id") == "g_ipnc_db2ptr_PTR"
+    assert pairs(sections["rsc_defaults"]) == {"priority": "1"}
+    assert pairs(sections["crm_config"]) == {"priority-fencing-delay": "15s"}
+
+    plain = db2("rhel9", pacemaker="2.0.3")
+    assert "rsc_defaults" not in plain and "crm_config" not in plain
+    off = db2("rhel9", ha_pacemaker_ra_db2_priority_fencing=False)
+    assert "crm_config" not in off

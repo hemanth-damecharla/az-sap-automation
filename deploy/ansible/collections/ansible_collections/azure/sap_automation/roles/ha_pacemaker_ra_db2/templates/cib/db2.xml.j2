@@ -1,0 +1,59 @@
+{% set spec = __ha_pacemaker_ra_db2_spec %}
+{% macro nvpairs(tag, values) %}
+{% set present = values | dict2items | rejectattr('value', 'equalto', '') | list %}
+{% if present %}
+<{{ tag }}>
+{% for pair in present | sort(attribute='key') %}
+  <nvpair name="{{ pair['key'] }}" value="{{ pair['value'] }}"/>
+{% endfor %}
+</{{ tag }}>
+{% endif %}
+{% endmacro %}
+{% macro operations(items) %}
+{% if items %}
+<operations>
+{% for operation in items %}
+  <op{% for key, value in operation.items() %} {{ key }}="{{ value }}"{% endfor %}/>
+{% endfor %}
+</operations>
+{% endif %}
+{% endmacro %}
+{% if spec['rsc_defaults'] %}
+<rsc_defaults>
+  {{ nvpairs('meta_attributes', spec['rsc_defaults']) }}
+</rsc_defaults>
+{% endif %}
+{% if spec['priority_fencing_delay'] %}
+<crm_config>
+  <cluster_property_set>
+    <nvpair name="priority-fencing-delay" value="{{ spec['priority_fencing_delay'] }}"/>
+  </cluster_property_set>
+</crm_config>
+{% endif %}
+<resources>
+  <clone id="{{ spec['db2']['clone_id'] }}">
+    {{ nvpairs('meta_attributes', spec['db2']['clone_meta']) }}
+    <primitive id="{{ spec['db2']['id'] }}" class="ocf" provider="heartbeat" type="db2">
+      {{ nvpairs('instance_attributes', {'instance': __ha_pacemaker_ra_db2_instance, 'dblist': __ha_pacemaker_ra_db2_sid}) }}
+      {{ nvpairs('meta_attributes', spec['db2']['meta']) }}
+      {{ operations(__ha_pacemaker_ra_db2_operations) }}
+    </primitive>
+  </clone>
+  <group id="{{ spec['group_id'] }}">
+    <primitive id="{{ spec['ip']['id'] }}" class="ocf" provider="heartbeat" type="IPaddr2">
+      {{ nvpairs('instance_attributes', {'ip': ha_pacemaker_ra_db2_virtual_ip}) }}
+      {{ operations(spec['ip']['operations']) }}
+    </primitive>
+    <primitive id="{{ spec['nc']['id'] }}" class="ocf" provider="heartbeat" type="azure-lb">
+      {{ nvpairs('instance_attributes', {'port': ha_pacemaker_ra_db2_probe_port | string}) }}
+      {{ operations(spec['nc']['operations']) }}
+    </primitive>
+  </group>
+</resources>
+<constraints>
+  <rsc_colocation id="{{ spec['colocation_id'] }}" score="INFINITY" rsc="{{ spec['group_id'] }}"
+{%- if spec['colocation_rsc_role'] %} rsc-role="{{ spec['colocation_rsc_role'] }}"{% endif %}
+ with-rsc="{{ spec['db2']['clone_id'] }}" with-rsc-role="{{ __ha_pacemaker_ra_db2_roles['promoted'] }}"/>
+  <rsc_order id="{{ spec['order_id'] }}" score="INFINITY" first="{{ spec['db2']['clone_id'] }}" first-action="promote"
+             then="{{ spec['group_id'] }}" then-action="start"/>
+</constraints>

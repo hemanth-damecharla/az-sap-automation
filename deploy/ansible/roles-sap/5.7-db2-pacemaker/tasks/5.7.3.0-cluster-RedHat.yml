@@ -41,7 +41,9 @@
     shell:                             /bin/ksh
 
 - name:                                "5.7.3.0 DB2 - REDHAT - Pacemaker - configuration - Optimize the Pacemaker cluster for SAP DB2"
-  when:                                ansible_hostname == primary_instance_name
+  when:
+    - ansible_hostname == primary_instance_name
+    - not (db2_resources_use_collection | default(false))
   block:
     - name:                            "5.7.3.0 DB2 - REDHAT - Pacemaker - configuration - Enable Maintenance mode for the cluster"
       ansible.builtin.shell:           pcs property set maintenance-mode=true

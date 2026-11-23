@@ -1,0 +1,21 @@
+---
+__ha_pacemaker_ra_db2_is_config_node: "{{ ansible_facts['hostname'] == ha_pacemaker_ra_db2_config_node }}"
+__ha_pacemaker_ra_db2_sid: "{{ ha_pacemaker_ra_db2_sid | upper }}"
+__ha_pacemaker_ra_db2_instance: "db2{{ ha_pacemaker_ra_db2_sid | lower }}"
+__ha_pacemaker_ra_db2_suffix: "{{ __ha_pacemaker_ra_db2_instance }}_{{ __ha_pacemaker_ra_db2_sid }}"
+
+# Operations of the db2 agent from the Microsoft Learn Db2 HADR guide for
+# SLES. The RHEL guide leaves them to pcs, which takes the agent defaults.
+__ha_pacemaker_ra_db2_operations:
+  - {name: start, interval: "0", timeout: "130"}
+  - {name: stop, interval: "0", timeout: "120"}
+  - {name: promote, interval: "0", timeout: "120"}
+  - {name: demote, interval: "0", timeout: "120"}
+  - {name: monitor, interval: "30", timeout: "60"}
+  - {name: monitor, interval: "31", role: "{{ __ha_pacemaker_ra_db2_roles['promoted'] }}", timeout: "60"}
+
+__ha_pacemaker_ra_db2_roles: {promoted: Master}
+
+# Set by the platform file.
+__ha_pacemaker_ra_db2_platform: {}
+__ha_pacemaker_ra_db2_spec: "{{ __ha_pacemaker_ra_db2_platform }}"

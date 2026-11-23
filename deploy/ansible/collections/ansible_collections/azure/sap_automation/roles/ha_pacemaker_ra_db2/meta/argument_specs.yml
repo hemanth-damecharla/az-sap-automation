@@ -1,0 +1,51 @@
+---
+argument_specs:
+  main:
+    short_description: Pacemaker resources for IBM Db2 HADR
+    description:
+      - Creates the promotable db2 resource, the virtual IP with its Azure load
+        balancer probe, and the colocation and order constraints that keep the
+        IP with the HADR primary, following the Microsoft Learn guides for IBM
+        Db2 LUW high availability on SLES and RHEL.
+      - Db2 HADR must already be configured, both instances stopped, and the
+        instance owner's shell set to C(/bin/ksh).
+    options:
+      ha_pacemaker_ra_db2_nodes:
+        description: Cluster nodes. Defaults to C(ha_pacemaker_nodes).
+        type: list
+        elements: dict
+        required: true
+      ha_pacemaker_ra_db2_config_node:
+        description: Node on which the cluster configuration is applied.
+        type: str
+        required: true
+      ha_pacemaker_ra_db2_sid:
+        description: Database SID; the instance is C(db2<sid>).
+        type: str
+        required: true
+      ha_pacemaker_ra_db2_instance_number:
+        description: Instance number, used for the default probe port.
+        type: str
+        required: true
+      ha_pacemaker_ra_db2_virtual_ip:
+        description: Front-end IP address of the load balancer for the HADR primary.
+        type: str
+        required: true
+      ha_pacemaker_ra_db2_probe_port:
+        description: Load balancer health probe port. Defaults to 625 followed by the instance number.
+        type: str
+      ha_pacemaker_ra_db2_priority_fencing:
+        description:
+          - On RHEL with pacemaker later than 2.0.4, set resource defaults
+            C(priority=1), C(priority=10) on the db2 resource and
+            C(priority-fencing-delay=15s), as earlier SDAF releases did.
+        type: bool
+        default: true
+      ha_pacemaker_ra_db2_settle_retries:
+        description: Number of polls while waiting for the cluster to leave maintenance mode.
+        type: int
+        default: 12
+      ha_pacemaker_ra_db2_settle_delay:
+        description: Seconds between those polls.
+        type: int
+        default: 10

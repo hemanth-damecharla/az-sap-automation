@@ -1,0 +1,17 @@
+---
+ha_pacemaker_ra_db2_nodes: "{{ ha_pacemaker_nodes }}"
+ha_pacemaker_ra_db2_config_node: "{{ ha_pacemaker_config_node }}"
+
+# ha_pacemaker_ra_db2_sid:
+# Db2 instance number, which forms the default probe port 625<nr>.
+# ha_pacemaker_ra_db2_instance_number:
+# ha_pacemaker_ra_db2_virtual_ip:
+ha_pacemaker_ra_db2_probe_port: "625{{ ha_pacemaker_ra_db2_instance_number }}"
+
+# RHEL: resource defaults priority=1, Db2 priority=10 and
+# priority-fencing-delay=15s, as the existing SDAF tasks set them on two-node
+# clusters with pacemaker 2.0.4 or later. The Db2 guides do not set them.
+ha_pacemaker_ra_db2_priority_fencing: true
+
+ha_pacemaker_ra_db2_settle_retries: 12
+ha_pacemaker_ra_db2_settle_delay: 10

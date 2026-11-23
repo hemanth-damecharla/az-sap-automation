@@ -1,0 +1,40 @@
+---
+- name: resources | Read the installed package versions
+  ansible.builtin.package_facts:
+  when: ansible_facts['packages'] is not defined
+
+- name: resources | Determine whether the Db2 resources need to change
+  azure.sap_automation.pacemaker_cib:
+    xml: "{{ lookup('ansible.builtin.template', 'cib/db2.xml.j2') }}"
+  check_mode: true
+  register: __ha_pacemaker_ra_db2_plan
+
+- name: resources | Apply the Db2 resources under maintenance mode
+  when: __ha_pacemaker_ra_db2_plan['sections'] | length > 0
+  block:
+    - name: resources | Enter maintenance mode
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/maintenance.xml.j2') }}"
+      vars:
+        __ha_pacemaker_ra_db2_maintenance: "true"
+
+    - name: resources | Configure the Db2 resources and constraints
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/db2.xml.j2') }}"
+
+    - name: resources | Leave maintenance mode
+      azure.sap_automation.pacemaker_cib:
+        xml: "{{ lookup('ansible.builtin.template', 'cib/maintenance.xml.j2') }}"
+      vars:
+        __ha_pacemaker_ra_db2_maintenance: "false"
+
+- name: resources | Wait for the cluster to be out of maintenance with all nodes online
+  azure.sap_automation.pacemaker_cluster_info:
+  register: __ha_pacemaker_ra_db2_state
+  until:
+    - not __ha_pacemaker_ra_db2_state['maintenance_mode']
+    - ha_pacemaker_ra_db2_nodes | map(attribute='name')
+      | difference(__ha_pacemaker_ra_db2_state['online_nodes']) | length == 0
+  retries: "{{ ha_pacemaker_ra_db2_settle_retries }}"
+  delay: "{{ ha_pacemaker_ra_db2_settle_delay }}"
+  when: not ansible_check_mode
