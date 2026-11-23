@@ -4,6 +4,10 @@
 # HANA cluster resources".
 __ha_pacemaker_ra_hana_scaleout_default_migration_threshold: "5000"
 __ha_pacemaker_ra_hana_scaleout_rhel_roles: {promoted: Master, unpromoted: Slave}
+# pcs adds a monitor operation from the agent's defaults when it creates a
+# resource; a CIB written directly has none, and Pacemaker would never check
+# the resource. The values are those the Azure guides give where they state
+# them.
 __ha_pacemaker_ra_hana_scaleout_rhel_ip: &rhel_ip
   ip:
     id: "vip_{{ __ha_pacemaker_ra_hana_scaleout_rhel_suffix }}"
@@ -12,7 +16,8 @@ __ha_pacemaker_ra_hana_scaleout_rhel_ip: &rhel_ip
   nc:
     id: "nc_{{ __ha_pacemaker_ra_hana_scaleout_rhel_suffix }}"
     meta: {}
-    operations: []
+    operations:
+      - {name: monitor, interval: "10", timeout: 20s}
   group:
     id: "g_ip_{{ __ha_pacemaker_ra_hana_scaleout_rhel_suffix }}"
     members: [nc, ip]

@@ -4,6 +4,10 @@ __ha_pacemaker_ra_hana_scaleup_rhel_role_names:
   promoted_role: Master
   unpromoted_role: Slave
 
+# pcs adds a monitor operation from the agent's defaults when it creates a
+# resource; a CIB written directly has none, and Pacemaker would never check
+# the resource. The values are those the Azure guides give where they state
+# them.
 __ha_pacemaker_ra_hana_scaleup_platform_common:
   priority_fencing_delay: 15s
   default_priority: "1"
@@ -14,12 +18,14 @@ __ha_pacemaker_ra_hana_scaleup_platform_common:
     meta:
       target-role: ""
       priority: "5"
-    operations: []
+    operations:
+      - {name: monitor, interval: 10s, timeout: 20s}
   probe:
     meta:
       resource-stickiness: ""
       priority: "5"
-    operations: []
+    operations:
+      - {name: monitor, interval: "10", timeout: 20s}
   group:
     members: [probe, ip]
   topology:

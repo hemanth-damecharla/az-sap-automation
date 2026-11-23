@@ -555,7 +555,9 @@ def test_ascs_ers_rhel_follows_the_red_hat_guide():
         {"name": "stop", "interval": "0", "timeout": "120"},
         {"name": "monitor", "interval": "200", "timeout": "105"},
     ]
-    assert ops(group.find("primitive[@id='vip_S01_ERS']")) == []
+    assert ops(group.find("primitive[@id='vip_S01_ERS']")) == [
+        {"name": "monitor", "interval": "10s", "timeout": "20s"}
+    ]
     assert ops(group.find("primitive[@id='rsc_sap_S01_ERS01']")) == [
         {"name": "monitor", "interval": "20", "timeout": "105", "on-fail": "restart"},
         {"name": "start", "interval": "0", "timeout": "600"},
@@ -810,3 +812,32 @@ def test_db2_rhel_follows_the_red_hat_guide_and_earlier_priorities():
     assert "rsc_defaults" not in plain and "crm_config" not in plain
     off = db2("rhel9", ha_pacemaker_ra_db2_priority_fencing=False)
     assert "crm_config" not in off
+
+
+@pytest.mark.parametrize("platform", PLATFORMS)
+@pytest.mark.parametrize(
+    "layout",
+    [
+        lambda p: render("ha_pacemaker_ra_hana_scaleup", "hana.xml.j2", p),
+        lambda p: render(
+            "ha_pacemaker_ra_hana_scaleup",
+            "hana.xml.j2",
+            p,
+            ha_pacemaker_ra_hana_scaleup_flavor="angi",
+        ),
+        lambda p: ascs_ers(p),
+        lambda p: scaleout(p, "classic") if p != "sles12" else {"resources": cib.ET.Element("x")},
+        lambda p: scaleout(p, "angi") if p != "sles12" else {"resources": cib.ET.Element("x")},
+        lambda p: db2(p) if p != "sles12" else {"resources": cib.ET.Element("x")},
+    ],
+    ids=["scaleup-classic", "scaleup-angi", "ascs-ers", "scaleout-classic", "scaleout-angi", "db2"],
+)
+def test_every_resource_is_monitored(layout, platform):
+    """pcs adds a monitor from the agent defaults; the CIB the roles write must state it."""
+    unmonitored = [
+        primitive.get("id")
+        for primitive in layout(platform)["resources"].iter("primitive")
+        if primitive.get("type") != "attribute"
+        and primitive.find("operations/op[@name='monitor']") is None
+    ]
+    assert unmonitored == []

@@ -48,6 +48,10 @@ Added:
 - `ha_pacemaker_ra_db2`: IBM Db2 HADR resources on SLES and RHEL. The SDAF
   playbooks use it with the switch on.
 - `pacemaker_cib` manages the `alerts` section.
+- On RHEL the virtual IP and load balancer probe resources of the HANA
+  scale-up, HANA scale-out and ASCS/ERS roles have monitor operations. pcs
+  adds them from the agent defaults; written into the CIB directly they were
+  missing, so Pacemaker would not have noticed a failed IP or probe.
 - `pacemaker_cib` option `replace`: with `false`, only missing elements and
   properties are added.
 

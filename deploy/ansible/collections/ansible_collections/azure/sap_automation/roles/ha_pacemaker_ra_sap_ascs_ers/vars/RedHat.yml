@@ -1,6 +1,10 @@
 ---
 # Microsoft Learn, "High availability for SAP NetWeaver on Azure VMs on Red Hat
 # Enterprise Linux with Azure NetApp Files for SAP applications".
+# pcs adds a monitor operation from the agent's defaults when it creates a
+# resource; a CIB written directly has none, and Pacemaker would never check
+# the resource. The values are those the Azure guides give where they state
+# them.
 __ha_pacemaker_ra_sap_ascs_ers_platform:
   members: [fs, vip, nc]
   fs_parameters: {force_unmount: safe, fast_stop: "no"}
@@ -8,8 +12,10 @@ __ha_pacemaker_ra_sap_ascs_ers_platform:
     - {name: start, interval: "0", timeout: "60"}
     - {name: stop, interval: "0", timeout: "120"}
     - {name: monitor, interval: "200", timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_fs_monitor_timeout }}"}
-  vip_operations: []
-  nc_operations: []
+  vip_operations:
+    - {name: monitor, interval: 10s, timeout: 20s}
+  nc_operations:
+    - {name: monitor, interval: "10", timeout: 20s}
   sap_operations:
     - {name: monitor, interval: "20", timeout: "{{ ha_pacemaker_ra_sap_ascs_ers_sap_monitor_timeout }}", on-fail: restart}
     - {name: start, interval: "0", timeout: "600"}
